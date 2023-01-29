@@ -1,3 +1,8 @@
+import org.openrndr.shape.LineSegment
+import org.openrndr.shape.ShapeContour
+import org.openrndr.shape.contains
+import org.openrndr.shape.intersections
+
 /**
  * Returns the largest monochromatic convex polygon in O(n^3 log n) time.
  *
@@ -11,21 +16,23 @@
  */
 fun computeLargestConvexIsland(points: List<Point>, obstacles: List<ConvexIsland>): ConvexIsland {
     val stripeData = StripeData(points)
-    val types = points.map { it.type }.toSet()
+    val contourObstacles = obstacles.map { ShapeContour.fromPoints(it.points.map { it.pos }, true) }
 
     fun compatible(q: Point, r: Point, s: Point) = orientation(q.pos, r.pos, s.pos) != Orientation.LEFT
 
-    fun computeLargestConvexIslandAt(p: Point, t: Int): ConvexIsland {
-        data class Edge(
-            val u: Point, val v: Point, var weight: Int? = null, var prev: Edge? = null,
-            var weightCol: Int? = null, var prevCol: Edge? = null
-        )
+    data class Edge(
+        val u: Point, val v: Point, var weight: Int? = null, var prev: Edge? = null,
+        var weightCol: Int? = null, var prevCol: Edge? = null
+    )
+
+    fun computeLargestConvexIslandAt(p: Point): ConvexIsland {
+        val t = p.type
 
         val P = points
-            .filter { it.pos.x <= p.pos.x && it != p }
+            .filter { it.pos.x <= p.pos.x && it != p && it.type == t }
             .sortedWith(clockwiseAround(p))
 
-        if (P.isEmpty()) return ConvexIsland(emptyList(), 0)
+        if (P.isEmpty()) return ConvexIsland(listOf(p), 1)
 
         val groupedP = buildList(P.size) {
             var currentGroup: MutableList<Point> = mutableListOf(P[0])
@@ -49,8 +56,11 @@ fun computeLargestConvexIsland(points: List<Point>, obstacles: List<ConvexIsland
             for (j in i + 1 until P.size) {
                 val tri = stripeData.triangle(p, P[i], P[j])
 
+                val contour = ShapeContour.fromPoints(listOf(p.pos, P[i].pos, P[j].pos), true)
+                val intersects = contourObstacles.any { contour.overlaps(it) }
+
                 // Triangle p P[i] P[j] should contain no points of a type other than t.
-                if (!tri.hasType(t)) continue
+                if (!tri.hasType(t) || intersects) continue
 
                 // We store edge P[i] -> P[j], add P[i] to the predecessors of P[j], and add P[j] to successors of P[i].
                 edges[P[i] to P[j]] = Edge(P[i], P[j], if (i == 0) tri.get0(t) else null) // i == 0: base case of DP
@@ -66,7 +76,19 @@ fun computeLargestConvexIsland(points: List<Point>, obstacles: List<ConvexIsland
             }
         }
 
-        if (edges.isEmpty()) return ConvexIsland(emptyList(), 0)
+        // If there are no edges, then check any segments
+        if (edges.isEmpty()) {
+            for (q in P){
+                val seg = stripeData.segment.getE(q to p)
+                val contour = LineSegment(p.pos, q.pos).contour
+                val intersects = contourObstacles.any { contour.intersections(it).isNotEmpty() }
+                if (seg.hasType(t) && !intersects){
+                    return ConvexIsland(listOf(q, p), 2 + seg.get0(t))
+                }
+            }
+            return ConvexIsland(listOf(p), 1)
+        }
+
         for ((pi, l) in Ai) {
             l.sortWith(clockwiseAround(pi))
         }
@@ -163,11 +185,25 @@ fun computeLargestConvexIsland(points: List<Point>, obstacles: List<ConvexIsland
         return ConvexIsland(backtrack(maxEdge), maxEdge.weight!!)
     }
 
-    return types.map { t ->
-             points.map { computeLargestConvexIslandAt(it, t) }
-            .maxWith(compareBy({ it.weight }, { it.points.size }))
-           }.maxWith(compareBy({ it.weight }, { it.points.size }))
+    return points
+        .map { computeLargestConvexIslandAt(it) }
+        .maxWithOrNull(compareBy({ it.weight }, { it.points.size })) ?: ConvexIsland.EMPTY
+}
 
+fun computeIslandPartition(points: List<Point>): List<ConvexIsland> {
+    return buildList {
+        val islands = this@buildList
+        var pts = points
+        while (pts.isNotEmpty()){
+            val island = computeLargestConvexIsland(pts, islands)
+            if (island == ConvexIsland.EMPTY) break
+            add(island)
+            pts = pts.filter { it !in island.points && (island.weight <= island.points.size || it.pos !in ShapeContour.fromPoints(island.points.map { it.pos }, true)) }
+        }
+    }
 }
 
 fun Map<Int, Int>.hasType(t: Int) = keys.all { it == t || get(it) == 0 }
+
+fun ShapeContour.overlaps(other: ShapeContour) =
+    intersections(other).isNotEmpty() || position(0.0) in other || other.position(0.0) in this

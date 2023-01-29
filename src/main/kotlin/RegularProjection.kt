@@ -29,3 +29,8 @@ fun regularProjection(points: List<Vector2>): Double {
 
     return rotationAngle
 }
+
+fun transformPoints(pts: List<Point>): List<Point> {
+    val rotationAngle = regularProjection(pts.map { it.pos })
+    return pts.map { Point(it.pos.rotate(rotationAngle.asDegrees), it.type, it) }
+}

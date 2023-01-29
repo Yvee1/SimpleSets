@@ -38,32 +38,42 @@ class Camera2D : Extension {
 
     fun setupMouseEvents(mouse: Mouse) {
         mouse.buttonDown.listen {
-            rotationCenter = it.position
+            if (!it.propagationCancelled) {
+                rotationCenter = it.position
+            }
         }
         mouse.dragged.listen {
-            when (it.button) {
-                MouseButton.CENTER -> view = buildTransform {
-                    translate(it.dragDisplacement)
-                } * view
+            if (!it.propagationCancelled) {
+                when (it.button) {
+                    MouseButton.CENTER -> {
+                        it.cancelPropagation()
+                        view = buildTransform {
+                            translate(it.dragDisplacement)
+                        } * view
+                    }
 
-//                MouseButton.RIGHT -> view = buildTransform {
-//                    translate(rotationCenter)
-//                    rotate(it.dragDisplacement.x + it.dragDisplacement.y)
-//                    translate(-rotationCenter)
-//                } * view
+    //                MouseButton.RIGHT -> view = buildTransform {
+    //                    translate(rotationCenter)
+    //                    rotate(it.dragDisplacement.x + it.dragDisplacement.y)
+    //                    translate(-rotationCenter)
+    //                } * view
 
-                else -> Unit
+                    else -> Unit
+                }
+                dirty = true
             }
-            dirty = true
         }
         mouse.scrolled.listen {
-            val scaleFactor = 1.0 - it.rotation.y * 0.03
-            view = buildTransform {
-                translate(it.position)
-                scale(scaleFactor)
-                translate(-it.position)
-            } * view
-            dirty = true
+            if (!it.propagationCancelled) {
+                val scaleFactor = 1.0 - it.rotation.y * 0.03
+                view = buildTransform {
+                    translate(it.position)
+                    scale(scaleFactor)
+                    translate(-it.position)
+                } * view
+                it.cancelPropagation()
+                dirty = true
+            }
         }
     }
 

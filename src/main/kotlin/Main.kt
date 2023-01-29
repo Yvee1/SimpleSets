@@ -5,6 +5,10 @@ import org.openrndr.draw.isolated
 import org.openrndr.draw.loadFont
 import org.openrndr.extra.color.presets.BLUE_STEEL
 import org.openrndr.extra.gui.GUI
+import org.openrndr.extra.parameters.ActionParameter
+import org.openrndr.extra.parameters.BooleanParameter
+import org.openrndr.extra.parameters.DoubleParameter
+import org.openrndr.extra.parameters.OptionParameter
 import org.openrndr.math.*
 import org.openrndr.shape.*
 import kotlin.math.max
@@ -19,9 +23,37 @@ fun main() = application {
     }
 
     program {
-        fun Vector2.mapComponents(f: (Double) -> Double) = Vector2(f(x), f(y))
+        val colors = listOf(ColorRGBa.RED, ColorRGBa.BLUE).map { it.mix(ColorRGBa.WHITE, 0.5).shade(0.95) }
+        var points = mutableListOf<Point>()
+        var tPoints = transformPoints(points)
+        var stripeData = StripeData(tPoints)
+        var islands = listOf<ConvexIsland>()
+
+        fun clearData(){
+            points.clear()
+            tPoints = listOf()
+            stripeData = StripeData(points)
+            islands = listOf()
+        }
 
         val s = object {
+            @DoubleParameter("Point size", 0.1, 10.0, order = 0)
+            var pSize = 3.0
+
+            @BooleanParameter("Grid", order = 1)
+            var useGrid = true
+
+            @DoubleParameter("Grid size", 1.0, 100.0, order = 2)
+            var gridSize = 20.0
+
+            @OptionParameter("Example input", order = 10)
+            var exampleInput = ExampleInput.LowerBound
+
+            @ActionParameter("Load input", order = 11)
+            fun load() {
+                clearData()
+                points = getExampleInput(exampleInput).toMutableList()
+            }
         }
 
         val gui = GUI(ColorRGBa.BLUE_STEEL)
@@ -58,20 +90,28 @@ fun main() = application {
 
         var view = drawer.view
 
-        fun transformMouse(mp: Vector2) = (view.inversed * Vector4(mp.x, mp.y, 0.0, 1.0)).xy
+        var grid = Grid(s.gridSize, drawer.bounds.center)
+        gui.onChange { _, _ -> grid = Grid(s.gridSize, drawer.bounds.center) }
 
-        val grid = Grid(30.0, drawer.bounds.center)
-        val colors = listOf(ColorRGBa.RED, ColorRGBa.BLUE).map { it.mix(ColorRGBa.WHITE, 0.5).shade(0.95) }
-        val points = mutableListOf<Point>()
+        fun transformMouse(mp: Vector2): Vector2 {
+            val v = (view.inversed * Vector4(mp.x, mp.y, 0.0, 1.0)).xy
+            return if (s.useGrid) grid.snap(v) else v
+        }
 
         mouse.buttonDown.listen { mouseEvent ->
             if (!mouseEvent.propagationCancelled) {
                 when (mouseEvent.button) {
-                    MouseButton.LEFT -> 0
-                    MouseButton.RIGHT -> 1
+                    MouseButton.LEFT -> {
+                        mouseEvent.cancelPropagation()
+                        0
+                    }
+                    MouseButton.RIGHT -> {
+                        mouseEvent.cancelPropagation()
+                        1
+                    }
                     else -> null
                 }?.let { t ->
-                    val p = grid.snap(transformMouse(mouseEvent.position))
+                    val p = transformMouse(mouseEvent.position)
                     if (points.none { it.pos == p })
                         points.add(Point(p, t))
                 }
@@ -79,26 +119,25 @@ fun main() = application {
 
         }
 
-        fun transformPoints(pts: List<Point>): List<Point> {
-            val rotationAngle = regularProjection(pts.map { it.pos })
-            return pts.map { Point(it.pos.rotate(rotationAngle.asDegrees), it.type, it) }
-        }
-
-        var tPoints = transformPoints(points)
-        var stripeData = StripeData(tPoints)
-        var largestIsland = ConvexIsland(listOf(), 0)
-
         keyboard.keyDown.listen {
             if (!it.propagationCancelled) {
                 if (it.key == KEY_SPACEBAR) {
+                    it.cancelPropagation()
                     tPoints = transformPoints(points)
                     stripeData = StripeData(tPoints)
-                    largestIsland = computeLargestConvexIsland(tPoints, emptyList())
-                    println(largestIsland)
+                    islands = computeIslandPartition(tPoints)
                 }
 
                 if (it.name == "c") {
-                    points.clear()
+                    it.cancelPropagation()
+                    clearData()
+                }
+
+                if (it.key == KEY_BACKSPACE) {
+                    it.cancelPropagation()
+                    if (points.isNotEmpty()){
+                        points.removeLast()
+                    }
                 }
             }
         }
@@ -156,15 +195,22 @@ fun main() = application {
                 fontMap = font
 
                 // Draw grid
+                strokeWeight = 0.5
                 stroke = ColorRGBa.GRAY.opacify(0.3)
-                grid.draw(this)
+                if (s.useGrid) grid.draw(this)
 
                 // Draw preview of point placement
+                strokeWeight = 1.0
+                stroke = ColorRGBa.BLACK.opacify(0.5)
                 fill = ColorRGBa.GRAY.opacify(0.5)
-                circle(grid.snap(transformMouse(mouse.position)), 6.0)
-
-                if (largestIsland.points.size > 2) {
-                    contour(ShapeContour.fromPoints(largestIsland.points.map { it.originalPoint!!.pos }, true))
+                circle(transformMouse(mouse.position), s.pSize)
+                for (island in islands) {
+                    fill = colors[island.points[0].type].opacify(0.5)
+                    if (island.points.size > 1) {
+                        contour(ShapeContour.fromPoints(island.points.map { it.originalPoint!!.pos }, true))
+                    } else if (island.points.size == 1) {
+                        circle(island.points[0].originalPoint!!.pos, s.pSize * 2)
+                    }
                 }
 
 //                if (s.i in tPoints.indices && s.j in tPoints.indices && s.k in tPoints.indices
@@ -175,19 +221,23 @@ fun main() = application {
 //                    drawStripe(tPoints[s.i], tPoints[s.k])
 //                    drawTriangle(s.i, s.j, s.k)
 //                }
-
-                for (p in points) {
+                isolated {
                     stroke = ColorRGBa.BLACK
-                    fill = colors[p.type]
-                    circle(p.pos, 6.0)
+                    strokeWeight = s.pSize / 4.5
+                    for (p in points) {
+                        fill = colors[p.type]
+                        circle(p.pos, s.pSize)
+                    }
                 }
 
 //                for (p in tPoints) {
 //                    stroke = ColorRGBa.BLACK.opacify(0.3)
 //                    fill = colors[p.type].opacify(0.3)
-//                    circle(p.pos, 6.0)
+//                    circle(p.pos, s.pSize)
 //                }
             }
         }
     }
 }
+
+fun Vector2.mapComponents(f: (Double) -> Double) = Vector2(f(x), f(y))
