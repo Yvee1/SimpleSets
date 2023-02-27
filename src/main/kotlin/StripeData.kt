@@ -29,7 +29,7 @@ class StripeData(points: List<Point>) {
             for (p in xSorted){
                 val l = xSorted
                     .filter { it.pos.x <= p.pos.x && it != p }
-                    .sortedWith(clockwiseAround(p))
+                    .sortedWith(clockwiseAround(p, 90.0).then(awayFrom(p)))
                 put(p, l)
             }
         }
@@ -86,7 +86,7 @@ class StripeData(points: List<Point>) {
             .diff(stripe.getE(x to z))
             .mapValues { abs(it.value) }
             .diff( // Subtract points not in the interior that have been counted
-                if (orient == Orientation.RIGHT)
+                if (orient == Orientation.LEFT)
                     mapOf(y.type to 1).sum(segment.getE(x to y)).sum(segment.getE(y to z))
                 else segment.getE(x to z))
         val boundary = segment.getE(x to y)
@@ -97,17 +97,26 @@ class StripeData(points: List<Point>) {
     }
 }
 
-fun clockwiseAround(p: Point) = Comparator<Point> { p1, p2 ->
-        val a1 = atan2(p.pos.y - p1.pos.y, p.pos.x - p1.pos.x)
-        val a2 = atan2(p.pos.y - p2.pos.y, p.pos.x - p2.pos.x)
+/**
+ * Clockwise ordering around a point `p`.
+ * @param p the reference point
+ * @param start the start angle in degrees, counter-clockwise starting at 3 o'clock.
+ */
+fun clockwiseAround(p: Point, start: Double) = Comparator<Point> { p1, p2 ->
+        val v1 = (p1.pos - p.pos).rotate(-(start - 180))
+        val v2 = (p2.pos - p.pos).rotate(-(start - 180))
+        val a1 = -atan2(v1.y, v1.x)
+        val a2 = -atan2(v2.y, v2.x)
         if (a1 < a2 - PRECISION){
-            -1
-        } else if (a1 > a2 + PRECISION) {
             1
+        } else if (a1 > a2 + PRECISION) {
+            -1
         } else {
             0
         }
-    }.thenBy { (p.pos - it.pos).squaredLength }
+    }
+
+fun awayFrom(p: Point): Comparator<Point> = Comparator.comparing { (p.pos - it.pos).squaredLength }
 
 fun <K, V1, V2, R> Map<K, V1>.mergeReduce(other: Map<K, V2>, reduce: (key: K, value1: V1?, value2: V2?) -> R): Map<K, R> =
     (this.keys + other.keys).associateWith { reduce(it, this[it], other[it]) }

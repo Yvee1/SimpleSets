@@ -3,7 +3,7 @@ import org.openrndr.math.Vector2
 import kotlin.math.abs
 import kotlin.math.sign
 
-const val PRECISION = 1e-6
+const val PRECISION = 1e-9
 
 enum class Orientation {
     LEFT, STRAIGHT, RIGHT
@@ -17,7 +17,7 @@ fun orientation(p: Vector2, q: Vector2, r: Vector2): Orientation {
     return if (abs(d) <= PRECISION) {
         Orientation.STRAIGHT
     } else {
-        if (d.sign < 0){
+        if (d.sign > 0){
             Orientation.LEFT
         } else {
             Orientation.RIGHT

@@ -6,7 +6,11 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 group = "org.openrndr.template"
 version = "0.4.0"
 
-val applicationMainClass = "TemplateProgramKt"
+tasks.test {
+    useJUnitPlatform()
+}
+
+val applicationMainClass = "MainKt"
 
 /**  ## additional ORX features to be added to this project */
 val orxFeatures = setOf<String>(
@@ -55,7 +59,7 @@ val orxFeatures = setOf<String>(
 //  "orx-tensorflow",    
 //  "orx-time-operators",
 //  "orx-timer",
-//  "orx-triangulation",
+    "orx-triangulation",
 //  "orx-video-profiles",
 )
 
@@ -120,7 +124,9 @@ dependencies {
         }
     }
     implementation(kotlin("stdlib-jdk8"))
+    implementation("org.junit.jupiter:junit-jupiter:5.8.1")
     testImplementation(libs.junit)
+    testImplementation(kotlin("test"))
 }
 
 // ------------------------------------------------------------------------------------------------------------------ //

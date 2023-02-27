@@ -1,18 +1,20 @@
 import org.openrndr.math.Vector2
 import org.openrndr.shape.Circle
+import java.io.File
+import java.io.IOException
 import kotlin.math.pow
 
 enum class ExampleInput {
-    LowerBound
+    LowerBound, NYC
 }
 
 fun getExampleInput(e: ExampleInput): List<Point> {
     return when (e){
         ExampleInput.LowerBound -> {
-            val scale = 25.0
+            val scale = 50.0
             val center = Vector2(100.0, 100.0)
             val pts = mutableListOf<Point>()
-            val l = 2
+            val l = 3
             val k = 2.toDouble().pow(l).toInt()
             for (i in 0 until k){
                 pts.add(Point(Vector2(center.x - scale/4, center.y + i * scale), 0))
@@ -46,8 +48,33 @@ fun getExampleInput(e: ExampleInput): List<Point> {
 
             return pts
         }
-        else -> emptyList<Point>()
+        ExampleInput.NYC -> {
+            val f = File("nyc.ipe")
+            return ipeToPoints(f)
+        }
     }
 }
 
+fun main(){
+    val colors = listOf("CB light blue", "CB light red", "CB light green")
 
+    val fn = "test.ipe"
+    val points = getExampleInput(ExampleInput.LowerBound)
+    val instance = ProblemInstance(points)
+    val islands = instance.computeIslandPartition(disjoint=true)
+    val file = File(fn)
+    try {
+        val s = ipeDraw(colors) {
+            for (isle in islands){
+                island(isle)
+            }
+            for (p in points){
+                point(p)
+            }
+        }
+        file.writeText(s)
+    } catch (e: IOException) {
+        println("Could not write to output file!")
+        e.printStackTrace()
+    }
+}

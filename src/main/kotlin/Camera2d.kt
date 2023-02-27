@@ -1,7 +1,4 @@
-import org.openrndr.Extension
-import org.openrndr.Mouse
-import org.openrndr.MouseButton
-import org.openrndr.Program
+import org.openrndr.*
 import org.openrndr.draw.Drawer
 import org.openrndr.draw.RenderTarget
 import org.openrndr.events.Event
@@ -36,7 +33,7 @@ class Camera2D : Extension {
     val hasChanged: Boolean
         get() = dirty
 
-    fun setupMouseEvents(mouse: Mouse) {
+    fun setupMouseEvents(mouse: MouseEvents) {
         mouse.buttonDown.listen {
             if (!it.propagationCancelled) {
                 rotationCenter = it.position
