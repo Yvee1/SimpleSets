@@ -16,12 +16,14 @@ fun ProblemInstance.computeLargestCwBendFrom(a: Point, b: Point, uncovered: List
     if (b.type != t || a == b || !valid(a, b, obstacles) || !stripeData.segment.getE(a to b).hasType(t)) return Bend.EMPTY
     val dir = b.pos - a.pos
     val angle = atan2(dir.y, dir.x)
+    val lowerDir = dir.rotate(-bendAngle)
 
     // Points in the right half-plane extending from the line going through ab.
     // Sorted in the reversed direction of the normal of ab.
     val P = uncovered
         .filter { it != a && it != b && it.type == t &&
                 orientation(a.pos, b.pos, it.pos) in listOf(Orientation.RIGHT, Orientation.STRAIGHT) &&
+                orientation(b.pos, b.pos + lowerDir, it.pos) in listOf(Orientation.LEFT, Orientation.STRAIGHT) &&
                 valid(b, it, obstacles)
         }
         .sortedWith( // Sort along the perpendicular to ab; the furthest away first.
@@ -35,21 +37,23 @@ fun ProblemInstance.computeLargestCwBendFrom(a: Point, b: Point, uncovered: List
                 } else {
                     0
                 }
+            }.thenBy { p: Point -> // Along ab; the furthest away first.
+                if (orientation(a.pos, b.pos, p.pos) == Orientation.STRAIGHT)
+                    -p.pos.rotate(-angle.asDegrees).x
+                else p.pos.rotate(-angle.asDegrees).x
             }
-                .thenBy { p: Point -> // Along ab; the furthest away first.
-                    if (orientation(a.pos, b.pos, p.pos) == Orientation.STRAIGHT)
-                        -p.pos.rotate(-angle.asDegrees).x
-                    else p.pos.rotate(-angle.asDegrees).x
-                }
         )
 
     val Pi = P.withIndex().associate { (i, p) ->
         p to P.subList(0, i)
-            .filter { valid(p, it, obstacles) }
+            .filter {
+                orientation(p.pos, p.pos + lowerDir, it.pos) in listOf(Orientation.LEFT, Orientation.STRAIGHT) &&
+                valid(p, it, obstacles)
+            }
             .sortedWith(clockwiseAround(p, angle.asDegrees).then(awayFrom(p).reversed()))
     }
 
-    if (P.isEmpty()) return Bend.EMPTY
+    if (P.isEmpty()) return Bend(listOf(a, b), 2)
 
     fun fch(p: Point, q: Point) = firstClockwiseHit(Pi[q]!!, p, q, q) ?: -1
 

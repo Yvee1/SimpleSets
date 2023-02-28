@@ -61,6 +61,9 @@ fun main() = application {
 
             @DoubleParameter("Bend distance", 1.0, 1000.0, order=1000)
             var bendDistance = 20.0
+
+            @DoubleParameter("Bend angle", 0.0, 180.0, order=2000)
+            var bendAngle = 180.0
         }
 
         val gui = GUI(GUIAppearance(ColorRGBa.BLUE_STEEL))
@@ -132,7 +135,7 @@ fun main() = application {
             if (!it.propagationCancelled) {
                 if (it.key == KEY_SPACEBAR) {
                     it.cancelPropagation()
-                    problemInstance = ProblemInstance(points, s.bendDistance)
+                    problemInstance = ProblemInstance(points, s.bendDistance, s.bendAngle)
                     patterns = problemInstance.computePartition(s.disjoint)
                 }
 
