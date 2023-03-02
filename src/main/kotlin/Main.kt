@@ -12,6 +12,7 @@ import org.openrndr.extra.parameters.DoubleParameter
 import org.openrndr.extra.parameters.OptionParameter
 import org.openrndr.math.*
 import org.openrndr.shape.*
+import kotlin.math.max
 import kotlin.math.round
 
 fun main() = application {
@@ -177,24 +178,21 @@ fun main() = application {
                         val island = pattern
                         stroke = ColorRGBa.BLACK
                         fill = colors[island.points[0].type].opacify(0.5)
-                        if (island.points.size > 2) {
+                        if (island.points.size > 1) {
+//                            fill = ColorRGBa.RED
                             contour(
                                 ShapeContour.fromPoints(island.points.map { flip(it.originalPoint!!.pos) }, true)
-                                    .offset(s.offset)
-                            )
-                        } else if (island.points.size == 2) {
-                            stroke = colors[island.points[0].type]
-                            lineSegment(
-                                flip(island.points[0].originalPoint!!.pos),
-                                flip(island.points[1].originalPoint!!.pos)
+                                    .buffer(s.offset)
                             )
                         } else if (island.points.size == 1) {
-                            circle(flip(island.points[0].originalPoint!!.pos), s.pSize * 2)
+                            circle(flip(island.points[0].originalPoint!!.pos), max(s.pSize, s.offset))
                         }
                     }
                     if (pattern is Bend) {
                         stroke = ColorRGBa.BLACK
-                        lineStrip(pattern.points.map { flip(it.originalPoint!!.pos) })
+                        fill = colors[pattern.points[0].type].opacify(0.5)
+                        contour(ShapeContour.fromPoints(pattern.points.map { flip(it.originalPoint!!.pos) }, false)
+                            .buffer(s.offset))
                     }
                 }
 

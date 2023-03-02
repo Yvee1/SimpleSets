@@ -99,6 +99,12 @@ plugins {
 
 repositories {
     mavenCentral()
+    maven {
+        url = uri("https://repo.eclipse.org/content/groups/releases")
+    }
+    maven {
+        url = uri("https://repo.eclipse.org/content/repositories/jts-snapshots")
+    }
 }
 
 dependencies {
@@ -106,6 +112,8 @@ dependencies {
 //    implementation(libs.jsoup)
 //    implementation(libs.gson)
 //    implementation(libs.csv)
+
+    implementation("org.locationtech.jts:jts-core:1.19.0")
 
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlin.logging)
