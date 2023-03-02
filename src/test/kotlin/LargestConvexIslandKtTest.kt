@@ -10,7 +10,7 @@ internal class LargestConvexIslandKtTest {
     @ParameterizedTest
     @MethodSource("convexIslandInstances")
     fun testLargestConvexIslandAt(instance: ProblemInstance, expected: ConvexIsland) {
-        assertIslands(expected, instance.computeLargestConvexIslandAt(instance.points.maxBy { it.pos.x }, instance.points).original())
+        assertIslands(expected, instance.largestConvexIslandAt(instance.points.maxBy { it.pos.x }, instance.points).original())
     }
 
     private fun assertIslands(expected: ConvexIsland, actual: ConvexIsland){

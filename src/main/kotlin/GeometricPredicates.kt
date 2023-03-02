@@ -6,7 +6,13 @@ import kotlin.math.sign
 const val PRECISION = 1e-9
 
 enum class Orientation {
-    LEFT, STRAIGHT, RIGHT
+    LEFT, STRAIGHT, RIGHT;
+
+    fun opposite(): Orientation = when(this) {
+        LEFT -> RIGHT
+        RIGHT -> LEFT
+        STRAIGHT -> STRAIGHT
+    }
 }
 
 fun orientation(p: Vector2, q: Vector2, r: Vector2): Orientation {

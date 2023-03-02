@@ -14,21 +14,21 @@ import org.openrndr.shape.intersections
  * @param uncovered a list of `points` with distinct x-coordinates
  * @throws error if `points` do not have distinct x-coordinates
  */
-fun ProblemInstance.computeLargestConvexIsland(uncovered: List<Point> = points, obstacles: List<Pattern> = emptyList()): ConvexIsland =
+fun ProblemInstance.largestConvexIsland(uncovered: List<Point> = points, obstacles: List<Pattern> = emptyList()): ConvexIsland =
    uncovered
-    .map { computeLargestConvexIslandAt(it, uncovered, obstacles) }
+    .map { largestConvexIslandAt(it, uncovered, obstacles) }
     .maxWithOrNull(compareBy({ it.weight }, { it.points.size })) ?: ConvexIsland.EMPTY
 
 private fun compatible(q: Point, r: Point, s: Point) = orientation(q.pos, r.pos, s.pos) != Orientation.LEFT
 
 private data class Edge(val u: Point, val v: Point, var weight: Int? = null, var prev: Edge? = null)
 
-fun ProblemInstance.computeLargestConvexIslandAt(p: Point, uncovered: List<Point> = points, obstacles: List<Pattern> = emptyList()): ConvexIsland {
+fun ProblemInstance.largestConvexIslandAt(p: Point, uncovered: List<Point> = points, obstacles: List<Pattern> = emptyList()): ConvexIsland {
     val t = p.type
 
     val P = uncovered
         .filter { it.pos.x <= p.pos.x && it != p && it.type == t }
-        .sortedWith(clockwiseAround(p, 90.0).reversed().then(awayFrom(p)))
+        .sortedWith(compareAround(p, 90.0, Orientation.RIGHT).reversed().then(awayFrom(p)))
 
     if (P.isEmpty()) return ConvexIsland(listOf(p), 1)
 
@@ -88,10 +88,10 @@ fun ProblemInstance.computeLargestConvexIslandAt(p: Point, uncovered: List<Point
     }
 
     for ((pi, l) in Ai) {
-        l.sortWith(clockwiseAround(pi, 90.0).reversed().then(awayFrom(pi)))
+        l.sortWith(compareAround(pi, 90.0, Orientation.RIGHT).reversed().then(awayFrom(pi)))
     }
     for ((pi, l) in Bi) {
-        l.sortWith(clockwiseAround(pi, 90.0).reversed().then(awayFrom(pi)))
+        l.sortWith(compareAround(pi, 90.0, Orientation.RIGHT).reversed().then(awayFrom(pi)))
     }
     fun updateB(pi: Point, A: List<Point>, B: List<Point>) {
         // Goal: compute weights of edges from pi to points in B
@@ -172,15 +172,15 @@ fun ProblemInstance.computeLargestConvexIslandAt(p: Point, uncovered: List<Point
 
     val maxEdge = edges.maxBy { it.value.weight!! }.value
 
-    fun backtrack(e: Edge): List<Point> {
+    fun trace(e: Edge): List<Point> {
         return if (e.prev == null) {
             listOf(p, e.u, e.v)
         } else {
-            backtrack(e.prev!!) + listOf(e.v)
+            trace(e.prev!!) + listOf(e.v)
         }
     }
 
-    return ConvexIsland(backtrack(maxEdge), maxEdge.weight!!)
+    return ConvexIsland(trace(maxEdge), maxEdge.weight!!)
 }
 
 fun ProblemInstance.computeIslandPartition(disjoint: Boolean = true): List<ConvexIsland> {
@@ -188,7 +188,7 @@ fun ProblemInstance.computeIslandPartition(disjoint: Boolean = true): List<Conve
         val islands = this@buildList
         var uncovered = points
         while (uncovered.isNotEmpty()){
-            val island = if (disjoint) computeLargestConvexIsland(uncovered, islands) else computeLargestConvexIsland(uncovered)
+            val island = if (disjoint) largestConvexIsland(uncovered, islands) else largestConvexIsland(uncovered)
             if (island == ConvexIsland.EMPTY) break
             islands.add(island)
             uncovered = uncovered.filter { it.pos !in island }

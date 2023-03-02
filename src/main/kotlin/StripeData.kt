@@ -29,7 +29,7 @@ class StripeData(points: List<Point>) {
             for (p in xSorted){
                 val l = xSorted
                     .filter { it.pos.x <= p.pos.x && it != p }
-                    .sortedWith(clockwiseAround(p, 90.0).then(awayFrom(p)))
+                    .sortedWith(compareAround(p, 90.0, Orientation.RIGHT).then(awayFrom(p)))
                 put(p, l)
             }
         }
@@ -102,18 +102,19 @@ class StripeData(points: List<Point>) {
  * @param p the reference point
  * @param start the start angle in degrees, counter-clockwise starting at 3 o'clock.
  */
-fun clockwiseAround(p: Point, start: Double) = Comparator<Point> { p1, p2 ->
+fun compareAround(p: Point, start: Double, dir: Orientation) = Comparator<Point> { p1, p2 ->
         val v1 = (p1.pos - p.pos).rotate(-(start - 180))
         val v2 = (p2.pos - p.pos).rotate(-(start - 180))
         val a1 = -atan2(v1.y, v1.x)
         val a2 = -atan2(v2.y, v2.x)
-        if (a1 < a2 - PRECISION){
+        val x = if (a1 < a2 - PRECISION){
             1
         } else if (a1 > a2 + PRECISION) {
             -1
         } else {
             0
         }
+        if (dir == Orientation.RIGHT) x else -x
     }
 
 fun awayFrom(p: Point): Comparator<Point> = Comparator.comparing { (p.pos - it.pos).squaredLength }
