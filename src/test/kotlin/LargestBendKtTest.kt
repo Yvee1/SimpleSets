@@ -137,7 +137,85 @@ internal class LargestBendKtTest {
     fun firstClockwiseHitMultiple() {
         repeat(360) { i ->
             val pts = listOf(0 p 0, 1 p 1, 3 p 1, 2 p 1, 1 p 2).map { Point(it.pos.rotate(i.toDouble()), it.type) }
-            assertEquals(1, firstHit(pts.subList(2, pts.size), pts[0], pts[1], pts[1], Orientation.RIGHT))
+            assertEquals(1, firstHit(pts.subList(2, pts.size).asReversed(), pts[0], pts[1], pts[1], Orientation.RIGHT))
         }
+    }
+
+    @Test
+    fun firstClockwiseHitAnother() {
+        repeat(360) { i ->
+            val pts = listOf(0 p 0, 1 p 1, 2 p 0, 2 p 1, 1 p 2).map { Point(it.pos.rotate(i.toDouble()), it.type) }
+            assertEquals(1, firstHit(pts.subList(2, pts.size).asReversed(), pts[0], pts[1], pts[1], Orientation.RIGHT))
+        }
+    }
+
+    @Test
+    fun firstCClockwiseHitEmpty() {
+        repeat(360) { i ->
+            val pts = listOf(0 p 0, 1 p 1).map { Point(it.pos.rotate(i.toDouble() / 360.0), it.type) }
+            assertEquals(null, firstHit(emptyList(), pts[0], pts[1], pts[1], Orientation.LEFT))
+        }
+    }
+
+    @Test
+    fun firstCClockwiseHitStraight() {
+        repeat(360) { i ->
+            val pts = listOf(0 p 0, 1 p 1, 2 p 2).map { Point(it.pos.rotate(i.toDouble() / 360.0), it.type) }
+            assertEquals(0, firstHit(listOf(pts[2]), pts[0], pts[1], pts[1], Orientation.LEFT))
+        }
+    }
+
+    @Test
+    fun firstCClockwiseHitRight() {
+        repeat(360) { i ->
+            val pts = listOf(0 p 0, 1 p 1, 2 p 1).map { Point(it.pos.rotate(i.toDouble()), it.type) }
+            assertEquals(null, firstHit(listOf(pts[2]), pts[0], pts[1], pts[1], Orientation.LEFT))
+        }
+    }
+
+    @Test
+    fun firstCClockwiseHitLeft() {
+        repeat(360) { i ->
+            val pts = listOf(0 p 0, 1 p 1, 1 p 2).map { Point(it.pos.rotate(i.toDouble()), it.type) }
+            assertEquals(0, firstHit(listOf(pts[2]), pts[0], pts[1], pts[1], Orientation.LEFT))
+        }
+    }
+
+    @Test
+    fun firstCClockwiseHitMultiple() {
+        repeat(360) { i ->
+            val pts = listOf(0 p 0, 1 p 1, 2 p 1, 1 p 2, 1 p 3).map { Point(it.pos.rotate(i.toDouble()), it.type) }
+            assertEquals(1, firstHit(pts.subList(2, pts.size), pts[0], pts[1], pts[1], Orientation.LEFT))
+        }
+    }
+
+    @Test
+    fun firstCClockwiseHitAnother() {
+        repeat(360) { i ->
+            val pts = listOf(0 p 0, 1 p 1, 2 p 1, 1 p 2, 1 p 3).map { Point(it.pos.rotate(i.toDouble()), it.type) }
+            assertEquals(1, firstHit(pts.subList(2, pts.size), pts[0], pts[1], pts[1], Orientation.LEFT))
+        }
+    }
+
+    @Test
+    fun constrainedBendRightAngleAllowed() {
+        val pts = listOf(0 p 0, 0 p 1, 1 p 1)
+        val instance = ProblemInstance(pts, maxTurningAngle = 100.0)
+        assertEquals(Bend(instance.points, 3), instance.largestMonotoneBendFrom(instance.points[0], instance.points[1], Orientation.RIGHT))
+    }
+
+    @Test
+    fun constrainedBendRightAngleRestricted() {
+        val pts = listOf(0 p 0, 0 p 1, 1 p 1)
+        val instance = ProblemInstance(pts, maxTurningAngle = 50.0)
+        assertEquals(Bend(instance.points.subList(0, 2), 2), instance.largestMonotoneBendFrom(instance.points[0], instance.points[1], Orientation.RIGHT))
+    }
+
+    @Test
+    fun constrainedBendInflection() {
+        val pts = listOf(291.2 p 67.3, 305.6 p 74.1, 322.6 p 73.2, 335.3 p 67.2,
+            348.5 p 63.1, 363.4 p 60.2, 378.2 p 61.7, 393.2 p 65.9)
+        val instance = ProblemInstance(pts, maxTurningAngle = 150.0)
+        assertEquals(Bend(instance.points, instance.points.size), instance.largestInflectionBend(Orientation.RIGHT))
     }
 }

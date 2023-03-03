@@ -9,8 +9,10 @@ sealed class Pattern {
 }
 
 fun ProblemInstance.computePattern(uncovered: List<Point>, obstacles: List<Pattern>): Pattern {
-    val island = ConvexIsland(listOf(uncovered.first()), 1) //computeLargestConvexIsland(uncovered, obstacles)
-    val bend = computeLargestCwBend(uncovered, obstacles)
+    val island = ConvexIsland(listOf(uncovered.first()), 1) //
+//    val island = largestConvexIsland(uncovered, obstacles)
+    val bend = if (bendInflection) largestInflectionBend(Orientation.RIGHT, uncovered, obstacles)
+               else largestMonotoneBend(Orientation.RIGHT, uncovered, obstacles)
     return if (island.weight > bend.weight) island else bend
 }
 

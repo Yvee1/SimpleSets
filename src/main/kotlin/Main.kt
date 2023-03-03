@@ -57,14 +57,20 @@ fun main() = application {
                 points = getExampleInput(exampleInput).toMutableList()
             }
 
-            @DoubleParameter("Island offset", 0.0, 20.0, order = 200)
-            var offset = 10.0
+            @BooleanParameter("Island offset", order=200)
+            var offset = true
 
             @DoubleParameter("Bend distance", 1.0, 1000.0, order=1000)
             var bendDistance = 20.0
 
-            @DoubleParameter("Bend angle", 0.0, 180.0, order=2000)
-            var bendAngle = 180.0
+            @BooleanParameter("Inflection", order=2000)
+            var bendInflection = true
+
+            @DoubleParameter("Max bend angle", 0.0, 180.0, order=3000)
+            var maxBendAngle = 180.0
+
+            @DoubleParameter("Max turning angle", 0.0, 180.0, order=4000)
+            var maxTurningAngle = 180.0
         }
 
         val gui = GUI(GUIAppearance(ColorRGBa.BLUE_STEEL))
@@ -136,7 +142,7 @@ fun main() = application {
             if (!it.propagationCancelled) {
                 if (it.key == KEY_SPACEBAR) {
                     it.cancelPropagation()
-                    problemInstance = ProblemInstance(points, s.bendDistance, s.bendAngle)
+                    problemInstance = ProblemInstance(points, s.bendDistance, s.bendInflection, s.maxBendAngle, s.maxTurningAngle)
                     patterns = problemInstance.computePartition(s.disjoint)
                 }
 
@@ -180,19 +186,17 @@ fun main() = application {
                         fill = colors[island.points[0].type].opacify(0.5)
                         if (island.points.size > 1) {
 //                            fill = ColorRGBa.RED
-                            contour(
-                                ShapeContour.fromPoints(island.points.map { flip(it.originalPoint!!.pos) }, true)
-                                    .buffer(s.offset)
-                            )
+                            val c = ShapeContour.fromPoints(island.points.map { flip(it.originalPoint!!.pos) }, true)
+                            contour(if (s.offset) c.buffer(s.pSize * 5 / 2) else c)
                         } else if (island.points.size == 1) {
-                            circle(flip(island.points[0].originalPoint!!.pos), max(s.pSize, s.offset))
+                            circle(flip(island.points[0].originalPoint!!.pos), if (s.offset) s.pSize * 5 / 2 else s.pSize)
                         }
                     }
                     if (pattern is Bend) {
                         stroke = ColorRGBa.BLACK
                         fill = colors[pattern.points[0].type].opacify(0.5)
-                        contour(ShapeContour.fromPoints(pattern.points.map { flip(it.originalPoint!!.pos) }, false)
-                            .buffer(s.offset))
+                        val c = ShapeContour.fromPoints(pattern.points.map { flip(it.originalPoint!!.pos) }, false)
+                        contour(if (s.offset) c.buffer(s.pSize * 5 / 2) else c)
                     }
                 }
 
