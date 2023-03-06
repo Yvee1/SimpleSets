@@ -1,7 +1,5 @@
-import org.openrndr.shape.LineSegment
-import org.openrndr.shape.ShapeContour
-import org.openrndr.shape.contains
-import org.openrndr.shape.intersections
+import org.openrndr.math.YPolarity
+import org.openrndr.shape.*
 
 /**
  * Returns the largest monochromatic convex polygon in O(n^3 log n) time.
@@ -46,6 +44,8 @@ fun ProblemInstance.largestConvexIslandAt(p: Point, uncovered: List<Point> = poi
         add(currentGroup)
     }
 
+    val freeSpace: Shape = (P + p).fold(Shape.EMPTY) { acc, p -> Circle(p.pos, clusterRadius).shape.union(acc) }
+
     val Ai = P.associateWith { mutableListOf<Point>() }
     val Bi = P.associateWith { mutableListOf<Point>() }
     val edges = mutableMapOf<Pair<Point, Point>, Edge>()
@@ -56,9 +56,12 @@ fun ProblemInstance.largestConvexIslandAt(p: Point, uncovered: List<Point> = poi
 
             val triContour = ShapeContour.fromPoints(listOf(p.pos, P[i].pos, P[j].pos), true)
             val intersects = obstacles.any { triContour.overlaps(it.contour) }
+            val pointNearby = capsuleData.capsule.getF(P[i] to P[j])
+                    || capsuleData.capsule.getF(p to P[i])
+                    || capsuleData.capsule.getF(p to P[j])
 
             // Triangle p P[i] P[j] should contain no points of a type other than t.
-            if (!tri.hasType(t) || intersects) continue
+            if (!tri.hasType(t) || intersects || triContour !in freeSpace || pointNearby) continue
 
             // We store edge P[i] -> P[j], add P[i] to the predecessors of P[j], and add P[j] to successors of P[i].
             edges[P[i] to P[j]] = Edge(P[i], P[j], if (i == 0) tri.get0(t) else null) // i == 0: base case of DP
@@ -80,7 +83,8 @@ fun ProblemInstance.largestConvexIslandAt(p: Point, uncovered: List<Point> = poi
             val seg = stripeData.segment.getE(q to p)
             val segContour = LineSegment(p.pos, q.pos).contour
             val intersects = obstacles.any { segContour.intersections(it.contour).isNotEmpty() }
-            if (seg.hasType(t) && !intersects){
+            val pointNearby = capsuleData.capsule.getF(p to q)
+            if (seg.hasType(t) && !intersects && segContour in freeSpace && !pointNearby){
                 return ConvexIsland(listOf(q, p), 2 + seg.get0(t))
             }
         }
@@ -197,6 +201,11 @@ fun ProblemInstance.computeIslandPartition(disjoint: Boolean = true): List<Conve
 }
 
 fun Map<Int, Int>.hasType(t: Int) = keys.all { it == t || get(it) == 0 }
+
+operator fun Shape.contains(other: ShapeContour) =
+    intersections(other).isEmpty() &&
+            other.position(0.0) in this &&
+            contours.count { it.overlaps(other) } == 1
 
 fun ShapeContour.overlaps(other: ShapeContour) =
     intersections(other).isNotEmpty() || position(0.0) in other || other.position(0.0) in this

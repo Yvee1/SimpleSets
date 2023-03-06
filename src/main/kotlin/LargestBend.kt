@@ -266,7 +266,8 @@ fun ProblemInstance.valid(p: Point, q: Point, obstacles: List<Pattern>): Boolean
     val segContour = LineSegment(p.pos, q.pos).contour
     val intersects = obstacles.any { segContour.intersections(it.contour).isNotEmpty() }
     return (q.pos - p.pos).squaredLength < bendDistance * bendDistance && // Close together
-            seg.hasType(p.type) && // p--q not blocked by a points
+            seg.hasType(p.type) && // p--q not blocked by a point
+            !capsuleData.capsule.getF(p to q) && // no points near p--q
             !intersects // p--q not blocked by an obstacle
 }
 

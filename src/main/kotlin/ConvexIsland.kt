@@ -2,7 +2,8 @@ import org.openrndr.math.Vector2
 import org.openrndr.shape.ShapeContour
 import org.openrndr.shape.contains
 
-data class ConvexIsland(val points: List<Point>, val weight: Int): Pattern() {
+data class ConvexIsland(val points: List<Point>, val weightI: Int): Pattern() {
+    override val weight = weightI
     override val contour by lazy {
         ShapeContour.fromPoints(points.map { it.pos }, true)
     }

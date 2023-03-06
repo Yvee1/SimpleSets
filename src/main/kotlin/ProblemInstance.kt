@@ -1,6 +1,10 @@
-class ProblemInstance(originalPoints: List<Point>, val bendDistance: Double = Double.MAX_VALUE,
+class ProblemInstance(originalPoints: List<Point>,
+                      val expandRadius: Double = 0.0,
+                      val clusterRadius: Double = Double.MAX_VALUE,
+                      val bendDistance: Double = Double.MAX_VALUE,
                       val bendInflection: Boolean = true,
-                      val maxBendAngle: Double = 180.0, val maxTurningAngle: Double = 180.0) {
+                      val maxBendAngle: Double = 180.0,
+                      val maxTurningAngle: Double = 180.0) {
     init {
         require(maxBendAngle in 0.0..180.0) {
             "Bend angle should be between 0 and 180 degrees."
@@ -11,4 +15,5 @@ class ProblemInstance(originalPoints: List<Point>, val bendDistance: Double = Do
     }
     val points = transformPoints(originalPoints)
     val stripeData = StripeData(points)
+    val capsuleData = CapsuleData(points, expandRadius)
 }

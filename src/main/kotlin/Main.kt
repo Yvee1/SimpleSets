@@ -71,6 +71,12 @@ fun main() = application {
 
             @DoubleParameter("Max turning angle", 0.0, 180.0, order=4000)
             var maxTurningAngle = 180.0
+
+            @DoubleParameter("Cluster radius", 0.0, 100.0, order=8000)
+            var clusterRadius = 50.0
+
+            @BooleanParameter("Show cluster circles")
+            var showClusterCircles = false
         }
 
         val gui = GUI(GUIAppearance(ColorRGBa.BLUE_STEEL))
@@ -142,7 +148,7 @@ fun main() = application {
             if (!it.propagationCancelled) {
                 if (it.key == KEY_SPACEBAR) {
                     it.cancelPropagation()
-                    problemInstance = ProblemInstance(points, s.bendDistance, s.bendInflection, s.maxBendAngle, s.maxTurningAngle)
+                    problemInstance = ProblemInstance(points, s.pSize * 5 / 2, s.clusterRadius, s.bendDistance, s.bendInflection, s.maxBendAngle, s.maxTurningAngle)
                     patterns = problemInstance.computePartition(s.disjoint)
                 }
 
@@ -179,11 +185,17 @@ fun main() = application {
                 fill = ColorRGBa.GRAY.opacify(0.5)
                 circle(transformMouse(mouse.position), s.pSize)
 
+                if (s.showClusterCircles) {
+                    fill = ColorRGBa.GRAY.opacify(0.3)
+                    stroke = null
+                    circles(points.map { flip(it.pos) }, s.clusterRadius)
+                }
+
                 for (pattern in patterns) {
                     if (pattern is ConvexIsland) {
                         val island = pattern
                         stroke = ColorRGBa.BLACK
-                        fill = colors[island.points[0].type].opacify(0.5)
+                        fill = colors[island.points[0].type].opacify(0.3)
                         if (island.points.size > 1) {
 //                            fill = ColorRGBa.RED
                             val c = ShapeContour.fromPoints(island.points.map { flip(it.originalPoint!!.pos) }, true)
@@ -194,7 +206,7 @@ fun main() = application {
                     }
                     if (pattern is Bend) {
                         stroke = ColorRGBa.BLACK
-                        fill = colors[pattern.points[0].type].opacify(0.5)
+                        fill = colors[pattern.points[0].type].opacify(0.3)
                         val c = ShapeContour.fromPoints(pattern.points.map { flip(it.originalPoint!!.pos) }, false)
                         contour(if (s.offset) c.buffer(s.pSize * 5 / 2) else c)
                     }
@@ -202,7 +214,7 @@ fun main() = application {
 
                 isolated {
                     stroke = ColorRGBa.BLACK
-                    strokeWeight = s.pSize / 4.5
+                    strokeWeight = s.pSize / 4
                     for (p in points) {
                         fill = colors[p.type]
                         circle(flip(p.pos), s.pSize)

@@ -26,7 +26,7 @@ class StripeData(points: List<Point>) {
     init {
         val xSorted = points.sortedBy { it.pos.x }
         val cwOrder = buildMap(xSorted.size) {
-            for (p in xSorted){
+            for (p in xSorted) {
                 val l = xSorted
                     .filter { it.pos.x <= p.pos.x && it != p }
                     .sortedWith(compareAround(p, 90.0, Orientation.RIGHT).then(awayFrom(p)))
