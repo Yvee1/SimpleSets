@@ -193,7 +193,13 @@ fun ProblemInstance.largestConvexIslandAt(p: Point,
         }
     }
 
-    return ConvexIsland(trace(maxEdge), maxEdge.weight!!)
+    val largest = ConvexIsland(trace(maxEdge), maxEdge.weight!!)
+    val pointsInLargest = (P + p).filter { it in largest }
+    if (coverRadius(pointsInLargest.map { it.pos }) > clusterRadius) {
+        println("warning: island that was found is not a cluster, recursing using points in this island")
+        return largestConvexIslandAt(p, pointsInLargest, StripeData(pointsInLargest), obstacles)
+    }
+    return largest
 }
 
 fun ProblemInstance.computeIslandPartition(disjoint: Boolean = true): List<ConvexIsland> {
