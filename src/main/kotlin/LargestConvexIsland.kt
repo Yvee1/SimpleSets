@@ -1,4 +1,3 @@
-import org.openrndr.math.YPolarity
 import org.openrndr.shape.*
 
 /**
@@ -12,16 +11,21 @@ import org.openrndr.shape.*
  * @param uncovered a list of `points` with distinct x-coordinates
  * @throws error if `points` do not have distinct x-coordinates
  */
-fun ProblemInstance.largestConvexIsland(uncovered: List<Point> = points, obstacles: List<Pattern> = emptyList()): ConvexIsland =
-   uncovered
-    .map { largestConvexIslandAt(it, uncovered, obstacles) }
-    .maxWithOrNull(compareBy({ it.weight }, { it.points.size })) ?: ConvexIsland.EMPTY
+fun ProblemInstance.largestConvexIsland(uncovered: List<Point> = points, obstacles: List<Pattern> = emptyList()): ConvexIsland {
+    val uncoveredStripeData = StripeData(uncovered)
+    return uncovered
+        .map { largestConvexIslandAt(it, uncovered, uncoveredStripeData, obstacles) }
+        .maxWithOrNull(compareBy({ it.weight }, { it.points.size })) ?: ConvexIsland.EMPTY
+}
 
 private fun compatible(q: Point, r: Point, s: Point) = orientation(q.pos, r.pos, s.pos) != Orientation.LEFT
 
 private data class Edge(val u: Point, val v: Point, var weight: Int? = null, var prev: Edge? = null)
 
-fun ProblemInstance.largestConvexIslandAt(p: Point, uncovered: List<Point> = points, obstacles: List<Pattern> = emptyList()): ConvexIsland {
+fun ProblemInstance.largestConvexIslandAt(p: Point,
+                                          uncovered: List<Point> = points,
+                                          uncoveredStripeData: StripeData = stripeData,
+                                          obstacles: List<Pattern> = emptyList()): ConvexIsland {
     val t = p.type
 
     val P = uncovered
@@ -44,7 +48,9 @@ fun ProblemInstance.largestConvexIslandAt(p: Point, uncovered: List<Point> = poi
         add(currentGroup)
     }
 
-    val freeSpace: Shape = (P + p).fold(Shape.EMPTY) { acc, p -> Circle(p.pos, clusterRadius).shape.union(acc) }
+    val freeSpace: Shape? = if (clusterRadius < Double.MAX_VALUE)
+        (P + p).fold(Shape.EMPTY) { acc, x -> Circle(x.pos, clusterRadius).shape.union(acc) }
+        else null
 
     val Ai = P.associateWith { mutableListOf<Point>() }
     val Bi = P.associateWith { mutableListOf<Point>() }
@@ -52,7 +58,8 @@ fun ProblemInstance.largestConvexIslandAt(p: Point, uncovered: List<Point> = poi
 
     for (i in P.indices) {
         for (j in i + 1 until P.size) {
-            val tri = stripeData.triangle(p, P[i], P[j])
+            val triAll = stripeData.triangle(p, P[i], P[j])
+            val triUncov = uncoveredStripeData.triangle(p, P[i], P[j])
 
             val triContour = ShapeContour.fromPoints(listOf(p.pos, P[i].pos, P[j].pos), true)
             val intersects = obstacles.any { triContour.overlaps(it.contour) }
@@ -61,16 +68,16 @@ fun ProblemInstance.largestConvexIslandAt(p: Point, uncovered: List<Point> = poi
                     || capsuleData.capsule.getF(p to P[j])
 
             // Triangle p P[i] P[j] should contain no points of a type other than t.
-            if (!tri.hasType(t) || intersects || triContour !in freeSpace || pointNearby) continue
+            if (!triAll.hasType(t) || intersects || (freeSpace != null && triContour !in freeSpace) || pointNearby) continue
 
             // We store edge P[i] -> P[j], add P[i] to the predecessors of P[j], and add P[j] to successors of P[i].
-            edges[P[i] to P[j]] = Edge(P[i], P[j], if (i == 0) tri.get0(t) else null) // i == 0: base case of DP
+            edges[P[i] to P[j]] = Edge(P[i], P[j], if (i == 0) triUncov.get0(t) else null) // i == 0: base case of DP
             Ai[P[j]]!!.add(P[i])
             Bi[P[i]]!!.add(P[j])
 
             // If p, P[i], and P[j] are collinear, then add an edge in the other direction as well.
             if (orientation(p.pos, P[i].pos, P[j].pos) == Orientation.STRAIGHT) {
-                edges[P[j] to P[i]] = Edge(P[j], P[i], if (i == 0) tri.get0(t) else null)
+                edges[P[j] to P[i]] = Edge(P[j], P[i], if (i == 0) triUncov.get0(t) else null)
                 Ai[P[i]]!!.add(P[j])
                 Bi[P[j]]!!.add(P[i])
             }
@@ -80,12 +87,13 @@ fun ProblemInstance.largestConvexIslandAt(p: Point, uncovered: List<Point> = poi
     // If there are no edges, then check any segments
     if (edges.isEmpty()) {
         for (q in P){
-            val seg = stripeData.segment.getE(q to p)
+            val segAll = stripeData.segment.getE(q to p)
+            val segUncov = uncoveredStripeData.segment.getE(q to p)
             val segContour = LineSegment(p.pos, q.pos).contour
             val intersects = obstacles.any { segContour.intersections(it.contour).isNotEmpty() }
             val pointNearby = capsuleData.capsule.getF(p to q)
-            if (seg.hasType(t) && !intersects && segContour in freeSpace && !pointNearby){
-                return ConvexIsland(listOf(q, p), 2 + seg.get0(t))
+            if (segAll.hasType(t) && !intersects && (freeSpace != null && segContour in freeSpace) && !pointNearby){
+                return ConvexIsland(listOf(q, p), 2 + segUncov.get0(t))
             }
         }
         return ConvexIsland(listOf(p), 1)
@@ -147,11 +155,12 @@ fun ProblemInstance.largestConvexIslandAt(p: Point, uncovered: List<Point> = poi
 
         for (m in B.indices) {
             if (s[m] == -1) {
-                val w = stripeData.triangle(p, pi, B[m]).get0(t)
+                val w = uncoveredStripeData.triangle(p, pi, B[m]).get0(t)
                 edges[pi to B[m]]!!.weight = w
             } else {
                 val w = edges[A[z[s[m]]] to pi]!!.weight!! +
-                        stripeData.triangle(p, pi, B[m]).get0(t) - 2 - stripeData.segment.getE(pi to p).get0(t)
+                        uncoveredStripeData.triangle(p, pi, B[m]).get0(t) - 2 -
+                        uncoveredStripeData.segment.getE(pi to p).get0(t)
                 val prev = edges[A[z[s[m]]] to pi]!!
                 edges[pi to B[m]]!!.weight = w
                 edges[pi to B[m]]!!.prev = prev
