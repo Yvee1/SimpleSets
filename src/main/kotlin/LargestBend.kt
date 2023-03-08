@@ -21,7 +21,7 @@ fun ProblemInstance.largestMonotoneBend(dir: Orientation, uncovered: List<Point>
         uncovered.asSequence().map { b ->
             largestMonotoneBendFrom(a, b, dir, uncovered, obstacles)
         }
-    }.maxByOrNull { it.weight } ?: Bend.EMPTY
+    }.maxWithOrNull(compareBy { b: Bend -> b.weight }.thenBy { -it.contour.length }) ?: Bend.EMPTY
 
 fun ProblemInstance.largestMonotoneBendFrom(a: Point, b: Point, dir: Orientation, uncovered: List<Point> = points, obstacles: List<Pattern> = emptyList()): Bend {
     if (b.type != a.type || a == b || !valid(a, b, obstacles) || !stripeData.segment.getE(a to b).hasType(a.type)) return Bend.EMPTY
@@ -57,7 +57,7 @@ fun ProblemInstance.largestInflectionBend(dir: Orientation = Orientation.RIGHT, 
             uncovered.asSequence().map { b ->
                 largestInflectionBendFrom(a, b, mapT, dir, uncovered, obstacles)
             }
-        }.maxByOrNull { it.weight } ?: Bend.EMPTY
+        }.maxWithOrNull(compareBy { b: Bend -> b.weight }.thenBy { -it.contour.length }) ?: Bend.EMPTY
     } else {
         val mapT: Map<Pair<Point, Point>, TableEntry<ConstrainedPoint>> = buildMap {
             for (a in uncovered) {
@@ -72,7 +72,7 @@ fun ProblemInstance.largestInflectionBend(dir: Orientation = Orientation.RIGHT, 
             uncovered.asSequence().map { b ->
                 largestConstrainedInflectionBendFrom(a, b, mapT, dir, uncovered, obstacles)
             }
-        }.maxByOrNull { it.weight } ?: Bend.EMPTY
+        }.maxWithOrNull(compareBy { b: Bend -> b.weight }.thenBy { -it.contour.length }) ?: Bend.EMPTY
     }
 }
 
@@ -130,7 +130,10 @@ fun ProblemInstance.tableLargestBendFrom(a: Point, b: Point, dir: Orientation,
                 T[p bp i - 1]!!,
                 T[Pipi bp j]!!.let { it.weight + 1 te (Pipi bp j) }
             ) + f(Pipi, p)
-            T[p bp i] = tes.maxBy { it.weight }
+            T[p bp i] = tes.maxWith(compareBy { te: TableEntry<BendPoint> -> te.weight }.thenBy {
+                val nextPoint = it.next?.point ?: it.rest?.first()
+                -(nextPoint?.pos?.squaredDistanceTo(p.pos) ?: 0.0)
+            })
         }
     }
 
@@ -168,7 +171,10 @@ fun ProblemInstance.tableLargestConstrainedBendFrom(a: Point, b: Point, dir: Ori
                     T[cp(p, iStart, iEnd - 1)],
                     T[cp(Pipi, k, j)]?.let { it.weight + 1 te (cp(Pipi, k, j)) }
                 ) + f(Pipi, p)
-                T[cp(p, iStart, iEnd)] = tes.maxBy { it.weight }
+                T[cp(p, iStart, iEnd)] = tes.maxWith(compareBy { te: TableEntry<ConstrainedPoint> -> te.weight }.thenBy {
+                    val nextPoint = it.next?.point ?: it.rest?.first()
+                    -(nextPoint?.pos?.squaredDistanceTo(p.pos) ?: 0.0)
+                })
             }
         }
     }

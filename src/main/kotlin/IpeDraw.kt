@@ -220,11 +220,11 @@ object IpeDraw {
     @JvmOverloads
     fun drawIpeCircle(
         x: Double, y: Double, radius: Double, stroke: String? = "black", fill: String? = null,
-        pen: String = "normal", dash: String = "normal"
+        pen: String = "normal", dash: String = "normal", opacity: String = "opaque", strokeOpacity: String = "opaque"
     ): String {
         val sf = DecimalFormat("####.000").format(radius)
         return "<path" + (stroke?.let { """ stroke="$it"""" } ?: "") + (fill?.let { """ fill="$it"""" } ?: "") +
-                """ pen="$pen" dash="$dash">
+                """ pen="$pen" dash="$dash" opacity="$opacity" stroke-opacity="$strokeOpacity">
  $sf 0 0 $sf $x $y e
 </path>
 """
@@ -673,14 +673,22 @@ class IpeDrawBuilder(private val colors: List<String>) {
     }
 
     fun point(p: Point) {
-        s.append(IpeDraw.drawIpeMark(p.pos.x, p.pos.y, shape="fdisk", stroke="black", fill=colors[p.type]))
+        val op = p.originalPoint ?: p
+        s.append(IpeDraw.drawIpeMark(op.pos.x, op.pos.y, shape="fdisk", stroke="black", fill=colors[op.type], size="large"))
     }
 
-    fun island(island: ConvexIsland){
-        if (island == ConvexIsland.EMPTY) return
-        val type = island.points.first().type
-        s.append(IpeDraw.drawIpePolygon(island.points.map { (it.originalPoint ?: it).pos.x },
-            island.points.map { (it.originalPoint ?: it).pos.y }, stroke="black", fill=colors[type], opacity="island"))
+    fun pattern(pattern: Pattern, expandRadius: Double){
+        if (pattern.isEmpty()) return
+        if (pattern is SinglePoint) {
+            val op = (pattern.point.originalPoint ?: pattern.point).pos
+            s.append(IpeDraw.drawIpeCircle(op.x, op.y, expandRadius, pen="heavier",
+                stroke="black", fill=colors[pattern.type], opacity="island"))
+        } else {
+            val island = pattern.original().contour.buffer(expandRadius)
+            val points = island.segments.map { it.start } + island.segments.last().end
+            s.append(IpeDraw.drawIpePolygon(points.map { it.x }, points.map { it.y }, pen="heavier",
+                stroke="black", fill=colors[pattern.type], opacity="island"))
+        }
     }
 
     fun toIpeString(): String {

@@ -8,8 +8,8 @@ enum class ExampleInput {
     LowerBound, NYC
 }
 
-fun getExampleInput(e: ExampleInput): List<Point> {
-    return when (e){
+fun getExampleInput(e: ExampleInput): List<Point> =
+    when (e){
         ExampleInput.LowerBound -> {
             val scale = 50.0
             val center = Vector2(100.0, 100.0)
@@ -46,29 +46,26 @@ fun getExampleInput(e: ExampleInput): List<Point> {
                 }
             }
 
-            return pts
+            pts
         }
         ExampleInput.NYC -> {
             val f = File("nyc.ipe")
-            return ipeToPoints(f)
+            ipeToPoints(f)
         }
     }
-}
 
-fun main(){
+
+fun writeToIpe(instance: ProblemInstance, solution: List<Pattern>, fileName: String) {
     val colors = listOf("CB light blue", "CB light red", "CB light green")
 
-    val fn = "test.ipe"
-    val points = getExampleInput(ExampleInput.LowerBound)
-    val instance = ProblemInstance(points)
-    val islands = instance.computeIslandPartition(disjoint=true)
-    val file = File(fn)
+    val file = File(fileName)
+
     try {
         val s = ipeDraw(colors) {
-            for (isle in islands){
-                island(isle)
+            for (pat in solution){
+                pattern(pat, instance.expandRadius)
             }
-            for (p in points){
+            for (p in instance.points){
                 point(p)
             }
         }

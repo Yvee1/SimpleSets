@@ -6,13 +6,9 @@ import org.openrndr.draw.loadFont
 import org.openrndr.extra.color.presets.BLUE_STEEL
 import org.openrndr.extra.gui.GUI
 import org.openrndr.extra.gui.GUIAppearance
-import org.openrndr.extra.parameters.ActionParameter
-import org.openrndr.extra.parameters.BooleanParameter
-import org.openrndr.extra.parameters.DoubleParameter
-import org.openrndr.extra.parameters.OptionParameter
+import org.openrndr.extra.parameters.*
 import org.openrndr.math.*
 import org.openrndr.shape.*
-import kotlin.math.max
 import kotlin.math.round
 
 fun main() = application {
@@ -26,7 +22,7 @@ fun main() = application {
     program {
         val colors = listOf(ColorRGBa.BLUE, ColorRGBa.RED, ColorRGBa.GREEN).map { it.mix(ColorRGBa.WHITE, 0.5).shade(0.95) }
         var points = mutableListOf<Point>()
-        var problemInstance: ProblemInstance
+        var problemInstance = ProblemInstance(points)
         var patterns = listOf<Pattern>()
 
         fun clearData(){
@@ -56,6 +52,12 @@ fun main() = application {
                 clearData()
                 points = getExampleInput(exampleInput).toMutableList()
             }
+
+            @ActionParameter("Save as ipe file", order = 20)
+            fun save() = writeToIpe(problemInstance, patterns, fileName)
+
+            @TextParameter("File name", order = 21)
+            var fileName = "output.ipe"
 
             @BooleanParameter("Island offset", order=200)
             var offset = true
@@ -192,23 +194,24 @@ fun main() = application {
                 }
 
                 for (pattern in patterns) {
-                    if (pattern is ConvexIsland) {
-                        val island = pattern
-                        stroke = ColorRGBa.BLACK
-                        fill = colors[island.points[0].type].opacify(0.3)
-                        if (island.points.size > 1) {
-//                            fill = ColorRGBa.RED
-                            val c = ShapeContour.fromPoints(island.points.map { flip(it.originalPoint!!.pos) }, true)
-                            contour(if (s.offset) c.buffer(s.pSize * 5 / 2) else c)
-                        } else if (island.points.size == 1) {
-                            circle(flip(island.points[0].originalPoint!!.pos), if (s.offset) s.pSize * 5 / 2 else s.pSize)
+                    val expandRadius = s.pSize * 5 / 2
+                    stroke = ColorRGBa.BLACK
+                    fill = colors[pattern.type].opacify(0.3)
+                    when (pattern) {
+                        is SinglePoint -> {
+                            val p = flip((pattern.point.originalPoint ?: pattern.point).pos)
+                            contour(Circle(p, if (s.offset) expandRadius else s.pSize).contour)
                         }
-                    }
-                    if (pattern is Bend) {
-                        stroke = ColorRGBa.BLACK
-                        fill = colors[pattern.points[0].type].opacify(0.3)
-                        val c = ShapeContour.fromPoints(pattern.points.map { flip(it.originalPoint!!.pos) }, false)
-                        contour(if (s.offset) c.buffer(s.pSize * 5 / 2) else c)
+
+                        is Cluster -> {
+                            val c = ShapeContour.fromPoints(pattern.points.map { flip(it.originalPoint!!.pos) }, true)
+                            contour(if (s.offset) c.buffer(expandRadius) else c)
+                        }
+
+                        is Bend -> {
+                            val c = ShapeContour.fromPoints(pattern.points.map { flip(it.originalPoint!!.pos) }, false)
+                            contour(if (s.offset) c.buffer(expandRadius) else c)
+                        }
                     }
                 }
 

@@ -2,6 +2,7 @@ import org.openrndr.math.Vector2
 import org.openrndr.shape.ShapeContour
 
 data class Bend(val points: List<Point>, val weightB: Int): Pattern() {
+    override val type = points.firstOrNull()?.type ?: -1
     override val weight = weightB
     override val contour by lazy {
         ShapeContour.fromPoints(points.map { it.pos }, false)

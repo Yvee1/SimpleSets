@@ -6,14 +6,14 @@ import org.junit.jupiter.params.provider.MethodSource
 import java.util.stream.Stream
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-internal class LargestConvexIslandKtTest {
+internal class LargestClusterKtTest {
     @ParameterizedTest
     @MethodSource("convexIslandInstances")
-    fun testLargestConvexIslandAt(instance: ProblemInstance, expected: ConvexIsland) {
-        assertIslands(expected, instance.largestConvexIslandAt(instance.points.maxBy { it.pos.x }, instance.points).original())
+    fun testLargestConvexIslandAt(instance: ProblemInstance, expected: Cluster) {
+        assertIslands(expected, instance.largestClusterAt(instance.points.maxBy { it.pos.x }, instance.points).original())
     }
 
-    private fun assertIslands(expected: ConvexIsland, actual: ConvexIsland){
+    private fun assertIslands(expected: Cluster, actual: Cluster){
         assertEquals(expected.points.toSet(), actual.points.toSet())
         assertEquals(expected.weight, actual.weight)
     }
@@ -52,19 +52,19 @@ internal class LargestConvexIslandKtTest {
         return Stream.of(
             Arguments.of(
                 ProblemInstance(pts0),
-                ConvexIsland(pts0, pts0.size)
+                Cluster(pts0, pts0.size)
             ),
             Arguments.of(
                 ProblemInstance(pts1),
-                ConvexIsland(pts1, pts1.size)
+                Cluster(pts1, pts1.size)
             ),
             Arguments.of(
                 ProblemInstance(pts2),
-                ConvexIsland(pts2, pts2.size)
+                Cluster(pts2, pts2.size)
             ),
             Arguments.of(
                 ProblemInstance(pts3),
-                ConvexIsland(pts3, pts3.size)
+                Cluster(pts3, pts3.size)
             ),
         )
     }

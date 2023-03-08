@@ -4,14 +4,15 @@ import org.openrndr.shape.ShapeContour
 sealed class Pattern {
     abstract val weight: Int
     abstract val contour: ShapeContour
+    abstract val type: Int
     abstract fun original(): Pattern
     abstract fun isEmpty(): Boolean
     abstract operator fun contains(v: Vector2): Boolean
 }
 
 fun ProblemInstance.computePattern(uncovered: List<Point>, obstacles: List<Pattern>): Pattern {
-    val lonelyPoint = ConvexIsland(listOf(uncovered.first()), 1)
-    val island = largestConvexIsland(uncovered, obstacles)
+    val lonelyPoint = SinglePoint(uncovered.first())
+    val island = largestCluster(uncovered, obstacles)
     val bend = if (bendInflection) largestInflectionBend(Orientation.RIGHT, uncovered, obstacles)
                else largestMonotoneBend(Orientation.RIGHT, uncovered, obstacles)
     if (island.weight > 2) return island

@@ -2,7 +2,8 @@ import org.openrndr.math.Vector2
 import org.openrndr.shape.ShapeContour
 import org.openrndr.shape.contains
 
-data class ConvexIsland(val points: List<Point>, val weightI: Int): Pattern() {
+data class Cluster(val points: List<Point>, val weightI: Int): Pattern() {
+    override val type = points.firstOrNull()?.type ?: -1
     override val weight = weightI
     override val contour by lazy {
         ShapeContour.fromPoints(points.map { it.pos }, true)
@@ -16,7 +17,7 @@ data class ConvexIsland(val points: List<Point>, val weightI: Int): Pattern() {
     operator fun contains(p: Point) = p in points || (weight > points.size && p.pos in contour)
 
     companion object {
-        val EMPTY = ConvexIsland(listOf(), 0)
+        val EMPTY = Cluster(listOf(), 0)
     }
 
     override fun original() = copy(points=points.map { it.originalPoint ?: it })

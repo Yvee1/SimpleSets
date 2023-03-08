@@ -11,28 +11,28 @@ import org.openrndr.shape.*
  * @param uncovered a list of `points` with distinct x-coordinates
  * @throws error if `points` do not have distinct x-coordinates
  */
-fun ProblemInstance.largestConvexIsland(uncovered: List<Point> = points, obstacles: List<Pattern> = emptyList()): ConvexIsland {
+fun ProblemInstance.largestCluster(uncovered: List<Point> = points, obstacles: List<Pattern> = emptyList()): Cluster {
     val uncoveredStripeData = StripeData(uncovered)
     return uncovered
-        .map { largestConvexIslandAt(it, uncovered, uncoveredStripeData, obstacles) }
-        .maxWithOrNull(compareBy({ it.weight }, { it.points.size })) ?: ConvexIsland.EMPTY
+        .map { largestClusterAt(it, uncovered, uncoveredStripeData, obstacles) }
+        .maxWithOrNull(compareBy({ it.weight }, { -it.contour.shape.area })) ?: Cluster.EMPTY
 }
 
 private fun compatible(q: Point, r: Point, s: Point) = orientation(q.pos, r.pos, s.pos) != Orientation.LEFT
 
 private data class Edge(val u: Point, val v: Point, var weight: Int? = null, var prev: Edge? = null)
 
-fun ProblemInstance.largestConvexIslandAt(p: Point,
-                                          uncovered: List<Point> = points,
-                                          uncoveredStripeData: StripeData = stripeData,
-                                          obstacles: List<Pattern> = emptyList()): ConvexIsland {
+fun ProblemInstance.largestClusterAt(p: Point,
+                                     uncovered: List<Point> = points,
+                                     uncoveredStripeData: StripeData = stripeData,
+                                     obstacles: List<Pattern> = emptyList()): Cluster {
     val t = p.type
 
     val P = uncovered
         .filter { it.pos.x <= p.pos.x && it != p && it.type == t }
         .sortedWith(compareAround(p, 90.0, Orientation.RIGHT).reversed().then(awayFrom(p)))
 
-    if (P.isEmpty()) return ConvexIsland(listOf(p), 1)
+    if (P.isEmpty()) return Cluster(listOf(p), 1)
 
     val groupedP = buildList(P.size) {
         var currentGroup: MutableList<Point> = mutableListOf(P[0])
@@ -93,10 +93,10 @@ fun ProblemInstance.largestConvexIslandAt(p: Point,
             val intersects = obstacles.any { segContour.intersections(it.contour).isNotEmpty() }
             val pointNearby = capsuleData.capsule.getF(p to q)
             if (segAll.hasType(t) && !intersects && (freeSpace != null && segContour in freeSpace) && !pointNearby){
-                return ConvexIsland(listOf(q, p), 2 + segUncov.get0(t))
+                return Cluster(listOf(q, p), 2 + segUncov.get0(t))
             }
         }
-        return ConvexIsland(listOf(p), 1)
+        return Cluster(listOf(p), 1)
     }
 
     for ((pi, l) in Ai) {
@@ -193,26 +193,13 @@ fun ProblemInstance.largestConvexIslandAt(p: Point,
         }
     }
 
-    val largest = ConvexIsland(trace(maxEdge), maxEdge.weight!!)
+    val largest = Cluster(trace(maxEdge), maxEdge.weight!!)
     val pointsInLargest = (P + p).filter { it in largest }
     if (coverRadius(pointsInLargest.map { it.pos }) > clusterRadius) {
-        println("warning: island that was found is not a cluster, recursing using points in this island")
-        return largestConvexIslandAt(p, pointsInLargest, StripeData(pointsInLargest), obstacles)
+        println("warning: convex polygon that was found is not a cluster, recursing using points in this polygon")
+        return largestClusterAt(p, pointsInLargest, StripeData(pointsInLargest), obstacles)
     }
     return largest
-}
-
-fun ProblemInstance.computeIslandPartition(disjoint: Boolean = true): List<ConvexIsland> {
-    return buildList {
-        val islands = this@buildList
-        var uncovered = points
-        while (uncovered.isNotEmpty()){
-            val island = if (disjoint) largestConvexIsland(uncovered, islands) else largestConvexIsland(uncovered)
-            if (island == ConvexIsland.EMPTY) break
-            islands.add(island)
-            uncovered = uncovered.filter { it.pos !in island }
-        }
-    }
 }
 
 fun Map<Int, Int>.hasType(t: Int) = keys.all { it == t || get(it) == 0 }
