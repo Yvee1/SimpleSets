@@ -1,3 +1,4 @@
+import org.openrndr.math.Vector2
 import kotlin.math.abs
 import kotlin.math.atan2
 
@@ -103,19 +104,28 @@ class StripeData(points: List<Point>) {
  * @param start the start angle in degrees, counter-clockwise starting at 3 o'clock.
  */
 fun compareAround(p: Point, start: Double, dir: Orientation) = Comparator<Point> { p1, p2 ->
-        val v1 = (p1.pos - p.pos).rotate(-(start - 180))
-        val v2 = (p2.pos - p.pos).rotate(-(start - 180))
-        val a1 = -atan2(v1.y, v1.x)
-        val a2 = -atan2(v2.y, v2.x)
-        val x = if (a1 < a2 - PRECISION){
-            1
-        } else if (a1 > a2 + PRECISION) {
-            -1
-        } else {
-            0
-        }
-        if (dir == Orientation.RIGHT) x else -x
+        compareAround(p.pos, start, dir).compare(p1.pos, p2.pos)
     }
+
+/**
+ * Clockwise ordering around a point `p`.
+ * @param p the reference point
+ * @param start the start angle in degrees, counter-clockwise starting at 3 o'clock.
+ */
+fun compareAround(p: Vector2, start: Double, dir: Orientation) = Comparator<Vector2> { p1, p2 ->
+    val v1 = (p1 - p).rotate(-(start - 180))
+    val v2 = (p2 - p).rotate(-(start - 180))
+    val a1 = -atan2(v1.y, v1.x)
+    val a2 = -atan2(v2.y, v2.x)
+    val x = if (a1 < a2 - PRECISION){
+        1
+    } else if (a1 > a2 + PRECISION) {
+        -1
+    } else {
+        0
+    }
+    if (dir == Orientation.RIGHT) x else -x
+}
 
 fun awayFrom(p: Point): Comparator<Point> = Comparator.comparing { (p.pos - it.pos).squaredLength }
 

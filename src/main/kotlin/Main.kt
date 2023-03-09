@@ -193,19 +193,48 @@ fun main() = application {
                     circles(points.map { flip(it.pos) }, s.clusterRadius)
                 }
 
+                val expandRadius = s.pSize * 5 / 2
+
+                fun Cluster.toIsland() = ConvexIsland(original().points.map { it.copy(pos=flip(it.pos)) }, expandRadius)
+
+                fun SinglePoint.toIsland(): ConvexIsland {
+                    val p = original().point
+                    return ConvexIsland(listOf(p.copy(pos=flip(p.pos))), expandRadius)
+                }
+
+                val islands = patterns.filterIsInstance<Cluster>().map { it.toIsland() } +
+                        patterns.filterIsInstance<SinglePoint>().map { it.toIsland() }
+
                 for (pattern in patterns) {
-                    val expandRadius = s.pSize * 5 / 2
                     stroke = ColorRGBa.BLACK
                     fill = colors[pattern.type].opacify(0.3)
                     when (pattern) {
                         is SinglePoint -> {
-                            val p = flip((pattern.point.originalPoint ?: pattern.point).pos)
-                            contour(Circle(p, if (s.offset) expandRadius else s.pSize).contour)
+//                            val p = flip((pattern.point.originalPoint ?: pattern.point).pos)
+//                            contour(Circle(p, if (s.offset) expandRadius else s.pSize).contour)
+                            val island = pattern.toIsland()
+
+                            contour(island.contour)
+                            isolated {
+                                stroke = colors[pattern.type].opacify(0.6)
+                                strokeWeight *= 4
+                                contours(islands.filter { it.type == island.type }.flatMap { island.segmentVisibilityContours(it) })
+                                contours(islands.filter { it.type == island.type }.flatMap { island.circleVisibilityContours(it) })
+                            }
                         }
 
                         is Cluster -> {
-                            val c = ShapeContour.fromPoints(pattern.points.map { flip(it.originalPoint!!.pos) }, true)
-                            contour(if (s.offset) c.buffer(expandRadius) else c)
+//                            val c = ShapeContour.fromPoints(pattern.points.map { flip(it.originalPoint!!.pos) }, true)
+//                            contour(if (s.offset) c.buffer(expandRadius) else c)
+                            val island = pattern.toIsland()
+
+                            contour(island.contour)
+                            isolated {
+                                stroke = colors[pattern.type].opacify(0.6)
+                                strokeWeight *= 4
+                                contours(islands.filter { it.type == island.type }.flatMap { island.segmentVisibilityContours(it) })
+                                contours(islands.filter { it.type == island.type }.flatMap { island.arcVisibilityContours(it) })
+                            }
                         }
 
                         is Bend -> {
