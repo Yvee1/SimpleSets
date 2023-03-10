@@ -1,28 +1,25 @@
-import org.openrndr.application
-import org.openrndr.color.ColorRGBa
-import org.openrndr.extra.olive.oliveProgram
 import org.openrndr.math.Vector2
 import org.openrndr.math.YPolarity
 import org.openrndr.shape.*
 
-fun cwCircularArc(circle: Circle, cp1: Vector2, cp2: Vector2) = contour {
+fun ccwCircularArc(circle: Circle, cp1: Vector2, cp2: Vector2) = contour {
     val largeArcFlag = orientation(circle.center, cp1, cp2) != Orientation.RIGHT
     moveTo(cp1)
-    arcTo(circle.radius, circle.radius, 90.0, largeArcFlag=largeArcFlag, sweepFlag=true, cp2)
+    arcTo(circle.radius, circle.radius, 90.0, largeArcFlag=largeArcFlag, sweepFlag=false, cp2)
 }
 
-class BendIsland(val points: List<Point>, val expandRadius: Double): Island {
+class BendIsland(val points: List<Point>, expandRadius: Double): Island() {
     override val type = points.firstOrNull()?.type ?: -1
     override val circles: List<Circle> by lazy { points.map { Circle(it.pos, expandRadius) } }
 
-    override val segments: List<LineSegment> by lazy {
+    val pairedSegs: List<Pair<LineSegment, LineSegment>> by lazy {
         if (points.size == 1) return@lazy emptyList()
 
-        val pairedSegs = circles.zipWithNext { c1, c2 ->
+        val simplePairedSegs = circles.zipWithNext { c1, c2 ->
             val dir = c2.center - c1.center
             val n = dir.perpendicular(YPolarity.CCW_POSITIVE_Y).normalized * expandRadius
-            val start1 = c1.center - n
-            val end1 = c2.center - n
+            val start1 = c2.center - n
+            val end1 = c1.center - n
             val segment1 = LineSegment(start1, end1)
             val start2 = c1.center + n
             val end2 = c2.center + n
@@ -31,18 +28,20 @@ class BendIsland(val points: List<Point>, val expandRadius: Double): Island {
         }
 
         val nil = LineSegment(Vector2.INFINITY, Vector2.INFINITY) to LineSegment(Vector2.INFINITY, Vector2.INFINITY)
-        val paddedSegs = listOf(nil) + pairedSegs + nil
+        val paddedSegs = listOf(nil) + simplePairedSegs + nil
 
         paddedSegs.windowed(3) { (lsp, lsc, lsn) ->
-            val fa = if (lsp == nil) 0.0 else lsc.first.contour.intersections(lsp.first.contour).firstOrNull()?.a?.contourT ?: 0.0
-            val fb = if (lsn == nil) 1.0 else lsc.first.contour.intersections(lsn.first.contour).firstOrNull()?.a?.contourT ?: 1.0
+            val fa = if (lsn == nil) 0.0 else lsc.first.contour.intersections(lsn.first.contour).firstOrNull()?.a?.contourT ?: 0.0
+            val fb = if (lsp == nil) 1.0 else lsc.first.contour.intersections(lsp.first.contour).firstOrNull()?.a?.contourT ?: 1.0
             val sa = if (lsp == nil) 0.0 else lsc.second.contour.intersections(lsp.second.contour).firstOrNull()?.a?.contourT ?: 0.0
             val sb = if (lsn == nil) 1.0 else lsc.second.contour.intersections(lsn.second.contour).firstOrNull()?.a?.contourT ?: 1.0
-            listOf(lsc.first.sub(fa, fb), lsc.second.sub(sa, sb))
-        }.flatten()
+            lsc.first.sub(fa, fb) to lsc.second.sub(sa, sb)
+        }
     }
 
-    override val circularArcs: List<ShapeContour> by lazy {
+    val segments: List<LineSegment> by lazy { pairedSegs.flatMap { it.toList() } }
+
+    val circularArcs: List<ShapeContour> by lazy {
         if (points.size == 1) return@lazy emptyList()
 
         val cf = circles.first()
@@ -50,30 +49,25 @@ class BendIsland(val points: List<Point>, val expandRadius: Double): Island {
         val cl = circles.last()
         val clp = circles[circles.lastIndex-1]
         val nf = (cfn.center - cf.center).perpendicular().normalized * expandRadius
-        val firstArc = cwCircularArc(cf, cf.center - nf, cf.center + nf)
+        val firstArc = ccwCircularArc(cf, cf.center + nf, cf.center - nf)
         val nl = (cl.center - clp.center).perpendicular().normalized * expandRadius
-        val lastArc = cwCircularArc(cl, cl.center + nl, cl.center - nl)
+        val lastArc = ccwCircularArc(cl, cl.center - nl, cl.center + nl)
 
         val middleArcs = circles.windowed(3) { (prev, curr, next) ->
             val d1 = curr.center - prev.center
             val d2 = next.center - curr.center
-            val or = when(orientation(prev.center, curr.center, next.center)) {
+            val or = orientation(prev.center, curr.center, next.center)
+            val pol = when(or) {
                 Orientation.RIGHT -> YPolarity.CCW_POSITIVE_Y
                 Orientation.LEFT -> YPolarity.CW_NEGATIVE_Y
                 else -> TODO()
             }
-            val n1 = d1.perpendicular(or).normalized * expandRadius
-            val n2 = d2.perpendicular(or).normalized * expandRadius
+            val n1 = d1.perpendicular(pol).normalized * expandRadius
+            val n2 = d2.perpendicular(pol).normalized * expandRadius
+            val cp1 = curr.center + if (or == Orientation.RIGHT) n1 else n2
+            val cp2 = curr.center + if (or == Orientation.RIGHT) n2 else n1
 
-            val cp1 = curr.center + n1
-            val cp2 = curr.center + n2
-
-            val sweep = orientation(curr.center, cp1, cp2) == Orientation.LEFT
-
-            contour {
-                moveTo(cp1)
-                arcTo(curr.radius, curr.radius, 90.0, largeArcFlag=false, sweepFlag=sweep, cp2)
-            }
+            ccwCircularArc(curr, cp1, cp2)
         }
 
         listOf(firstArc) + middleArcs + lastArc
@@ -84,29 +78,16 @@ class BendIsland(val points: List<Point>, val expandRadius: Double): Island {
             return@lazy circles.first().contour
         }
 
-        var c = ShapeContour.EMPTY
-        for (i in points.indices) {
-            c += circularArcs[i]
-            c += segments[i].contour
+        val contours = (segments.map { it.contour } + circularArcs).toMutableList()
+        var c = contours.removeFirst()
+
+        while(contours.isNotEmpty()) {
+            val next = contours.minBy { (it.segments.first().start - c.segments.last().end).squaredLength }
+            c += next
+            contours.remove(next)
         }
         c.close()
     }
 }
 
-fun main() = application {
-    configure {
-        width = 800
-        height = 800
-    }
-
-    oliveProgram {
-        val c = BendIsland(listOf(100 p 500, 200 p 300, 400 p 300, 500 p 100), 50.0)
-        extend {
-            drawer.apply {
-                clear(ColorRGBa.WHITE)
-                contours(c.circularArcs)
-                lineSegments(c.segments)
-            }
-        }
-    }
-}
+fun Bend.toIsland(expandRadius: Double) = BendIsland(original().points, expandRadius)

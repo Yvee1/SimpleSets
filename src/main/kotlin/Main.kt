@@ -24,11 +24,15 @@ fun main() = application {
         var points = mutableListOf<Point>()
         var problemInstance = ProblemInstance(points)
         var patterns = listOf<Pattern>()
+        var islands = listOf<Island>()
+        var visibilityContours = listOf<List<ShapeContour>>()
 
         fun clearData(){
             points.clear()
             problemInstance = ProblemInstance(points)
             patterns = emptyList()
+            islands = emptyList()
+            visibilityContours = emptyList()
         }
 
         val s = object {
@@ -121,7 +125,7 @@ fun main() = application {
         fun flip(v: Vector2) = Vector2(v.x, drawer.bounds.height - v.y)
 
         fun transformMouse(mp: Vector2): Vector2 {
-            val v = (view.inversed * Vector4(mp.x, mp.y, 0.0, 1.0)).xy
+            val v = flip((view.inversed * Vector4(mp.x, mp.y, 0.0, 1.0)).xy)
             return if (s.useGrid) grid.snap(v) else v
         }
 
@@ -138,7 +142,7 @@ fun main() = application {
                     }
                     else -> null
                 }?.let { t ->
-                    val p = flip(transformMouse(mouseEvent.position))
+                    val p = transformMouse(mouseEvent.position)
                     if (points.none { it.pos == p })
                         points.add(Point(p, t))
                 }
@@ -152,6 +156,8 @@ fun main() = application {
                     it.cancelPropagation()
                     problemInstance = ProblemInstance(points, s.pSize * 5 / 2, s.clusterRadius, s.bendDistance, s.bendInflection, s.maxBendAngle, s.maxTurningAngle)
                     patterns = problemInstance.computePartition(s.disjoint)
+                    islands = patterns.map { it.toIsland(s.pSize * 5 / 2) }
+                    visibilityContours = islands.map { i1 -> islands.filter { i2 -> i2.type == i1.type }.flatMap { i2 -> i1.visibilityContours(i2) } }
                 }
 
                 if (it.name == "c") {
@@ -174,6 +180,8 @@ fun main() = application {
             view = drawer.view
             drawer.clear(ColorRGBa.WHITE)
             drawer.apply {
+                translate(0.0, height.toDouble())
+                scale(1.0, -1.0)
                 fontMap = font
 
                 // Draw grid
@@ -190,57 +198,18 @@ fun main() = application {
                 if (s.showClusterCircles) {
                     fill = ColorRGBa.GRAY.opacify(0.3)
                     stroke = null
-                    circles(points.map { flip(it.pos) }, s.clusterRadius)
+                    circles(points.map { it.pos }, s.clusterRadius)
                 }
 
-                val expandRadius = s.pSize * 5 / 2
-
-                fun Cluster.toIsland() = ConvexIsland(original().points.map { it.copy(pos=flip(it.pos)) }, expandRadius)
-
-                fun SinglePoint.toIsland(): ConvexIsland {
-                    val p = original().point
-                    return ConvexIsland(listOf(p.copy(pos=flip(p.pos))), expandRadius)
-                }
-
-                val islands = patterns.filterIsInstance<Cluster>().map { it.toIsland() } +
-                        patterns.filterIsInstance<SinglePoint>().map { it.toIsland() }
-
-                for (pattern in patterns) {
+                islands.zip(visibilityContours) { island, visContours ->
                     stroke = ColorRGBa.BLACK
-                    fill = colors[pattern.type].opacify(0.3)
-                    when (pattern) {
-                        is SinglePoint -> {
-//                            val p = flip((pattern.point.originalPoint ?: pattern.point).pos)
-//                            contour(Circle(p, if (s.offset) expandRadius else s.pSize).contour)
-                            val island = pattern.toIsland()
+                    fill = colors[island.type].opacify(0.3)
 
-                            contour(island.contour)
-                            isolated {
-                                stroke = colors[pattern.type].opacify(0.6)
-                                strokeWeight *= 4
-                                contours(islands.filter { it.type == island.type }.flatMap { island.segmentVisibilityContours(it) })
-                                contours(islands.filter { it.type == island.type }.flatMap { island.circleVisibilityContours(it) })
-                            }
-                        }
-
-                        is Cluster -> {
-//                            val c = ShapeContour.fromPoints(pattern.points.map { flip(it.originalPoint!!.pos) }, true)
-//                            contour(if (s.offset) c.buffer(expandRadius) else c)
-                            val island = pattern.toIsland()
-
-                            contour(island.contour)
-                            isolated {
-                                stroke = colors[pattern.type].opacify(0.6)
-                                strokeWeight *= 4
-                                contours(islands.filter { it.type == island.type }.flatMap { island.segmentVisibilityContours(it) })
-                                contours(islands.filter { it.type == island.type }.flatMap { island.arcVisibilityContours(it) })
-                            }
-                        }
-
-                        is Bend -> {
-                            val c = ShapeContour.fromPoints(pattern.points.map { flip(it.originalPoint!!.pos) }, false)
-                            contour(if (s.offset) c.buffer(expandRadius) else c)
-                        }
+                    contour(island.contour)
+                    isolated {
+                        stroke = colors[island.type].opacify(0.6)
+                        strokeWeight *= 4
+                        contours(visContours)
                     }
                 }
 
@@ -249,7 +218,7 @@ fun main() = application {
                     strokeWeight = s.pSize / 4
                     for (p in points) {
                         fill = colors[p.type]
-                        circle(flip(p.pos), s.pSize)
+                        circle(p.pos, s.pSize)
                     }
                 }
             }
