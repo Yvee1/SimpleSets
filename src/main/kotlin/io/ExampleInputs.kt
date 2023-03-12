@@ -1,3 +1,8 @@
+package io
+
+import ProblemInstance
+import patterns.Pattern
+import patterns.Point
 import org.openrndr.math.Vector2
 import org.openrndr.shape.Circle
 import java.io.File

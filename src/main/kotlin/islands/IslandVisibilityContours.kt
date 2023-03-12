@@ -1,9 +1,15 @@
+package islands
+
+import geometric.Orientation
+import geometric.PRECISION
+import patterns.compareAround
 import org.openrndr.math.Vector2
 import org.openrndr.math.asDegrees
 import org.openrndr.shape.Circle
 import org.openrndr.shape.LineSegment
 import org.openrndr.shape.ShapeContour
 import org.openrndr.shape.intersections
+import geometric.orientation
 import kotlin.math.atan2
 import kotlin.math.max
 
@@ -72,7 +78,7 @@ fun Pair<Circle, ShapeContour>.visibilityContour(island: Island): ShapeContour? 
 
 fun Circle.visibilityContour(island: Island): ShapeContour? {
     val (a, b) = visibilityInterval(island) ?: return null
-    return contour.sub(a, b)
+    return if (b > a) contour.sub(a, b) else contour.sub(a, 1.0) + contour.sub(0.0, b)
 }
 
 fun Island.visibilityContours(other: Island): List<ShapeContour> {

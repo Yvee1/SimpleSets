@@ -1,3 +1,9 @@
+package islands
+
+import patterns.Bend
+import patterns.Cluster
+import patterns.Pattern
+import patterns.SinglePoint
 import org.openrndr.shape.Circle
 import org.openrndr.shape.ShapeContour
 

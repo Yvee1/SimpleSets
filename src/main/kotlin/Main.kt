@@ -1,5 +1,15 @@
+import io.ExampleInput
+import io.getExampleInput
+import io.writeToIpe
+import islands.Island
+import islands.toIsland
+import islands.visibilityContours
+import patterns.Pattern
+import patterns.Point
+import patterns.computePartition
 import org.openrndr.*
 import org.openrndr.color.ColorRGBa
+import org.openrndr.color.rgb
 import org.openrndr.draw.Drawer
 import org.openrndr.draw.isolated
 import org.openrndr.draw.loadFont
@@ -20,7 +30,14 @@ fun main() = application {
     }
 
     program {
-        val colors = listOf(ColorRGBa.BLUE, ColorRGBa.RED, ColorRGBa.GREEN).map { it.mix(ColorRGBa.WHITE, 0.5).shade(0.95) }
+        val blue = rgb(0.651, 0.807, 0.89) to rgb(0.121, 0.47, 0.705)
+        val red = rgb(0.984, 0.603, 0.6) to rgb(0.89, 0.102, 0.109)
+        val green = rgb(0.698, 0.874, 0.541) to rgb(0.2, 0.627, 0.172)
+
+//        val colors = listOf(ColorRGBa.BLUE, ColorRGBa.RED, ColorRGBa.GREEN).map { it.mix(ColorRGBa.WHITE, 0.5).shade(0.95) }
+        val colorPairs = listOf(blue, red, green)
+        val lightColors = colorPairs.map { it.first }
+        val darkColors = colorPairs.map { it.second }
         var points = mutableListOf<Point>()
         var problemInstance = ProblemInstance(points)
         var patterns = listOf<Pattern>()
@@ -203,11 +220,11 @@ fun main() = application {
 
                 islands.zip(visibilityContours) { island, visContours ->
                     stroke = ColorRGBa.BLACK
-                    fill = colors[island.type].opacify(0.3)
-
+                    fill = lightColors[island.type].opacify(0.3)
                     contour(island.contour)
+
                     isolated {
-                        stroke = colors[island.type].opacify(0.6)
+                        stroke = darkColors[island.type].opacify(0.3)
                         strokeWeight *= 4
                         contours(visContours)
                     }
@@ -217,7 +234,7 @@ fun main() = application {
                     stroke = ColorRGBa.BLACK
                     strokeWeight = s.pSize / 4
                     for (p in points) {
-                        fill = colors[p.type]
+                        fill = lightColors[p.type]
                         circle(p.pos, s.pSize)
                     }
                 }

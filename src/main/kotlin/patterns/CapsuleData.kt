@@ -1,3 +1,5 @@
+package patterns
+
 import org.openrndr.shape.LineSegment
 
 fun <K> Map<K, Boolean>.getF(key: K) = getOrDefault(key, false)

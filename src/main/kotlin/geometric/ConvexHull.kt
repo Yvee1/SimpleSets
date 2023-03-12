@@ -1,3 +1,7 @@
+package geometric
+
+import patterns.Point
+
 fun convexHull(points: List<Point>): List<Point> {
     if (points.size <= 1) return points
     val hull = mutableListOf<Point>()

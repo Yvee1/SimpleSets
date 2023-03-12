@@ -1,3 +1,9 @@
+package islands
+
+import geometric.convexHull
+import patterns.Cluster
+import patterns.Point
+import patterns.SinglePoint
 import org.openrndr.math.YPolarity
 import org.openrndr.shape.*
 

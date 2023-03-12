@@ -1,3 +1,6 @@
+package islands
+
+import patterns.Point
 import org.openrndr.shape.Circle
 import org.openrndr.shape.ShapeContour
 

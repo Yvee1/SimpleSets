@@ -1,7 +1,13 @@
-import org.openrndr.math.Vector2
+package patterns
+
+import geometric.Orientation
+import geometric.PRECISION
+import ProblemInstance
 import org.openrndr.math.asDegrees
 import org.openrndr.shape.LineSegment
 import org.openrndr.shape.intersections
+import geometric.orientation
+import java.util.stream.Collectors
 import kotlin.math.atan2
 
 sealed interface PointProvider {
@@ -17,11 +23,11 @@ data class ConstrainedPoint(override val point: Point, val startIndex: Int, val 
 fun cp(p: Point, iStart: Int, iEnd: Int) = ConstrainedPoint(p, iStart, iEnd)
 
 fun ProblemInstance.largestMonotoneBend(dir: Orientation, uncovered: List<Point> = points, obstacles: List<Pattern> = emptyList()): Bend =
-    uncovered.asSequence().flatMap { a ->
-        uncovered.asSequence().map { b ->
+    uncovered.parallelStream().flatMap { a ->
+        uncovered.parallelStream().map { b ->
             largestMonotoneBendFrom(a, b, dir, uncovered, obstacles)
         }
-    }.maxWithOrNull(compareBy { b: Bend -> b.weight }.thenBy { -it.contour.length }) ?: Bend.EMPTY
+    }.max(compareBy { b: Bend -> b.weight }.thenBy { -it.contour.length }).orElse(Bend.EMPTY)
 
 fun ProblemInstance.largestMonotoneBendFrom(a: Point, b: Point, dir: Orientation, uncovered: List<Point> = points, obstacles: List<Pattern> = emptyList()): Bend {
     if (b.type != a.type || a == b || !valid(a, b, obstacles) || !stripeData.segment.getE(a to b).hasType(a.type)) return Bend.EMPTY
@@ -38,41 +44,46 @@ fun ProblemInstance.tableLargestMonotoneBendFrom(a: Point, b: Point, dir: Orient
     tableLargestBendFrom(a, b, dir, uncovered, obstacles) { _, _ -> emptyList() }
 
 fun ProblemInstance.tableLargestConstrainedMonotoneBendFrom(a: Point, b: Point, dir: Orientation, uncovered: List<Point> = points,
-                                                 obstacles: List<Pattern> = emptyList()): Pair<Table<ConstrainedPoint>, TableEntry<ConstrainedPoint>> =
+                                                            obstacles: List<Pattern> = emptyList()): Pair<Table<ConstrainedPoint>, TableEntry<ConstrainedPoint>> =
     tableLargestConstrainedBendFrom(a, b, dir, uncovered, obstacles) { _, _ -> emptyList() }
 
 fun ProblemInstance.largestInflectionBend(dir: Orientation = Orientation.RIGHT, uncovered: List<Point> = points,
                                           obstacles: List<Pattern> = emptyList()): Bend {
     if (maxTurningAngle >= maxBendAngle) {
-        val mapT: Map<Pair<Point, Point>, TableEntry<BendPoint>> = buildMap {
-            for (a in uncovered) {
-                for (b in uncovered) {
-                    if (a == b) continue
+        val mapT = uncovered.parallelStream().flatMap { a ->
+            uncovered
+                .parallelStream()
+                .filter { it != a }
+                .map { b ->
                     val (T, maxT) = tableLargestMonotoneBendFrom(a, b, dir.opposite(), uncovered, obstacles)
-                    put(a to b, TableEntry(maxT.weight, null, trace(T, b to maxT)))
+                    val key = a to b
+                    val value = TableEntry<BendPoint>(maxT.weight, null, trace(T, b to maxT))
+                    key to value
                 }
-            }
-        }
-        return uncovered.asSequence().flatMap { a ->
-            uncovered.asSequence().map { b ->
+        }.collect(Collectors.toMap({ it.first }, { it.second }))
+
+        return uncovered.parallelStream().flatMap { a ->
+            uncovered.parallelStream().map { b ->
                 largestInflectionBendFrom(a, b, mapT, dir, uncovered, obstacles)
             }
-        }.maxWithOrNull(compareBy { b: Bend -> b.weight }.thenBy { -it.contour.length }) ?: Bend.EMPTY
+        }.max(compareBy { b: Bend -> b.weight }.thenBy { -it.contour.length }).orElse(Bend.EMPTY)
     } else {
-        val mapT: Map<Pair<Point, Point>, TableEntry<ConstrainedPoint>> = buildMap {
-            for (a in uncovered) {
-                for (b in uncovered) {
-                    if (a == b) continue
+        val mapT = uncovered.parallelStream().flatMap { a ->
+            uncovered
+                .parallelStream()
+                .filter { it != a }
+                .map { b ->
                     val (T, maxT) = tableLargestConstrainedMonotoneBendFrom(a, b, dir.opposite(), uncovered, obstacles)
-                    put(a to b, TableEntry(maxT.weight, null, trace(T, b to maxT)))
+                    val key = a to b
+                    val value = TableEntry<ConstrainedPoint>(maxT.weight, null, trace(T, b to maxT))
+                    key to value
                 }
-            }
-        }
-        return uncovered.asSequence().flatMap { a ->
-            uncovered.asSequence().map { b ->
+        }.collect(Collectors.toMap({ it.first }, { it.second }))
+        return uncovered.parallelStream().flatMap { a ->
+            uncovered.parallelStream().map { b ->
                 largestConstrainedInflectionBendFrom(a, b, mapT, dir, uncovered, obstacles)
             }
-        }.maxWithOrNull(compareBy { b: Bend -> b.weight }.thenBy { -it.contour.length }) ?: Bend.EMPTY
+        }.max(compareBy { b: Bend -> b.weight }.thenBy { -it.contour.length }).orElse(Bend.EMPTY)
     }
 }
 
@@ -85,8 +96,8 @@ fun ProblemInstance.largestInflectionBendFrom(a: Point, b: Point, mapT: Map<Pair
 }
 
 fun ProblemInstance.largestConstrainedInflectionBendFrom(a: Point, b: Point, mapT: Map<Pair<Point, Point>, TableEntry<ConstrainedPoint>>,
-                                                                 dir: Orientation = Orientation.RIGHT, uncovered: List<Point> = points,
-                                                                 obstacles: List<Pattern> = emptyList()): Bend {
+                                                         dir: Orientation = Orientation.RIGHT, uncovered: List<Point> = points,
+                                                         obstacles: List<Pattern> = emptyList()): Bend {
     if (b.type != a.type || a == b || !valid(a, b, obstacles) || !stripeData.segment.getE(a to b).hasType(a.type)) return Bend.EMPTY
 
     val (T, maxT) = tableLargestConstrainedInflectionBendFrom(a, b, mapT, dir, uncovered, obstacles)
@@ -258,7 +269,8 @@ fun firstHit(points: List<Point>, e1: Point, e2: Point, v: Point, dir: Orientati
     }
     if (index >= 0) {
         while (index - 1 >= 0 && orientation(v.pos, v.pos + (e2.pos - e1.pos), points[index - 1].pos)
-            == Orientation.STRAIGHT) {
+            == Orientation.STRAIGHT
+        ) {
             index--
         }
     }
@@ -272,10 +284,7 @@ fun ProblemInstance.valid(p: Point, q: Point, obstacles: List<Pattern>): Boolean
     val segContour = LineSegment(p.pos, q.pos).contour
     val intersects = obstacles.any { segContour.intersections(it.contour).isNotEmpty() }
     return (q.pos - p.pos).squaredLength < bendDistance * bendDistance && // Close together
-            seg.hasType(p.type) && // p--q not blocked by a point
-            !capsuleData.capsule.getF(p to q) && // no points near p--q
-            !intersects // p--q not blocked by an obstacle
+            seg.hasType(p.type) && // Patterns.p--q not blocked by a point
+            !capsuleData.capsule.getF(p to q) && // no points near Patterns.p--q
+            !intersects // Patterns.p--q not blocked by an obstacle
 }
-
-infix fun Double.p(y: Double) = Point(Vector2(this, y), 0)
-infix fun Int.p(y: Int) = Point(Vector2(this.toDouble(), y.toDouble()), 0)

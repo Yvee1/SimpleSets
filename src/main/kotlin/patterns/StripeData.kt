@@ -1,4 +1,10 @@
+package patterns
+
+import geometric.Orientation
+import geometric.PRECISION
+import geometric.compare
 import org.openrndr.math.Vector2
+import geometric.orientation
 import kotlin.math.abs
 import kotlin.math.atan2
 
@@ -99,7 +105,7 @@ class StripeData(points: List<Point>) {
 }
 
 /**
- * Clockwise ordering around a point `p`.
+ * Clockwise ordering around a point `Patterns.p`.
  * @param p the reference point
  * @param start the start angle in degrees, counter-clockwise starting at 3 o'clock.
  */
@@ -108,7 +114,7 @@ fun compareAround(p: Point, start: Double, dir: Orientation) = Comparator<Point>
     }
 
 /**
- * Clockwise ordering around a point `p`.
+ * Clockwise ordering around a point `Patterns.p`.
  * @param p the reference point
  * @param start the start angle in degrees, counter-clockwise starting at 3 o'clock.
  */

@@ -1,3 +1,5 @@
+package patterns
+
 import org.openrndr.math.Vector2
 import org.openrndr.shape.ShapeContour
 

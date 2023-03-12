@@ -1,5 +1,8 @@
+package geometric
+
 import org.openrndr.math.Vector2
 import org.openrndr.math.asDegrees
+import patterns.Point
 import kotlin.math.atan2
 
 // Reference

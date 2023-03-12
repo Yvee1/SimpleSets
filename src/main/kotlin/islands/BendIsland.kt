@@ -1,6 +1,12 @@
+package islands
+
+import geometric.Orientation
+import patterns.Bend
+import patterns.Point
 import org.openrndr.math.Vector2
 import org.openrndr.math.YPolarity
 import org.openrndr.shape.*
+import geometric.orientation
 
 fun ccwCircularArc(circle: Circle, cp1: Vector2, cp2: Vector2) = contour {
     val largeArcFlag = orientation(circle.center, cp1, cp2) != Orientation.RIGHT

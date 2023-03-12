@@ -1,4 +1,9 @@
+package patterns
+
+import geometric.Orientation
+import ProblemInstance
 import org.openrndr.shape.*
+import geometric.orientation
 
 /**
  * Returns the largest monochromatic convex polygon in O(n^3 log n) time.
@@ -14,8 +19,9 @@ import org.openrndr.shape.*
 fun ProblemInstance.largestCluster(uncovered: List<Point> = points, obstacles: List<Pattern> = emptyList()): Cluster {
     val uncoveredStripeData = StripeData(uncovered)
     return uncovered
+        .parallelStream()
         .map { largestClusterAt(it, uncovered, uncoveredStripeData, obstacles) }
-        .maxWithOrNull(compareBy({ it.weight }, { -it.contour.shape.area })) ?: Cluster.EMPTY
+        .max(compareBy({ it.weight }, { -it.contour.shape.area })).orElse(Cluster.EMPTY)
 }
 
 private fun compatible(q: Point, r: Point, s: Point) = orientation(q.pos, r.pos, s.pos) != Orientation.LEFT
@@ -59,23 +65,26 @@ fun ProblemInstance.largestClusterAt(p: Point,
     for (i in P.indices) {
         for (j in i + 1 until P.size) {
             val triAll = stripeData.triangle(p, P[i], P[j])
+            if (!triAll.hasType(t)) continue
             val triUncov = uncoveredStripeData.triangle(p, P[i], P[j])
-
             val triContour = ShapeContour.fromPoints(listOf(p.pos, P[i].pos, P[j].pos), true)
             val intersects = obstacles.any { triContour.overlaps(it.contour) }
+            if (intersects) continue
             val pointNearby = capsuleData.capsule.getF(P[i] to P[j])
                     || capsuleData.capsule.getF(p to P[i])
                     || capsuleData.capsule.getF(p to P[j])
-
-            // Triangle p P[i] P[j] should contain no points of a type other than t.
-            if (!triAll.hasType(t) || intersects || (freeSpace != null && triContour !in freeSpace) || pointNearby) continue
+            if (pointNearby) continue
+            val inFreeSpace = freeSpace == null ||
+                    coverRadiusTriangle(p.pos, P[i].pos, P[j].pos) <= clusterRadius ||
+                    triContour in freeSpace
+            if (!inFreeSpace) continue
 
             // We store edge P[i] -> P[j], add P[i] to the predecessors of P[j], and add P[j] to successors of P[i].
             edges[P[i] to P[j]] = Edge(P[i], P[j], if (i == 0) triUncov.get0(t) else null) // i == 0: base case of DP
             Ai[P[j]]!!.add(P[i])
             Bi[P[i]]!!.add(P[j])
 
-            // If p, P[i], and P[j] are collinear, then add an edge in the other direction as well.
+            // If Patterns.p, P[i], and P[j] are collinear, then add an edge in the other direction as well.
             if (orientation(p.pos, P[i].pos, P[j].pos) == Orientation.STRAIGHT) {
                 edges[P[j] to P[i]] = Edge(P[j], P[i], if (i == 0) triUncov.get0(t) else null)
                 Ai[P[i]]!!.add(P[j])
@@ -92,7 +101,9 @@ fun ProblemInstance.largestClusterAt(p: Point,
             val segContour = LineSegment(p.pos, q.pos).contour
             val intersects = obstacles.any { segContour.intersections(it.contour).isNotEmpty() }
             val pointNearby = capsuleData.capsule.getF(p to q)
-            if (segAll.hasType(t) && !intersects && (freeSpace != null && segContour in freeSpace) && !pointNearby){
+            val inFreeSpace = freeSpace == null || segContour.length <= 2 * clusterRadius
+                    || segContour in freeSpace
+            if (segAll.hasType(t) && !intersects && inFreeSpace && !pointNearby){
                 return Cluster(listOf(q, p), 2 + segUncov.get0(t))
             }
         }
@@ -123,7 +134,7 @@ fun ProblemInstance.largestClusterAt(p: Point,
             }
         }
 
-        // For each m, s[m] is the largest integer such that A[s[m]] and B[m] are p-compatible.
+        // For each m, s[m] is the largest integer such that A[s[m]] and B[m] are Patterns.p-Patterns.compatible.
         // So it is the index of the last incoming edge of pi that B[m] can be 'joined' to.
         val s = buildList {
             var k = 0
@@ -196,7 +207,6 @@ fun ProblemInstance.largestClusterAt(p: Point,
     val largest = Cluster(trace(maxEdge), maxEdge.weight!!)
     val pointsInLargest = (P + p).filter { it in largest }
     if (coverRadius(pointsInLargest.map { it.pos }) > clusterRadius) {
-        println("warning: convex polygon that was found is not a cluster, recursing using points in this polygon")
         return largestClusterAt(p, pointsInLargest, StripeData(pointsInLargest), obstacles)
     }
     return largest

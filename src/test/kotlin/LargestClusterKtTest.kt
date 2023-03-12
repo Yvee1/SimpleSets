@@ -1,3 +1,6 @@
+import patterns.Cluster
+import patterns.largestClusterAt
+import patterns.p
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.params.ParameterizedTest

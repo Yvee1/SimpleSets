@@ -1,3 +1,8 @@
+import patterns.CapsuleData
+import patterns.Point
+import patterns.StripeData
+import geometric.transformPoints
+
 class ProblemInstance(originalPoints: List<Point>,
                       val expandRadius: Double = 0.0,
                       val clusterRadius: Double = Double.MAX_VALUE,

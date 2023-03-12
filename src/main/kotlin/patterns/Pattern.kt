@@ -1,3 +1,7 @@
+package patterns
+
+import geometric.Orientation
+import ProblemInstance
 import org.openrndr.math.Vector2
 import org.openrndr.shape.ShapeContour
 
