@@ -14,19 +14,21 @@ import org.openrndr.draw.Drawer
 import org.openrndr.draw.isolated
 import org.openrndr.draw.loadFont
 import org.openrndr.extra.color.presets.BLUE_STEEL
+import org.openrndr.extra.color.presets.ORANGE
 import org.openrndr.extra.gui.GUI
 import org.openrndr.extra.gui.GUIAppearance
 import org.openrndr.extra.parameters.*
 import org.openrndr.math.*
 import org.openrndr.shape.*
 import kotlin.math.round
+import kotlin.math.roundToInt
 
 fun main() = application {
     configure {
         width = 800
         height = 800
         windowResizable = true
-        title = "Islands"
+        title = "Islands and bridges"
     }
 
     program {
@@ -43,6 +45,12 @@ fun main() = application {
         var patterns = listOf<Pattern>()
         var islands = listOf<Island>()
         var visibilityContours = listOf<List<ShapeContour>>()
+        var obstacleUnion = Shape.EMPTY
+        var voronoiCells = listOf<ShapeContour>()
+        var obstacles = listOf<Island>()
+        var visibilityGraph = Graph(emptyList())
+        var visibilityEdges = listOf<ShapeContour>()
+        var bridges = listOf<Bridge>()
 
         fun clearData(){
             points.clear()
@@ -50,6 +58,12 @@ fun main() = application {
             patterns = emptyList()
             islands = emptyList()
             visibilityContours = emptyList()
+            obstacleUnion = Shape.EMPTY
+            voronoiCells = emptyList()
+            obstacles = emptyList()
+            visibilityGraph = Graph(emptyList())
+            visibilityEdges = emptyList()
+            bridges = emptyList()
         }
 
         val s = object {
@@ -98,8 +112,23 @@ fun main() = application {
             @DoubleParameter("Cluster radius", 0.0, 100.0, order=8000)
             var clusterRadius = 50.0
 
-            @BooleanParameter("Show cluster circles")
+            @BooleanParameter("Show visibility contours", order = 9000)
+            var showVisibilityContours = true
+
+            @BooleanParameter("Show bridges", order = 9010)
+            var showBridges = true
+
+            @BooleanParameter("Show cluster circles", order = 10000)
             var showClusterCircles = false
+
+            @BooleanParameter("Show visibility graph", order=10010)
+            var showVisibilityGraph = false
+
+            @BooleanParameter("Show voronoi", order=10020)
+            var showVoronoi = false
+
+            @DoubleParameter("Show subset based on computation", 0.0, 1.0, order=10000000)
+            var subset = 1.0
         }
 
         val gui = GUI(GUIAppearance(ColorRGBa.BLUE_STEEL))
@@ -174,7 +203,18 @@ fun main() = application {
                     problemInstance = ProblemInstance(points, s.pSize * 5 / 2, s.clusterRadius, s.bendDistance, s.bendInflection, s.maxBendAngle, s.maxTurningAngle)
                     patterns = problemInstance.computePartition(s.disjoint)
                     islands = patterns.map { it.toIsland(s.pSize * 5 / 2) }
+                    obstacles = patterns.map { it.toIsland(s.pSize * 10 / 2) }
                     visibilityContours = islands.map { i1 -> islands.filter { i2 -> i2.type == i1.type }.flatMap { i2 -> i1.visibilityContours(i2) } }
+                    obstacleUnion = obstacles.fold(Shape.EMPTY) { acc, x ->
+                        x.contour.shape.union(acc)
+                    }
+                    val islandUnion = islands.fold(Shape.EMPTY) { acc, x ->
+                        x.contour.shape.union(acc)
+                    }
+                    voronoiCells = voronoiDiagram(patterns.map { it.original() })
+                    visibilityGraph = Graph(islands, s.pSize * 5 / 2)
+                    visibilityEdges = visibilityGraph.edges.map { it.contour }
+                    bridges = visibilityGraph.spanningTrees()
                 }
 
                 if (it.name == "c") {
@@ -192,6 +232,7 @@ fun main() = application {
         }
 
         val font = loadFont("data/fonts/default.otf", 64.0)
+
         extend(Camera2D())
         extend {
             view = drawer.view
@@ -212,21 +253,82 @@ fun main() = application {
                 fill = ColorRGBa.GRAY.opacify(0.5)
                 circle(transformMouse(mouse.position), s.pSize)
 
+                if (s.showVoronoi) {
+                    isolated {
+                        stroke = ColorRGBa.BLACK
+                        fill = ColorRGBa.GRAY.opacify(0.3)
+                        contours(voronoiCells)
+                    }
+                }
+
                 if (s.showClusterCircles) {
                     fill = ColorRGBa.GRAY.opacify(0.3)
                     stroke = null
                     circles(points.map { it.pos }, s.clusterRadius)
                 }
 
-                islands.zip(visibilityContours) { island, visContours ->
+                if (obstacles.size > 1) {
+                    if (s.showBridges) {
+                        for (bridge in bridges) {
+                            isolated {
+                                stroke = ColorRGBa.BLACK
+                                strokeWeight *= 4
+                                contour(bridge.contour)
+
+                                strokeWeight /= 3
+                                stroke = lightColors[islands[bridge.island1].type]
+                                contour(bridge.contour)
+                            }
+                        }
+                    }
+                }
+
+                val end = (s.subset * islands.size).roundToInt()
+
+                for (i in 0 until end) {
+                    val island = islands[i]
                     stroke = ColorRGBa.BLACK
                     fill = lightColors[island.type].opacify(0.3)
-                    contour(island.contour)
+                    shape(voronoiCells[i].intersection(island.contour.shape))
+
+                    if (s.showVisibilityContours) {
+                        isolated {
+                            stroke = darkColors[island.type].opacify(0.3)
+                            strokeWeight *= 4
+                            shapes(visibilityContours[i].map { it.intersection(voronoiCells[i].shape) })
+                        }
+                    }
+                }
+
+                if (s.showVisibilityGraph) {
+                    isolated {
+                        stroke = ColorRGBa.BLACK
+                        fill = ColorRGBa.BLACK
+                        circles(visibilityGraph.vertices.map { it.pos }, s.pSize / 5.0)
+                    }
 
                     isolated {
-                        stroke = darkColors[island.type].opacify(0.3)
-                        strokeWeight *= 4
-                        contours(visContours)
+                        stroke = ColorRGBa.BLACK.opacify(0.5)
+                        strokeWeight *= 0.5
+                        contours(visibilityEdges)
+
+                        val vertex =
+                            visibilityGraph.vertices.minByOrNull { (it.pos - transformMouse(mouse.position)).squaredLength }
+                        if (vertex != null) {
+                            strokeWeight *= 2.0
+
+                            stroke = ColorRGBa.BLUE
+                            fill = ColorRGBa.BLUE
+                            circle(vertex.pos, s.pSize / 5.0)
+
+                            stroke = ColorRGBa.GREEN
+                            fill = ColorRGBa.GREEN
+                            circles(vertex.edges.map { it.theOther(vertex).pos }, s.pSize / 5.0)
+
+                            stroke = ColorRGBa.ORANGE
+                            fill = ColorRGBa.ORANGE
+                            contours(vertex.edges.map { it.contour })
+                        }
                     }
                 }
 

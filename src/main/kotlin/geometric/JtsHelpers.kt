@@ -37,7 +37,8 @@ fun Geometry.toShape(): Shape =
         else -> error("Unknown geometry")
     }
 
-fun ShapeContour.buffer(r: Double) = toJtsGeometry().buffer(r).toShape().contours.first()
+fun ShapeContour.buffer(r: Double): ShapeContour =
+    if (segments.isEmpty()) ShapeContour.EMPTY else toJtsGeometry().buffer(r).toShape().contours.first()
 
 fun ShapeContour.smooth(r: Double) = toJtsGeometry().buffer(r).buffer(-r).toShape().contours.first()
 

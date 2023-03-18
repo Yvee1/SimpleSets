@@ -14,7 +14,7 @@ fun ccwCircularArc(circle: Circle, cp1: Vector2, cp2: Vector2) = contour {
     arcTo(circle.radius, circle.radius, 90.0, largeArcFlag=largeArcFlag, sweepFlag=false, cp2)
 }
 
-class BendIsland(val points: List<Point>, expandRadius: Double): Island() {
+class BendIsland(override val points: List<Point>, expandRadius: Double): Island() {
     override val type = points.firstOrNull()?.type ?: -1
     override val circles: List<Circle> by lazy { points.map { Circle(it.pos, expandRadius) } }
 
@@ -45,7 +45,7 @@ class BendIsland(val points: List<Point>, expandRadius: Double): Island() {
         }
     }
 
-    val segments: List<LineSegment> by lazy { pairedSegs.flatMap { it.toList() } }
+    override val segments: List<LineSegment> by lazy { pairedSegs.flatMap { it.toList() } }
 
     val circularArcs: List<ShapeContour> by lazy {
         if (points.size == 1) return@lazy emptyList()
@@ -66,7 +66,7 @@ class BendIsland(val points: List<Point>, expandRadius: Double): Island() {
             val pol = when(or) {
                 Orientation.RIGHT -> YPolarity.CCW_POSITIVE_Y
                 Orientation.LEFT -> YPolarity.CW_NEGATIVE_Y
-                else -> TODO()
+                else -> return@windowed ShapeContour.EMPTY
             }
             val n1 = d1.perpendicular(pol).normalized * expandRadius
             val n2 = d2.perpendicular(pol).normalized * expandRadius
@@ -76,7 +76,7 @@ class BendIsland(val points: List<Point>, expandRadius: Double): Island() {
             ccwCircularArc(curr, cp1, cp2)
         }
 
-        listOf(firstArc) + middleArcs + lastArc
+        (listOf(firstArc) + middleArcs + lastArc).filter { it != ShapeContour.EMPTY }
     }
 
     override val contour: ShapeContour by lazy {
@@ -92,8 +92,10 @@ class BendIsland(val points: List<Point>, expandRadius: Double): Island() {
             c += next
             contours.remove(next)
         }
-        c.close()
+        c.close().reversed
     }
+
+    override fun scale(s: Double) = BendIsland(points, circles.first().radius * s)
 }
 
-fun Bend.toIsland(expandRadius: Double) = BendIsland(original().points, expandRadius)
+fun Bend.toIsland(expandRadius: Double) = BendIsland(original().boundaryPoints, expandRadius)

@@ -1,5 +1,6 @@
 package patterns
 
+import geometric.convexHull
 import org.openrndr.extra.triangulation.delaunayTriangulation
 import org.openrndr.math.Vector2
 import org.openrndr.math.asDegrees
@@ -20,6 +21,7 @@ data class Cluster(val points: List<Point>, val weightI: Int): Pattern() {
     private val vecs by lazy {
         points.map { it.pos }
     }
+    override val boundaryPoints: List<Point> = convexHull(points)
 
     override operator fun contains(v: Vector2) = v in vecs || (weight > vecs.size && v in contour)
 

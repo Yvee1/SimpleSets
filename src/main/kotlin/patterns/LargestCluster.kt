@@ -4,6 +4,7 @@ import geometric.Orientation
 import ProblemInstance
 import org.openrndr.shape.*
 import geometric.orientation
+import geometric.overlaps
 
 /**
  * Returns the largest monochromatic convex polygon in O(n^3 log n) time.
@@ -18,10 +19,18 @@ import geometric.orientation
  */
 fun ProblemInstance.largestCluster(uncovered: List<Point> = points, obstacles: List<Pattern> = emptyList()): Cluster {
     val uncoveredStripeData = StripeData(uncovered)
-    return uncovered
-        .parallelStream()
-        .map { largestClusterAt(it, uncovered, uncoveredStripeData, obstacles) }
-        .max(compareBy({ it.weight }, { -it.contour.shape.area })).orElse(Cluster.EMPTY)
+    val colored = uncovered.groupBy {
+        it.type
+    }
+    return colored.toList().parallelStream().map { (_, pts) ->
+        val freeSpace: Shape? =
+            if (clusterRadius < Double.MAX_VALUE)
+                pts.fold(Shape.EMPTY) { acc, x -> Circle(x.pos, clusterRadius).shape.union(acc) }
+            else null
+        pts.parallelStream()
+            .map { largestClusterAt(it, uncovered, uncoveredStripeData, obstacles, freeSpace) }
+            .max(compareBy({ it.weight }, { -it.contour.shape.area })).orElse(Cluster.EMPTY)
+    }.max(compareBy({ it.weight }, { -it.contour.shape.area })).orElse(Cluster.EMPTY)
 }
 
 private fun compatible(q: Point, r: Point, s: Point) = orientation(q.pos, r.pos, s.pos) != Orientation.LEFT
@@ -31,7 +40,8 @@ private data class Edge(val u: Point, val v: Point, var weight: Int? = null, var
 fun ProblemInstance.largestClusterAt(p: Point,
                                      uncovered: List<Point> = points,
                                      uncoveredStripeData: StripeData = stripeData,
-                                     obstacles: List<Pattern> = emptyList()): Cluster {
+                                     obstacles: List<Pattern> = emptyList(),
+                                     providedFreeSpace: Shape? = null): Cluster {
     val t = p.type
 
     val P = uncovered
@@ -54,8 +64,9 @@ fun ProblemInstance.largestClusterAt(p: Point,
         add(currentGroup)
     }
 
-    val freeSpace: Shape? = if (clusterRadius < Double.MAX_VALUE)
-        (P + p).fold(Shape.EMPTY) { acc, x -> Circle(x.pos, clusterRadius).shape.union(acc) }
+    val freeSpace: Shape? = providedFreeSpace
+        ?: if (clusterRadius < Double.MAX_VALUE)
+            (P + p).fold(Shape.EMPTY) { acc, x -> Circle(x.pos, clusterRadius).shape.union(acc) }
         else null
 
     val Ai = P.associateWith { mutableListOf<Point>() }
@@ -206,7 +217,7 @@ fun ProblemInstance.largestClusterAt(p: Point,
 
     val largest = Cluster(trace(maxEdge), maxEdge.weight!!)
     val pointsInLargest = (P + p).filter { it in largest }
-    if (coverRadius(pointsInLargest.map { it.pos }) > clusterRadius) {
+    if (coverRadius(pointsInLargest.map { it.pos }) > clusterRadius + 0.1) {
         return largestClusterAt(p, pointsInLargest, StripeData(pointsInLargest), obstacles)
     }
     return largest
@@ -218,6 +229,3 @@ operator fun Shape.contains(other: ShapeContour) =
     intersections(other).isEmpty() &&
             other.position(0.0) in this &&
             contours.count { it.overlaps(other) } == 1
-
-fun ShapeContour.overlaps(other: ShapeContour) =
-    intersections(other).isNotEmpty() || position(0.0) in other || other.position(0.0) in this
