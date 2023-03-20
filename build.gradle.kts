@@ -113,9 +113,6 @@ dependencies {
 //    implementation(libs.gson)
 //    implementation(libs.csv)
 
-    implementation(files("libs/commons-math3-3.4.1.jar"))
-    implementation(files("libs/jopenvoronoi-main-1.0-SNAPSHOT.jar"))
-
     implementation("org.locationtech.jts:jts-core:1.19.0")
 
     implementation(libs.kotlinx.coroutines.core)
