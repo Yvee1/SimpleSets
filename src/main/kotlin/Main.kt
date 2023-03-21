@@ -1,5 +1,6 @@
 import io.ExampleInput
 import io.getExampleInput
+import io.ipeToPoints
 import io.writeToIpe
 import islands.Island
 import islands.toIsland
@@ -19,6 +20,8 @@ import org.openrndr.math.*
 import org.openrndr.shape.*
 import org.openrndr.svg.toSVG
 import java.io.File
+import java.io.IOException
+import java.util.concurrent.TimeUnit
 import kotlin.math.round
 import kotlin.math.roundToInt
 
@@ -37,7 +40,6 @@ fun main() = application {
         val orange = rgb(0.992, 0.749, 0.435) to rgb(1.0, 0.498, 0.0)
         val purple = rgb(0.792, 0.698, 0.839) to rgb(0.415, 0.239, 0.603)
 
-//        val colors = listOf(ColorRGBa.BLUE, ColorRGBa.RED, ColorRGBa.GREEN).map { it.mix(ColorRGBa.WHITE, 0.5).shade(0.95) }
         val colorPairs = listOf(blue, red, green, orange, purple)
         val lightColors = colorPairs.map { it.first }
         val darkColors = colorPairs.map { it.second }
@@ -52,7 +54,7 @@ fun main() = application {
         var visibilityGraph = Graph(emptyList(), emptyList(), emptyList())
         var visibilityEdges = listOf<ShapeContour>()
         var bridges = listOf<Bridge>()
-        var composition: Composition = drawComposition { }
+        var composition: (Boolean) -> Composition = { _ -> drawComposition { } }
 
         fun clearData(){
             points.clear()
@@ -65,7 +67,7 @@ fun main() = application {
             visibilityGraph = Graph(emptyList(), emptyList(), emptyList())
             visibilityEdges = emptyList()
             bridges = emptyList()
-            composition = drawComposition { }
+            composition = { _ -> drawComposition { } }
         }
 
         val s = object {
@@ -90,22 +92,40 @@ fun main() = application {
             @OptionParameter("Example input", order = 10)
             var exampleInput = ExampleInput.LowerBound
 
-            @ActionParameter("Load input", order = 11)
-            fun load() {
+            @ActionParameter("Load example input", order = 11)
+            fun loadExample() {
                 clearData()
                 points = getExampleInput(exampleInput).toMutableList()
             }
 
-            @TextParameter("File name", order = 20)
-            var fileName = "output.ipe"
+            @TextParameter("Input ipe file (no file extension)", order = 14)
+            var inputFileName = "nyc"
 
-            @ActionParameter("Save as ipe file", order = 23)
-            fun saveIpe() = writeToIpe(problemInstance, patterns, fileName)
+            @ActionParameter("Load input file", order = 15)
+            fun loadInput() {
+                clearData()
+                try {
+                val f = File("$inputFileName.ipe")
+                points = ipeToPoints(f).toMutableList()
+                } catch (e: IOException) {
+                    println("Could not read input file")
+                    e.printStackTrace()
+                }
+            }
 
-            @ActionParameter("Save as svg file", order = 25)
-            fun saveSvg() {
-                val svg = composition.toSVG()
-                File(fileName).writeText(svg)
+            @TextParameter("Output file (no file extension)", order = 20)
+            var outputFileName = "output"
+
+            @ActionParameter("Save points", order = 23)
+            fun savePoints() {
+                writeToIpe(points, "$outputFileName-points.ipe")
+            }
+
+            @ActionParameter("Save output", order = 25)
+            fun saveOutput() {
+                val svg = composition(false).toSVG()
+                File("$outputFileName.svg").writeText(svg)
+                "py svgtoipe.py $outputFileName.svg".runCommand(File("."))
             }
 
             @DoubleParameter("Bend distance", 1.0, 100.0, order=1000)
@@ -123,7 +143,7 @@ fun main() = application {
             @DoubleParameter("Cluster radius", 0.0, 100.0, order=5000)
             var clusterRadius = 50.0
 
-            @DoubleParameter("Clearance", 0.0, 20.0)
+            @DoubleParameter("Clearance", 0.0, 20.0, order = 7000)
             var clearance = 5.0
 
             @BooleanParameter("Show visibility contours", order = 9000)
@@ -237,7 +257,7 @@ fun main() = application {
             view = drawer.view
             drawer.clear(ColorRGBa.WHITE)
 
-            composition = drawComposition {
+            composition = { showMouse -> drawComposition {
                 translate(0.0, height.toDouble())
                 scale(1.0, -1.0)
 
@@ -249,8 +269,8 @@ fun main() = application {
                 // Draw preview of point placement
                 strokeWeight = s.pSize / 4.5
                 stroke = ColorRGBa.BLACK.opacify(0.5)
-                fill = ColorRGBa.GRAY.opacify(0.5)
-                circle(transformMouse(mouse.position), s.pSize)
+                fill = lightColors[type].opacify(0.5)
+                if (showMouse) circle(transformMouse(mouse.position), s.pSize)
 
                 if (s.showVoronoi) {
                     isolated {
@@ -311,11 +331,12 @@ fun main() = application {
                     isolated {
                         stroke = ColorRGBa.BLACK.opacify(0.5)
                         strokeWeight *= 0.5
+                        fill = null
                         contours(visibilityEdges)
 
                         val vertex =
                             visibilityGraph.vertices.minByOrNull { (it.pos - transformMouse(mouse.position)).squaredLength }
-                        if (vertex != null) {
+                        if (showMouse && vertex != null) {
                             strokeWeight *= 2.0
 
                             stroke = ColorRGBa.BLUE
@@ -341,11 +362,20 @@ fun main() = application {
                         circle(p.pos, s.pSize)
                     }
                 }
-            }
+            }}
 
-            drawer.composition(composition)
+            drawer.composition(composition(true))
         }
     }
 }
 
 fun Vector2.mapComponents(f: (Double) -> Double) = Vector2(f(x), f(y))
+
+fun String.runCommand(workingDir: File) {
+    ProcessBuilder(*split(" ").toTypedArray())
+        .directory(workingDir)
+        .redirectOutput(ProcessBuilder.Redirect.INHERIT)
+        .redirectError(ProcessBuilder.Redirect.INHERIT)
+        .start()
+        .waitFor(60, TimeUnit.MINUTES)
+}

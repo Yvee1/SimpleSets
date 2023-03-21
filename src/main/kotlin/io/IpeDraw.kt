@@ -733,10 +733,11 @@ internal fun NamedNodeMap.asMap(): Map<String, String> = buildMap(length) {
 }
 
 fun ipeToPoints(ipeXML: File): List<Point> {
+    ipeXML.writeText(ipeXML.readText().lines().filterNot { it.contains("""<!DOCTYPE ipe SYSTEM "ipe.dtd">""") }.joinToString("\n"))
     val doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(ipeXML)
     val nodeList = doc.getElementsByTagName("use").asList()
 
-    return nodeList.map {n ->
+    return nodeList.map { n ->
         val m = n.attributes.asMap()
         val posString = m["pos"]!!.split(' ')
         val matrixString = m["matrix"]?.split(' ')
@@ -748,9 +749,11 @@ fun ipeToPoints(ipeXML: File): List<Point> {
             "CB light blue" -> 0
             "CB light red" -> 1
             "CB light green" -> 2
+            "CB light orange" -> 3
+            "CB light purple" -> 4
             else -> {
                 println("Unknown color: $f")
-                3
+                5
             }
         }
         Point(pos, type)

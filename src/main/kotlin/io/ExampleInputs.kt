@@ -10,7 +10,7 @@ import java.io.IOException
 import kotlin.math.pow
 
 enum class ExampleInput {
-    LowerBound, NYC
+    LowerBound, NYC, FiveColors
 }
 
 fun getExampleInput(e: ExampleInput): List<Point> =
@@ -57,6 +57,10 @@ fun getExampleInput(e: ExampleInput): List<Point> =
             val f = File("nyc.ipe")
             ipeToPoints(f)
         }
+        ExampleInput.FiveColors -> {
+            val f = File("5-colors.ipe")
+            ipeToPoints(f)
+        }
     }
 
 
@@ -71,6 +75,24 @@ fun writeToIpe(instance: ProblemInstance, solution: List<Pattern>, fileName: Str
                 pattern(pat, instance.expandRadius)
             }
             for (p in instance.points){
+                point(p)
+            }
+        }
+        file.writeText(s)
+    } catch (e: IOException) {
+        println("Could not write to output file!")
+        e.printStackTrace()
+    }
+}
+
+fun writeToIpe(points: List<Point>, fileName: String) {
+    val colors = listOf("CB light blue", "CB light red", "CB light green", "CB light orange", "CB light purple")
+
+    val file = File(fileName)
+
+    try {
+        val s = ipeDraw(colors) {
+            for (p in points){
                 point(p)
             }
         }
