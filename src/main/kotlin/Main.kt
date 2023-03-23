@@ -11,6 +11,7 @@ import patterns.computePartition
 import org.openrndr.*
 import org.openrndr.color.ColorRGBa
 import org.openrndr.color.rgb
+import org.openrndr.draw.loadFont
 import org.openrndr.extra.color.presets.BLUE_STEEL
 import org.openrndr.extra.color.presets.ORANGE
 import org.openrndr.extra.gui.GUI
@@ -70,6 +71,8 @@ fun main() = application {
             composition = { _ -> drawComposition { } }
         }
 
+        val gui = GUI(GUIAppearance(ColorRGBa.BLUE_STEEL))
+
         val s = object {
             @DoubleParameter("Point size", 0.1, 10.0, order = 0)
             var pSize = 3.0
@@ -105,7 +108,7 @@ fun main() = application {
             fun loadInput() {
                 clearData()
                 try {
-                val f = File("$inputFileName.ipe")
+                val f = File("input-output/$inputFileName.ipe")
                 points = ipeToPoints(f).toMutableList()
                 } catch (e: IOException) {
                     println("Could not read input file")
@@ -118,17 +121,19 @@ fun main() = application {
 
             @ActionParameter("Save points", order = 23)
             fun savePoints() {
-                writeToIpe(points, "$outputFileName-points.ipe")
+                writeToIpe(points, "input-output/$outputFileName-points.ipe")
+                gui.saveParameters(File("input-output/$outputFileName-parameters.json"))
             }
 
             @ActionParameter("Save output", order = 25)
             fun saveOutput() {
                 val svg = composition(false).toSVG()
-                File("$outputFileName.svg").writeText(svg)
-                "py svgtoipe.py $outputFileName.svg".runCommand(File("."))
+                File("input-output/$outputFileName.svg").writeText(svg)
+                gui.saveParameters(File("input-output/$outputFileName-parameters.json"))
+                "py svgtoipe.py input-output/$outputFileName.svg".runCommand(File("."))
             }
 
-            @DoubleParameter("Bend distance", 1.0, 100.0, order=1000)
+            @DoubleParameter("Bend distance", 1.0, 500.0, order=1000)
             var bendDistance = 20.0
 
             @BooleanParameter("Inflection", order=2000)
@@ -165,7 +170,6 @@ fun main() = application {
             var subset = 1.0
         }
 
-        val gui = GUI(GUIAppearance(ColorRGBa.BLUE_STEEL))
         gui.add(s, "Settings")
 
         extend(gui)
@@ -211,10 +215,16 @@ fun main() = application {
 
         mouse.buttonDown.listen { mouseEvent ->
             if (!mouseEvent.propagationCancelled) {
-                if (mouseEvent.button != MouseButton.LEFT) return@listen
-                val p = transformMouse(mouseEvent.position)
-                if (points.none { it.pos == p })
-                points.add(Point(p, type))
+                if (mouseEvent.button == MouseButton.LEFT) {
+                    val p = transformMouse(mouseEvent.position)
+                    if (points.none { it.pos == p })
+                        points.add(Point(p, type))
+                }
+                else if (mouseEvent.button == MouseButton.RIGHT) {
+                    val mp = transformMouse(mouseEvent.position)
+                    val closest = points.withIndex().minByOrNull { (_, p) -> ((p.originalPoint ?: p).pos - mp).squaredLength } ?: return@listen
+                    points.removeAt(closest.index)
+                }
             }
 
         }
@@ -227,15 +237,30 @@ fun main() = application {
 
                 if (it.key == KEY_SPACEBAR) {
                     it.cancelPropagation()
-                    problemInstance = ProblemInstance(points, s.expandRadius, s.clusterRadius, s.bendDistance, s.bendInflection, s.maxBendAngle, s.maxTurningAngle)
-                    patterns = problemInstance.computePartition(s.disjoint)
-                    islands = patterns.map { it.toIsland(s.expandRadius) }
-                    obstacles = islands.map { it.scale(1 + s.clearance / it.circles.first().radius) }
-                    visibilityContours = islands.map { i1 -> islands.filter { i2 -> i2.type == i1.type }.flatMap { i2 -> i1.visibilityContours(i2) } }
-                    voronoiCells = approximateVoronoiDiagram(patterns.map { it.original() }, s.expandRadius + s.clearance)
-                    visibilityGraph = Graph(islands, obstacles, voronoiCells)
-                    visibilityEdges = visibilityGraph.edges.map { it.contour }
-                    bridges = visibilityGraph.spanningTrees()
+                    try {
+                        problemInstance = ProblemInstance(
+                            points,
+                            s.expandRadius,
+                            s.clusterRadius,
+                            s.bendDistance,
+                            s.bendInflection,
+                            s.maxBendAngle,
+                            s.maxTurningAngle
+                        )
+                        patterns = problemInstance.computePartition(s.disjoint)
+                        islands = patterns.map { it.toIsland(s.expandRadius) }
+                        obstacles = islands.map { it.scale(1 + s.clearance / it.circles.first().radius) }
+                        visibilityContours = islands.map { i1 ->
+                            islands.filter { i2 -> i2.type == i1.type }.flatMap { i2 -> i1.visibilityContours(i2) }
+                        }
+                        voronoiCells =
+                            approximateVoronoiDiagram(patterns.map { it.original() }, s.expandRadius + s.clearance)
+                        visibilityGraph = Graph(islands, obstacles, voronoiCells)
+                        visibilityEdges = visibilityGraph.edges.map { it.contour }
+                        bridges = visibilityGraph.spanningTrees()
+                    } catch(e: Throwable) {
+                        e.printStackTrace()
+                    }
                 }
 
                 if (it.name == "c") {
@@ -251,10 +276,12 @@ fun main() = application {
                 }
             }
         }
-
+        val font = loadFont("data/fonts/default.otf", 16.0)
         extend(Camera2D())
         extend {
             view = drawer.view
+            drawer.fontMap = font
+            drawer.fill = ColorRGBa.BLACK
             drawer.clear(ColorRGBa.WHITE)
 
             composition = { showMouse -> drawComposition {
@@ -342,6 +369,11 @@ fun main() = application {
                             stroke = ColorRGBa.BLUE
                             fill = ColorRGBa.BLUE
                             circle(vertex.pos, s.pSize / 5.0)
+
+                            isolated {
+                                model = Matrix44.IDENTITY
+                                text("${vertex::class} $vertex", Vector2(100.0, 100.0))
+                            }
 
                             stroke = ColorRGBa.GREEN
                             fill = ColorRGBa.GREEN

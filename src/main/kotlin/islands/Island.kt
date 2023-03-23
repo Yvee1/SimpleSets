@@ -18,4 +18,5 @@ fun Pattern.toIsland(expandRadius: Double) = when(this) {
     is Cluster -> toIsland(expandRadius)
     is Bend -> toIsland(expandRadius)
     is SinglePoint -> toIsland(expandRadius)
+    else -> error("Satisfying the compiler..., impossible case")
 }

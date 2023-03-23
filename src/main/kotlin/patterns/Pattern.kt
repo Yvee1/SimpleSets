@@ -19,15 +19,11 @@ fun ProblemInstance.computePattern(uncovered: List<Point>, obstacles: List<Patte
     val lonelyPoint = SinglePoint(uncovered.first())
     val cluster = largestCluster(uncovered, obstacles)
     if (cluster.weight > 2 && !clusterIsMonotoneBend(cluster)) return cluster
-    val bend = if (bendInflection) largestInflectionBend(Orientation.RIGHT, uncovered, obstacles)
+    val bend = if (bendInflection) largestInflectionBend(uncovered, obstacles)
                else largestMonotoneBend(Orientation.RIGHT, uncovered, obstacles)
-    if (bend.weight >= cluster.weight) {
-        return bend
-    }
-    if (cluster.weight > 1) {
-        return cluster
-    }
-    return lonelyPoint
+    if (bend.weight == 0 && cluster.weight == 0) return lonelyPoint
+    if (bend.weight >= cluster.weight) return bend
+    return cluster
 }
 
 fun ProblemInstance.computePartition(disjoint: Boolean = true): List<Pattern> {

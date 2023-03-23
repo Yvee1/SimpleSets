@@ -87,5 +87,6 @@ fun Island.visibilityContours(other: Island): List<ShapeContour> {
         is PointIsland -> circles.mapNotNull { it.visibilityContour(other) }
         is ConvexIsland -> circles.zip(circularArcs).mapNotNull { it.visibilityContour(other) } + segments.mapNotNull { it.visibilityContour(other) }
         is BendIsland -> circles.zip(circularArcs).mapNotNull { it.visibilityContour(other) } + segments.mapNotNull { it.visibilityContour(other) }
+        else -> error("Satisfying the compiler..., impossible case")
     }
 }

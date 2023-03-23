@@ -18,6 +18,7 @@ import geometric.overlaps
  * @throws error if `points` do not have distinct x-coordinates
  */
 fun ProblemInstance.largestCluster(uncovered: List<Point> = points, obstacles: List<Pattern> = emptyList()): Cluster {
+    if (clusterRadius <= 0) return Cluster.EMPTY
     val uncoveredStripeData = StripeData(uncovered)
     val colored = uncovered.groupBy {
         it.type

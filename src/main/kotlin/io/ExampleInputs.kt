@@ -10,7 +10,7 @@ import java.io.IOException
 import kotlin.math.pow
 
 enum class ExampleInput {
-    LowerBound, NYC, FiveColors
+    LowerBound, NYC, Amsterdam, KelpFusion, SmallExample, FiveColors
 }
 
 fun getExampleInput(e: ExampleInput): List<Point> =
@@ -54,11 +54,23 @@ fun getExampleInput(e: ExampleInput): List<Point> =
             pts
         }
         ExampleInput.NYC -> {
-            val f = File("nyc.ipe")
+            val f = File("example-input/nyc.ipe")
+            ipeToPoints(f)
+        }
+        ExampleInput.Amsterdam -> {
+            val f = File("example-input/amsterdam.ipe")
+            ipeToPoints(f)
+        }
+        ExampleInput.KelpFusion -> {
+            val f = File("example-input/kelp-fusion.ipe")
+            ipeToPoints(f)
+        }
+        ExampleInput.SmallExample -> {
+            val f = File("example-input/small-example.ipe")
             ipeToPoints(f)
         }
         ExampleInput.FiveColors -> {
-            val f = File("5-colors.ipe")
+            val f = File("example-input/5-colors.ipe")
             ipeToPoints(f)
         }
     }

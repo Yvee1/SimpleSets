@@ -3,7 +3,7 @@ package patterns
 import org.openrndr.math.Vector2
 import org.openrndr.shape.ShapeContour
 
-class SinglePoint(val point: Point) : Pattern() {
+data class SinglePoint(val point: Point) : Pattern() {
     override val weight = 1
     override val contour = ShapeContour.fromPoints(listOf(point.pos), true)
     override val type = point.type

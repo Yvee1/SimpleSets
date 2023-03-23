@@ -47,6 +47,12 @@ fun ProblemInstance.tableLargestConstrainedMonotoneBendFrom(a: Point, b: Point, 
                                                             obstacles: List<Pattern> = emptyList()): Pair<Table<ConstrainedPoint>, TableEntry<ConstrainedPoint>> =
     tableLargestConstrainedBendFrom(a, b, dir, uncovered, obstacles) { _, _ -> emptyList() }
 
+fun ProblemInstance.largestInflectionBend(uncovered: List<Point> = points, obstacles: List<Pattern> = emptyList()) =
+    listOf(
+        largestInflectionBend(Orientation.LEFT, uncovered, obstacles),
+        largestInflectionBend(Orientation.RIGHT, uncovered, obstacles)
+    ).maxBy { it.weight }
+
 fun ProblemInstance.largestInflectionBend(dir: Orientation = Orientation.RIGHT, uncovered: List<Point> = points,
                                           obstacles: List<Pattern> = emptyList()): Bend {
     if (maxTurningAngle >= maxBendAngle) {
