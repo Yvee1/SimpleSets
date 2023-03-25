@@ -11,6 +11,7 @@ import patterns.computePartition
 import org.openrndr.*
 import org.openrndr.color.ColorRGBa
 import org.openrndr.color.rgb
+import org.openrndr.draw.LineJoin
 import org.openrndr.draw.loadFont
 import org.openrndr.extra.color.presets.BLUE_STEEL
 import org.openrndr.extra.color.presets.ORANGE
@@ -320,6 +321,7 @@ fun main() = application {
                                 fill = null
                                 stroke = ColorRGBa.BLACK
                                 strokeWeight *= 4
+                                lineJoin = LineJoin.ROUND
                                 contour(bridge.contour)
 
                                 strokeWeight /= 3
