@@ -10,7 +10,6 @@ import java.util.PriorityQueue
 import kotlin.math.abs
 
 sealed class Vertex(val pos: Vector2, val edges: MutableList<VisEdge>) {
-    abstract val inIsland: Boolean
     override fun hashCode() = pos.hashCode()
     override fun equals(other: Any?) = if (other is Vertex) pos == other.pos else false
     override fun toString() = pos.toString()
@@ -22,7 +21,6 @@ sealed class IslandVertex(val island: Int, pos: Vector2, edges: MutableList<VisE
 
 class CircleVertex(island: Int, val circle: Circle, private val clearance: Double, edges: MutableList<VisEdge> = mutableListOf())
     : IslandVertex(island, circle.center, edges) {
-    override val inIsland = true
     override fun pointInDir(other: Vector2): Vector2 {
         val r = circle.radius
         return pos + (other - pos).normalized * r
@@ -34,7 +32,6 @@ val LineSegment.center get() = (start + end)/2.0
 
 class SegmentVertex(island: Int, val lineSegment: LineSegment, edges: MutableList<VisEdge> = mutableListOf())
     : IslandVertex(island, lineSegment.center, edges) {
-    override val inIsland = true
     override fun pointInDir(other: Vector2): Vector2? =
         if (abs(angleBetween(lineSegment.direction.perpendicular(), other - pos).asDegrees.let { if (it > 90) 180 - it else it }) <= 45.0) {
             pos
@@ -43,13 +40,14 @@ class SegmentVertex(island: Int, val lineSegment: LineSegment, edges: MutableLis
         }
 }
 
-class TangentVertex(pos: Vector2, edges: MutableList<VisEdge> = mutableListOf()): Vertex(pos, edges) {
-    override val inIsland = false
+class BoundaryVertex(island: Int, pos: Vector2, edges: MutableList<VisEdge> = mutableListOf())
+    : IslandVertex(island, pos, edges) {
+    override fun pointInDir(other: Vector2) = pos
 }
 
-class ChainVertex(pos: Vector2, val islands: List<Int>, edges: MutableList<VisEdge> = mutableListOf()): Vertex(pos, edges) {
-    override val inIsland = false
-}
+class TangentVertex(pos: Vector2, edges: MutableList<VisEdge> = mutableListOf()): Vertex(pos, edges)
+
+class ChainVertex(pos: Vector2, val islands: List<Int>, edges: MutableList<VisEdge> = mutableListOf()): Vertex(pos, edges)
 
 data class Endpoint(val vertex: Vertex, val position: Vector2)
 
@@ -326,9 +324,6 @@ data class Graph(val islands: List<Island>, val obstacles: List<Island>, val vor
         return ls
     }
 
-    private fun obstaclesOrIslands(vararg ints: Int): List<Island> =
-        ints.map { smallerIslands[it] } + smallerObstacles.except(*ints)
-
     private fun <T> List<T>.except(vararg ints: Int): List<T> =
         withIndex().filter { it.index !in ints }.map { it.value }
 
@@ -355,7 +350,18 @@ data class Graph(val islands: List<Island>, val obstacles: List<Island>, val vor
         val v = ChainVertex(position, listOf(i1, i2))
         vertices.add(v)
         chainVertices.add(v)
+        createBoundaryEdge(v, i1)
+        createBoundaryEdge(v, i2)
         return v
+    }
+
+    private fun createBoundaryEdge(v: ChainVertex, i: Int) {
+        val nearest = islands[i].contour.nearest(v.pos).position
+        val w = BoundaryVertex(i, nearest)
+        val ls = freeSegment(w, v) ?: return
+        createEdge(w, v, ls.contour)
+        vertices.add(w)
+        islandVertices[i].add(w)
     }
 
     private fun createEdge(v: Vertex, w: Vertex, c: ShapeContour, checkEmpty: Boolean = true) {
