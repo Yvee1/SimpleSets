@@ -2,58 +2,34 @@ import geometric.end
 import geometric.overlaps
 import geometric.start
 import islands.Island
+import islands.visibilityIntervals
 import org.openrndr.math.Vector2
-import org.openrndr.math.asDegrees
 import org.openrndr.shape.*
-import patterns.angleBetween
 import java.util.PriorityQueue
-import kotlin.math.abs
 
-sealed class Vertex(val pos: Vector2, val edges: MutableList<VisEdge>) {
+sealed class Vertex(val edges: MutableList<VisEdge>)
+
+sealed class PointVertex(val pos: Vector2, edges: MutableList<VisEdge> = mutableListOf()): Vertex(edges) {
     override fun hashCode() = pos.hashCode()
-    override fun equals(other: Any?) = if (other is Vertex) pos == other.pos else false
+    override fun equals(other: Any?) = if (other is PointVertex) pos == other.pos else false
     override fun toString() = pos.toString()
 }
 
-sealed class IslandVertex(val island: Int, pos: Vector2, edges: MutableList<VisEdge>): Vertex(pos, edges) {
-    abstract fun pointInDir(other: Vector2): Vector2?
+class IslandVertex(val island: Int, edges: MutableList<VisEdge> = mutableListOf()): Vertex(edges) {
+    override fun hashCode() = island.hashCode()
+    override fun equals(other: Any?) = if (other is IslandVertex) island == other.island else false
+    override fun toString() = island.toString()
 }
 
-class CircleVertex(island: Int, val circle: Circle, private val clearance: Double, edges: MutableList<VisEdge> = mutableListOf())
-    : IslandVertex(island, circle.center, edges) {
-    override fun pointInDir(other: Vector2): Vector2 {
-        val r = circle.radius
-        return pos + (other - pos).normalized * r
-    }
-    val clearanceCircle by lazy { circle.copy(radius = circle.radius + clearance) }
-}
+class TangentVertex(pos: Vector2, edges: MutableList<VisEdge> = mutableListOf()): PointVertex(pos, edges)
 
-val LineSegment.center get() = (start + end)/2.0
-
-class SegmentVertex(island: Int, val lineSegment: LineSegment, edges: MutableList<VisEdge> = mutableListOf())
-    : IslandVertex(island, lineSegment.center, edges) {
-    override fun pointInDir(other: Vector2): Vector2? =
-        if (abs(angleBetween(lineSegment.direction.perpendicular(), other - pos).asDegrees.let { if (it > 90) 180 - it else it }) <= 45.0) {
-            pos
-        } else {
-            null
-        }
-}
-
-class BoundaryVertex(island: Int, pos: Vector2, edges: MutableList<VisEdge> = mutableListOf())
-    : IslandVertex(island, pos, edges) {
-    override fun pointInDir(other: Vector2) = pos
-}
-
-class TangentVertex(pos: Vector2, edges: MutableList<VisEdge> = mutableListOf()): Vertex(pos, edges)
-
-class ChainVertex(pos: Vector2, val islands: List<Int>, edges: MutableList<VisEdge> = mutableListOf()): Vertex(pos, edges)
+class ChainVertex(pos: Vector2, val islands: List<Int>, edges: MutableList<VisEdge> = mutableListOf()): PointVertex(pos, edges)
 
 data class Endpoint(val vertex: Vertex, val position: Vector2)
 
 open class VisEdge(val v: Vertex, val w: Vertex, val contour: ShapeContour) {
-    val start = Endpoint(v, if (contour.empty) v.pos else contour.start)
-    val end = Endpoint(w, if (contour.empty) v.pos else contour.end)
+    val start by lazy { Endpoint(v, if (contour.empty && v is PointVertex) v.pos else contour.start) }
+    val end by lazy { Endpoint(w, if (contour.empty && v is PointVertex) v.pos else contour.end) }
     fun theOther(u: Vertex) = if (u == v) w else if (u == w) v else error("Edge $this does not contain vertex $u")
     fun replace(u: Vertex, uNew: Vertex) = VisEdge(uNew, theOther(u), contour)
 }
@@ -63,7 +39,7 @@ class ChainEdge(v: Vertex, w: Vertex, contour: ShapeContour): VisEdge(v, w, cont
 data class Graph(val islands: List<Island>, val obstacles: List<Island>, val voronoiCells: List<ShapeContour>) {
     val vertices: MutableList<Vertex> = mutableListOf()
     val edges: MutableList<VisEdge> = mutableListOf()
-    val islandVertices = List(islands.size) { mutableListOf<IslandVertex>() }
+    val islandVertices = List(islands.size) { createIslandVertex(it) }
     val islandTangentVertices = List(islands.size) { mutableListOf<TangentVertex>() }
     val chainVertices = mutableListOf<ChainVertex>()
     val smallerIslands = islands.map { it.scale(0.975) }
@@ -71,33 +47,35 @@ data class Graph(val islands: List<Island>, val obstacles: List<Island>, val vor
     val smallerObstacles = obstacles.map { it.scale(0.975) }
 
     init {
-        // Create vertices inside islands: circle and segment vertices.
-        for ((i, island) in islands.withIndex()) {
-            for (circle in island.circles) {
-                createCircleVertex(i, circle)
-            }
-            for (segment in island.segments) {
-                createSegmentVertex(i, segment)
-            }
-        }
+        createAdjacentIslandEdges()
+        createVoronoiChains()
+        mergeChainVertices()
+        connectIslandsAndVertices()
+        createTangents()
+        mergeTangentVertices()
+        createObstacleBoundaryEdges()
+    }
 
-        // Create 0-length edges from
+    private fun createAdjacentIslandEdges() {
+        // Create 0-length edges between adjacent islands
         for (i1 in islands.indices) {
             for (i2 in i1 + 1 until islands.size) {
                 if (islands[i1].type != islands[i2].type
                     || !islands[i1].contour.bounds.intersects(islands[i2].contour.bounds)) continue
                 if (islands[i1].contour.intersections(islands[i2].contour).isNotEmpty()) {
-                    createEdge(islandVertices[i1].first(), islandVertices[i2].first(), ShapeContour.EMPTY, checkEmpty = false)
+                    createEdge(islandVertices[i1], islandVertices[i2], ShapeContour.EMPTY, checkEmpty = false)
                 }
             }
         }
+    }
 
+    private fun createVoronoiChains() {
         // Create chain vertices and pathways using the provided voronoi cells.
         for (i1 in obstacles.indices) {
+            val ovc1 = voronoiCells[i1].intersection(obstacles[i1].contour.shape).contours.first()
             for (i2 in i1 + 1 until obstacles.size) {
-                val ovc1 = voronoiCells[i1].intersection(obstacles[i1].contour.shape).contours.first()
                 val ovc2 = voronoiCells[i2].intersection(obstacles[i2].contour.shape).contours.first()
-
+                if (!ovc1.bounds.intersects(ovc2.bounds)) continue
                 val cellIntersections = ovc1.intersections(ovc2)
                 if (cellIntersections.isEmpty()) continue
                 if (cellIntersections.size == 1) {
@@ -133,29 +111,26 @@ data class Graph(val islands: List<Island>, val obstacles: List<Island>, val vor
                 }
             }
         }
+    }
 
-        mergeChainVertices()
-
+    private fun connectIslandsAndVertices() {
         // Connect the vertices
         islands.indices.toList().parallelStream().flatMap { i1 ->
             val newEdges = mutableListOf<Pair<Pair<Vertex, Vertex>, ShapeContour>>()
+
+            val v1 = islandVertices[i1]
             for (i2 in i1 + 1 until islands.size) {
                 if (islands[i1].type != islands[i2].type) continue
-                for (v1 in islandVertices[i1]) {
-                    for (v2 in islandVertices[i2]) {
-                        val segment = freeSegment(v1, v2)
-                        if (segment != null) {
-                            newEdges.add(v1 to v2 to segment.contour)
-                        }
-                    }
+                val v2 = islandVertices[i2]
+                val segment = freeSegment(v1, v2)
+                if (segment != null) {
+                    newEdges.add(v1 to v2 to segment.contour)
                 }
             }
-            for (v1 in islandVertices[i1]) {
-                for (v2 in chainVertices) {
-                    val segment = freeSegment(v1, v2)
-                    if (segment != null) {
-                        newEdges.add(v1 to v2 to segment.contour)
-                    }
+            for (v2 in chainVertices) {
+                val segment = freeSegment(v1, v2)
+                if (segment != null) {
+                    newEdges.add(v1 to v2 to segment.contour)
                 }
             }
             newEdges.stream()
@@ -177,14 +152,15 @@ data class Graph(val islands: List<Island>, val obstacles: List<Island>, val vor
             val (v1, v2) = verts
             createEdge(v1, v2, contour)
         }
+    }
 
+    private fun createTangents() {
         // Create chainVertex--circle tangents
         chainVertices.parallelStream().flatMap { v1 ->
             val tangentEdges = mutableListOf<Pair<Pair<ChainVertex, Int>, LineSegment>>()
-            for (i2 in islands.indices) {
-                for (v2 in islandVertices[i2]) {
-                    if (v2 !is CircleVertex) continue
-                    v2.clearanceCircle.tangents(v1.pos)
+            for (i2 in obstacles.indices) {
+                for (clearanceCircle in obstacles[i2].circles) {
+                    clearanceCircle.tangents(v1.pos)
                         .toList()
                         .map { tp -> LineSegment(v1.pos, tp) }
                         .filter { ls ->
@@ -205,43 +181,42 @@ data class Graph(val islands: List<Island>, val obstacles: List<Island>, val vor
 
         islands.indices.toList().parallelStream().flatMap { i1 ->
             val newEdges = mutableListOf<Pair<Pair<Vertex, Vertex>, ShapeContour>>()
+            val v1 = islandVertices[i1]
             for (i2 in islands.indices) {
                 if (i1 == i2) continue
-                for (v1 in islandVertices[i1]) {
-                    for (v2 in islandVertices[i2]) {
-                        if (v2 !is CircleVertex) continue
 
-                        // Create point--circle tangents
-                        v2.clearanceCircle.tangents(v1.pos)
-                            .toList()
-                            .mapNotNull { tp -> v1.pointInDir(tp)?.let { LineSegment(it, tp) } }
-                            .filter { ls ->
-                                ls.end.x.isFinite() && ls.end.y.isFinite() &&
-                                    !smallerIslands[i1].contour.overlaps(ls.contour) &&
-                                        islands.except(i1).none { obstacle ->
-                                            obstacle.contour.overlaps(ls.contour)
-                                        } &&
-                                        smallerObstacles.except(i1).none { obstacle ->
-                                            var obstacleShape = obstacle.contour.shape
-                                            if (obstacleShape.bounds.intersects(obstacles[i1].contour.bounds)) {
-                                                obstacleShape = obstacleShape.difference(obstacles[i1].contour.shape)
-                                            }
-                                            obstacleShape.contours.any { it.overlaps(ls.contour) }
-                                        }
-                            }
-                            .forEach { ls ->
-                                val tv = createTangentVertex(i2, ls.end)
-                                newEdges.add(v1 to tv to ls.contour)
-                            }
+                // Create island--obstacle tangents
+                islands[i1].visibilityIntervals(obstacles[i2])
+                    .asSequence()
+                    .flatMap { listOf(it.start, it.end) }
+                    .map { bt ->
+                        bt.end?.let { LineSegment(bt.start.position, it.position) }
+                    }
+                    .filterNotNull()
+                    .filter { ls ->
+                        !smallerIslands[i1].contour.overlaps(ls.contour) &&
+                                islands.except(i1).none { obstacle ->
+                                    obstacle.contour.overlaps(ls.contour)
+                                } &&
+                                smallerObstacles.except(i1).none { obstacle ->
+                                    var obstacleShape = obstacle.contour.shape
+                                    if (obstacleShape.bounds.intersects(obstacles[i1].contour.bounds)) {
+                                        obstacleShape = obstacleShape.difference(obstacles[i1].contour.shape)
+                                    }
+                                    obstacleShape.contours.any { it.overlaps(ls.contour) }
+                                }
+                    }.forEach { ls ->
+                        val tv = createTangentVertex(i2, ls.end)
+                        newEdges.add(v1 to tv to ls.contour)
+                    }
 
-                        // Create circle--circle tangents
-                        if (v1 !is CircleVertex || i2 > i1) continue
-                        (v1.clearanceCircle.tangents(v2.clearanceCircle, isInner = false) + v1.clearanceCircle.tangents(
-                            v2.clearanceCircle,
-                            isInner = true
-                        ))
+                // Create obstacle--obstacle tangents
+                if (i2 > i1) continue
+                for (c1 in obstacles[i1].circles) {
+                    for (c2 in obstacles[i2].circles) {
+                        (c1.tangents(c2, isInner = false) + c1.tangents(c2, isInner = true))
                             .map { LineSegment(it.first, it.second) }
-                            .filter { ls -> smallerObstacles.none { it.contour.overlaps(ls.contour) } }
+                            .filter { ls -> smallerObstacles.none { it.contour.overlaps(ls.contour )} }
                             .forEach { ls ->
                                 val tv1 = createTangentVertex(i1, ls.start)
                                 val tv2 = createTangentVertex(i2, ls.end)
@@ -255,9 +230,9 @@ data class Graph(val islands: List<Island>, val obstacles: List<Island>, val vor
             val (v1, v2) = verts
             createEdge(v1, v2, contour)
         }
+    }
 
-        mergeTangentVertices()
-
+    private fun createObstacleBoundaryEdges() {
         for ((i, tangentVertices) in islandTangentVertices.withIndex()) {
             val verts = tangentVertices + chainVertices.filter { it.islands.size == 2 && i in it.islands }
             val island = obstacles[i]
@@ -279,10 +254,12 @@ data class Graph(val islands: List<Island>, val obstacles: List<Island>, val vor
     }
 
     private fun freeSegment(v1: IslandVertex, v2: IslandVertex): LineSegment? {
-        val bp1 = v1.pointInDir(v2.pos)
-        val bp2 = v2.pointInDir(v1.pos)
-        if (bp1 == null || bp2 == null) return null
-        val ls = LineSegment(bp1, bp2)
+        val ls = islands[v1.island].contour.equidistantPositions(50).flatMap { p1 ->
+            islands[v2.island].contour.equidistantPositions(50).map { p2 ->
+                p1 to p2
+            }
+        }.minBy { (p1, p2) -> (p2 - p1).squaredLength }.let { (p1, p2) -> LineSegment(p1, p2) }
+
         val overlapsEndIsland = listOf(smallerIslands[v1.island], smallerIslands[v2.island]).any {
             ls.contour.overlaps(it.contour)
         }
@@ -309,7 +286,7 @@ data class Graph(val islands: List<Island>, val obstacles: List<Island>, val vor
     }
 
     private fun freeSegment(v1: IslandVertex, v2: ChainVertex): LineSegment? {
-        val p1 = v1.pointInDir(v2.pos) ?: return null
+        val p1 = islands[v1.island].contour.nearest(v2.pos).position
         val ls = LineSegment(p1, v2.pos)
         if (smallerIslands[v1.island].contour.overlaps(ls.contour)) return null
         val intersectsObstacle = islands.zip(smallerObstacles).except(v1.island).any { (island, obstacle) ->
@@ -317,8 +294,10 @@ data class Graph(val islands: List<Island>, val obstacles: List<Island>, val vor
             if (obstacleShape.bounds.intersects(obstacles[v1.island].contour.bounds)) {
                 obstacleShape = obstacleShape.difference(obstacles[v1.island].contour.shape)
             }
-            intersection(ls.contour, obstacleShape).contours.firstOrNull()?.let { it.length > 0.01 } ?: false ||
-                    ls.contour.overlaps(island.contour)
+            val intersectsObstacle = if (!ls.contour.bounds.intersects(obstacleShape.bounds)) false
+                else intersection(ls.contour, obstacleShape).contours.firstOrNull()?.let { it.length > 0.01 } ?: false
+            val overlapsIsland = if (!ls.contour.bounds.intersects(island.contour.bounds)) false else ls.contour.overlaps(island.contour)
+            intersectsObstacle || overlapsIsland
         }
         if (intersectsObstacle) return null
         return ls
@@ -327,16 +306,10 @@ data class Graph(val islands: List<Island>, val obstacles: List<Island>, val vor
     private fun <T> List<T>.except(vararg ints: Int): List<T> =
         withIndex().filter { it.index !in ints }.map { it.value }
 
-    private fun createCircleVertex(island: Int, circle: Circle) {
-        val v = CircleVertex(island, circle, obstacles[island].circles.first().radius - circle.radius)
+    private fun createIslandVertex(island: Int): IslandVertex {
+        val v = IslandVertex(island)
         vertices.add(v)
-        islandVertices[island].add(v)
-    }
-
-    private fun createSegmentVertex(island: Int, segment: LineSegment) {
-        val v = SegmentVertex(island, segment)
-        vertices.add(v)
-        islandVertices[island].add(v)
+        return v
     }
 
     private fun createTangentVertex(island: Int, pos: Vector2): TangentVertex {
@@ -356,12 +329,10 @@ data class Graph(val islands: List<Island>, val obstacles: List<Island>, val vor
     }
 
     private fun createBoundaryEdge(v: ChainVertex, i: Int) {
-        val nearest = islands[i].contour.nearest(v.pos).position
-        val w = BoundaryVertex(i, nearest)
+        val w = islandVertices[i]
         val ls = freeSegment(w, v) ?: return
         createEdge(w, v, ls.contour)
         vertices.add(w)
-        islandVertices[i].add(w)
     }
 
     private fun createEdge(v: Vertex, w: Vertex, c: ShapeContour, checkEmpty: Boolean = true) {
@@ -467,19 +438,26 @@ data class Graph(val islands: List<Island>, val obstacles: List<Island>, val vor
         return distances to previous
     }
 
-    fun islandToIsland(island1: Int, island2: Int) =
-        islandVertices[island1].map { v ->
-            val (distances, previous) = dijkstra(v)
-            val closest = islandVertices[island2].map {
-                it to distances[it]!!
-            }.minBy { it.second }
-            previous to closest
-        }.filter { it.second.second.isFinite() }
-            .minByOrNull { it.second.second }
-            ?.let { (previous, closest) ->
-                val edges = trace(previous, closest.first)
-                Bridge(island1, island2, edgesToContour(edges)) to closest.second
-            }
+    fun islandToIsland(island1: Int, island2: Int): Pair<Bridge, Double>? {
+        val v = islandVertices[island1]
+        val (distances, previous) = dijkstra(v)
+        val w = islandVertices[island2]
+        if (distances[w]!!.isInfinite()) return null
+        val edges = trace(previous, islandVertices[island2])
+        return Bridge(island1, island2, edgesToContour(edges)) to distances[w]!!
+    }
+//        islandVertices[island1].map { v ->
+//            val (distances, previous) = dijkstra(v)
+//            val closest = islandVertices[island2].map {
+//                it to distances[it]!!
+//            }.minBy { it.second }
+//            previous to closest
+//        }.filter { it.second.second.isFinite() }
+//            .minByOrNull { it.second.second }
+//            ?.let { (previous, closest) ->
+//                val edges = trace(previous, closest.first)
+//                Bridge(island1, island2, edgesToContour(edges)) to closest.second
+//            }
 
     // Prim's algorithm
     fun spanningTrees(): List<Bridge> {

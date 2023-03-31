@@ -5,6 +5,8 @@ import io.writeToIpe
 import islands.Island
 import islands.toIsland
 import islands.visibilityContours
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import patterns.Pattern
 import patterns.Point
 import patterns.computePartition
@@ -12,6 +14,7 @@ import org.openrndr.*
 import org.openrndr.color.ColorRGBa
 import org.openrndr.color.rgb
 import org.openrndr.draw.LineJoin
+import org.openrndr.draw.isolated
 import org.openrndr.draw.loadFont
 import org.openrndr.extra.color.presets.BLUE_STEEL
 import org.openrndr.extra.color.presets.ORANGE
@@ -50,6 +53,9 @@ fun main() = application {
         var problemInstance = ProblemInstance(points)
         var patterns = listOf<Pattern>()
         var islands = listOf<Island>()
+        var clippedIslands = listOf<ShapeContour>()
+        var mergedIndex = mutableMapOf<Int, Int>()
+        var mergedIslands = listOf<Pair<ShapeContour, List<Int>>>()
         var visibilityContours = listOf<List<ShapeContour>>()
         var voronoiCells = listOf<ShapeContour>()
         var obstacles = listOf<Island>()
@@ -58,11 +64,15 @@ fun main() = application {
         var bridges = listOf<Bridge>()
         var composition: (Boolean) -> Composition = { _ -> drawComposition { } }
 
-        fun clearData(){
-            points.clear()
-            problemInstance = ProblemInstance(points)
+        fun clearData(clearPoints: Boolean = true){
+            if (clearPoints)
+                points.clear()
+                problemInstance = ProblemInstance(points)
             patterns = emptyList()
             islands = emptyList()
+            clippedIslands = emptyList()
+            mergedIndex = mutableMapOf()
+            mergedIslands = emptyList()
             visibilityContours = emptyList()
             voronoiCells = emptyList()
             obstacles = emptyList()
@@ -149,7 +159,7 @@ fun main() = application {
             @DoubleParameter("Cluster radius", 0.0, 100.0, order=5000)
             var clusterRadius = 50.0
 
-            @DoubleParameter("Clearance", 0.0, 20.0, order = 7000)
+            @DoubleParameter("Clearance", 2.0, 20.0, order = 7000)
             var clearance = 5.0
 
             @BooleanParameter("Show visibility contours", order = 9000)
@@ -160,6 +170,9 @@ fun main() = application {
 
             @BooleanParameter("Show cluster circles", order = 10000)
             var showClusterCircles = false
+
+            @BooleanParameter("Show bend distance", order = 10005)
+            var showBendDistance = false
 
             @BooleanParameter("Show visibility graph", order=10010)
             var showVisibilityGraph = false
@@ -230,15 +243,17 @@ fun main() = application {
 
         }
 
-        keyboard.keyDown.listen {
-            if (!it.propagationCancelled) {
-                if (it.name in (1..5).map { it.toString() }) {
-                    type = it.name.toInt() - 1
+        keyboard.keyDown.listen { keyEvent ->
+            if (!keyEvent.propagationCancelled) {
+                if (keyEvent.name in (1..5).map { it.toString() }) {
+                    type = keyEvent.name.toInt() - 1
                 }
 
-                if (it.key == KEY_SPACEBAR) {
-                    it.cancelPropagation()
+                if (keyEvent.key == KEY_SPACEBAR) {
+                    keyEvent.cancelPropagation()
+
                     try {
+                        clearData(clearPoints = false)
                         problemInstance = ProblemInstance(
                             points,
                             s.expandRadius,
@@ -248,29 +263,64 @@ fun main() = application {
                             s.maxBendAngle,
                             s.maxTurningAngle
                         )
-                        patterns = problemInstance.computePartition(s.disjoint)
-                        islands = patterns.map { it.toIsland(s.expandRadius) }
-                        obstacles = islands.map { it.scale(1 + s.clearance / it.circles.first().radius) }
-                        visibilityContours = islands.map { i1 ->
-                            islands.filter { i2 -> i2.type == i1.type }.flatMap { i2 -> i1.visibilityContours(i2) }
+                        launch {
+                            GlobalScope.launch {
+                                patterns = problemInstance.computePartition(s.disjoint)
+                                islands = patterns.map { it.toIsland(s.expandRadius) }
+                                obstacles = islands.map { it.scale(1 + s.clearance / it.circles.first().radius) }
+                                visibilityContours = islands.map { i1 ->
+                                    islands.filter { i2 -> i2.type == i1.type }
+                                        .flatMap { i2 -> i1.visibilityContours(i2) }
+                                }
+                                voronoiCells =
+                                    approximateVoronoiDiagram(
+                                        patterns.map { it.original() },
+                                        s.expandRadius + s.clearance
+                                    )
+                                clippedIslands = islands.withIndex().map { (i, island) ->
+                                    intersection(island.contour, voronoiCells[i]).outline
+                                }
+                                val tmp = mutableMapOf<Int, Pair<ShapeContour, List<Int>>>()
+                                mergedIslands = buildList {
+                                    for (i1 in islands.indices) {
+                                        for (i2 in i1 + 1 until islands.size) {
+                                            if (islands[i1].type != islands[i2].type
+                                                || !islands[i1].contour.bounds.intersects(islands[i2].contour.bounds)) continue
+                                            if (islands[i1].contour.intersections(islands[i2].contour).isNotEmpty()) {
+                                                val (c1, c2) = listOf(i1, i2).map { i ->
+                                                    tmp[i] ?: (clippedIslands[i] to listOf(i))
+                                                }
+                                                if (c1 == c2) continue
+                                                removeIf { it == c1 || it == c2 }
+                                                val entry = union(c1.first, c2.first).outline to (c1.second + c2.second)
+                                                add(entry)
+                                                (c1.second + c2.second).forEach { i -> tmp[i] = entry }
+                                            }
+                                        }
+                                    }
+                                }
+                                mergedIndex = tmp.map { (i, target) ->
+                                    i to mergedIslands.withIndex().find { it.value == target }!!.index
+                                }.toMap().toMutableMap()
+                                if (s.showVisibilityGraph || s.showBridges) {
+                                    visibilityGraph = Graph(islands, obstacles, voronoiCells)
+                                    visibilityEdges = visibilityGraph.edges.map { it.contour }
+                                    bridges = visibilityGraph.spanningTrees()
+                                }
+                            }.join()
                         }
-                        voronoiCells =
-                            approximateVoronoiDiagram(patterns.map { it.original() }, s.expandRadius + s.clearance)
-                        visibilityGraph = Graph(islands, obstacles, voronoiCells)
-                        visibilityEdges = visibilityGraph.edges.map { it.contour }
-                        bridges = visibilityGraph.spanningTrees()
                     } catch(e: Throwable) {
                         e.printStackTrace()
                     }
                 }
 
-                if (it.name == "c") {
-                    it.cancelPropagation()
+                if (keyEvent.name == "c") {
+                    keyEvent.cancelPropagation()
                     clearData()
                 }
 
-                if (it.key == KEY_BACKSPACE) {
-                    it.cancelPropagation()
+                if (keyEvent.key == KEY_BACKSPACE) {
+                    keyEvent.cancelPropagation()
                     if (points.isNotEmpty()){
                         points.removeLast()
                     }
@@ -284,6 +334,15 @@ fun main() = application {
             drawer.fontMap = font
             drawer.fill = ColorRGBa.BLACK
             drawer.clear(ColorRGBa.WHITE)
+
+            val vertex =
+                visibilityGraph.vertices.minByOrNull { v ->
+                    val tmp = transformMouse(mouse.position)
+                    when(v) {
+                        is PointVertex -> (v.pos - tmp).squaredLength
+                        is IslandVertex -> if (tmp in islands[v.island].contour) 0.0 else (islands[v.island].contour.nearest(tmp).position - tmp).squaredLength
+                    }
+                }
 
             composition = { showMouse -> drawComposition {
                 translate(0.0, height.toDouble())
@@ -308,10 +367,16 @@ fun main() = application {
                     }
                 }
 
-                if (s.showClusterCircles) {
+                if (s.showClusterCircles && s.clusterRadius > 0) {
                     fill = ColorRGBa.GRAY.opacify(0.3)
                     stroke = null
                     circles(points.map { it.pos }, s.clusterRadius)
+                }
+
+                if (s.showBendDistance) {
+                    fill = ColorRGBa.GRAY.opacify(0.3)
+                    stroke = null
+                    circles(points.map { it.pos }, s.bendDistance)
                 }
 
                 if (obstacles.size > 1) {
@@ -339,13 +404,29 @@ fun main() = application {
                     strokeWeight = s.contourStrokeWeight
                     stroke = ColorRGBa.BLACK
                     fill = lightColors[island.type].opacify(0.3)
-                    shape(voronoiCells[i].intersection(island.contour.shape))
+
+                    val mi = mergedIndex[i]
+                    when {
+                        mi != null -> {
+                            if (mergedIslands[mi].second.first() == i) {
+                                lineJoin = LineJoin.ROUND
+                                contour(mergedIslands[mi].first)
+                            }
+                        }
+                        i in clippedIslands.indices -> contour(clippedIslands[i])
+                        else -> contour(island.contour)
+                    }
 
                     if (s.showVisibilityContours) {
                         isolated {
                             stroke = darkColors[island.type].opacify(0.3)
                             strokeWeight *= 4
-                            shapes(visibilityContours[i].map { it.intersection(voronoiCells[i].shape) })
+                            fill = null
+
+                            if (i in voronoiCells.indices)
+                                shapes(visibilityContours[i].map { it.intersection(voronoiCells[i].shape) })
+                            else if (i in visibilityContours.indices)
+                                contours(visibilityContours[i])
                         }
                     }
                 }
@@ -354,7 +435,7 @@ fun main() = application {
                     isolated {
                         stroke = ColorRGBa.BLACK
                         fill = ColorRGBa.BLACK
-                        circles(visibilityGraph.vertices.map { it.pos }, s.pSize / 5.0)
+                        circles(visibilityGraph.vertices.filterIsInstance<PointVertex>().map { it.pos }, s.pSize / 5.0)
                     }
 
                     isolated {
@@ -363,23 +444,30 @@ fun main() = application {
                         fill = null
                         contours(visibilityEdges)
 
-                        val vertex =
-                            visibilityGraph.vertices.minByOrNull { (it.pos - transformMouse(mouse.position)).squaredLength }
                         if (showMouse && vertex != null) {
                             strokeWeight *= 2.0
 
                             stroke = ColorRGBa.BLUE
                             fill = ColorRGBa.BLUE
-                            circle(vertex.pos, s.pSize / 5.0)
 
-                            isolated {
-                                model = Matrix44.IDENTITY
-                                text("${vertex::class} $vertex", Vector2(100.0, 100.0))
+                            fun drawVertex(v: Vertex) {
+                                if (v is PointVertex)
+                                    circle(v.pos, s.pSize / 5.0)
+                                else if (v is IslandVertex) {
+                                    isolated {
+                                        fill = null
+                                        contour(islands[v.island].contour)
+                                    }
+                                }
                             }
+
+                           drawVertex(vertex)
 
                             stroke = ColorRGBa.GREEN
                             fill = ColorRGBa.GREEN
-                            circles(vertex.edges.map { it.theOther(vertex).pos }, s.pSize / 5.0)
+                            vertex.edges.forEach {
+                                drawVertex(it.theOther(vertex))
+                            }
 
                             stroke = ColorRGBa.ORANGE
                             fill = ColorRGBa.ORANGE
@@ -399,6 +487,14 @@ fun main() = application {
             }}
 
             drawer.composition(composition(true))
+            if (s.showVisibilityGraph && vertex != null) {
+                drawer.isolated {
+                    ortho()
+                    model = Matrix44.IDENTITY
+                    this.view = Matrix44.IDENTITY
+                    text("${vertex::class} $vertex", Vector2(0.0, 12.0))
+                }
+            }
         }
     }
 }
