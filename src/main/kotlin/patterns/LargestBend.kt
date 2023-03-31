@@ -59,7 +59,9 @@ fun ProblemInstance.largestInflectionBend(dir: Orientation = Orientation.RIGHT, 
         val mapT = uncovered.parallelStream().flatMap { a ->
             uncovered
                 .parallelStream()
-                .filter { it != a }
+                .filter { b ->
+                    a != b && valid(a, b, obstacles)
+                }
                 .map { b ->
                     val (T, maxT) = tableLargestMonotoneBendFrom(a, b, dir.opposite(), uncovered, obstacles)
                     val key = a to b
@@ -77,7 +79,9 @@ fun ProblemInstance.largestInflectionBend(dir: Orientation = Orientation.RIGHT, 
         val mapT = uncovered.parallelStream().flatMap { a ->
             uncovered
                 .parallelStream()
-                .filter { it != a }
+                .filter { b ->
+                    a != b && valid(a, b, obstacles)
+                }
                 .map { b ->
                     val (T, maxT) = tableLargestConstrainedMonotoneBendFrom(a, b, dir.opposite(), uncovered, obstacles)
                     val key = a to b
@@ -227,8 +231,7 @@ fun ProblemInstance.tablePointSets(a: Point, b: Point, dir: Orientation, uncover
         .filter {
             it != a && it != b && it.type == t &&
                     orientation(a.pos, b.pos, it.pos) in listOf(dir, Orientation.STRAIGHT) &&
-                    orientation(b.pos, b.pos + lowerDir, it.pos) in listOf(dir.opposite(), Orientation.STRAIGHT) &&
-                    valid(b, it, obstacles)
+                    orientation(b.pos, b.pos + lowerDir, it.pos) in listOf(dir.opposite(), Orientation.STRAIGHT)
         }
         .sortedWith((if (dir == Orientation.RIGHT) comp else comp.reversed()) // Sort along the perpendicular to ab; the furthest away first.
             .thenBy { p: Point -> // Along ab; the furthest away first.
