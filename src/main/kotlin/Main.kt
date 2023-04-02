@@ -63,6 +63,7 @@ fun main() = application {
         var visibilityEdges = listOf<ShapeContour>()
         var bridges = listOf<Bridge>()
         var composition: (Boolean) -> Composition = { _ -> drawComposition { } }
+        var calculating = false
 
         fun clearData(clearPoints: Boolean = true){
             if (clearPoints)
@@ -251,20 +252,22 @@ fun main() = application {
 
                 if (keyEvent.key == KEY_SPACEBAR) {
                     keyEvent.cancelPropagation()
+                    if (calculating) return@listen
 
-                    try {
-                        clearData(clearPoints = false)
-                        problemInstance = ProblemInstance(
-                            points,
-                            s.expandRadius,
-                            s.clusterRadius,
-                            s.bendDistance,
-                            s.bendInflection,
-                            s.maxBendAngle,
-                            s.maxTurningAngle
-                        )
-                        launch {
-                            GlobalScope.launch {
+                    clearData(clearPoints = false)
+                    problemInstance = ProblemInstance(
+                        points,
+                        s.expandRadius,
+                        s.clusterRadius,
+                        s.bendDistance,
+                        s.bendInflection,
+                        s.maxBendAngle,
+                        s.maxTurningAngle
+                    )
+                    launch {
+                        GlobalScope.launch {
+                            try {
+                                calculating = true
                                 patterns = problemInstance.computePartition(s.disjoint)
                                 islands = patterns.map { it.toIsland(s.expandRadius) }
                                 obstacles = islands.map { it.scale(1 + s.clearance / it.circles.first().radius) }
@@ -285,14 +288,18 @@ fun main() = application {
                                     for (i1 in islands.indices) {
                                         for (i2 in i1 + 1 until islands.size) {
                                             if (islands[i1].type != islands[i2].type
-                                                || !islands[i1].contour.bounds.intersects(islands[i2].contour.bounds)) continue
-                                            if (islands[i1].contour.intersections(islands[i2].contour).isNotEmpty()) {
+                                                || !islands[i1].contour.bounds.intersects(islands[i2].contour.bounds)
+                                            ) continue
+                                            if (islands[i1].contour.intersections(islands[i2].contour)
+                                                    .isNotEmpty()
+                                            ) {
                                                 val (c1, c2) = listOf(i1, i2).map { i ->
                                                     tmp[i] ?: (clippedIslands[i] to listOf(i))
                                                 }
                                                 if (c1 == c2) continue
                                                 removeIf { it == c1 || it == c2 }
-                                                val entry = union(c1.first, c2.first).outline to (c1.second + c2.second)
+                                                val entry =
+                                                    union(c1.first, c2.first).outline to (c1.second + c2.second)
                                                 add(entry)
                                                 (c1.second + c2.second).forEach { i -> tmp[i] = entry }
                                             }
@@ -307,10 +314,13 @@ fun main() = application {
                                     visibilityEdges = visibilityGraph.edges.map { it.contour }
                                     bridges = visibilityGraph.spanningTrees()
                                 }
-                            }.join()
-                        }
-                    } catch(e: Throwable) {
-                        e.printStackTrace()
+                            }
+                            catch(e: Throwable) {
+                                e.printStackTrace()
+                                calculating = false
+                            }
+                            calculating = false
+                        }.join()
                     }
                 }
 

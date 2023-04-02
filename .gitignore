@@ -6,3 +6,5 @@ out
 video/
 screenshots/
 gui-parameters/
+input-output/
+.file-dialog.properties

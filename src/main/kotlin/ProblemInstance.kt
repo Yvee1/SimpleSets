@@ -9,7 +9,8 @@ class ProblemInstance(originalPoints: List<Point>,
                       val bendDistance: Double = Double.MAX_VALUE,
                       val bendInflection: Boolean = true,
                       val maxBendAngle: Double = 180.0,
-                      val maxTurningAngle: Double = 180.0) {
+                      val maxTurningAngle: Double = 180.0,
+                      transformPoints: Boolean = true) {
     init {
         require(maxBendAngle in 0.0..180.0) {
             "Bend angle should be between 0 and 180 degrees."
@@ -18,7 +19,7 @@ class ProblemInstance(originalPoints: List<Point>,
             "Bend distance should be a positive number."
         }
     }
-    val points = transformPoints(originalPoints)
+    val points = if (transformPoints) transformPoints(originalPoints) else originalPoints
     val stripeData = StripeData(points)
     val capsuleData = CapsuleData(points, expandRadius)
 }
