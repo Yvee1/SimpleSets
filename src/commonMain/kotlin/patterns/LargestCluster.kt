@@ -23,15 +23,15 @@ fun ProblemInstance.largestCluster(uncovered: List<Point> = points, obstacles: L
     val colored = uncovered.groupBy {
         it.type
     }
-    return colored.toList().parallelStream().map { (_, pts) ->
+    return colored.toList().asSequence().map { (_, pts) ->
         val freeSpace: Shape? =
             if (clusterRadius < Double.MAX_VALUE)
                 pts.fold(Shape.EMPTY) { acc, x -> Circle(x.pos, clusterRadius).shape.union(acc) }
             else null
-        pts.parallelStream()
+        pts.asSequence()
             .map { largestClusterAt(it, uncovered, uncoveredStripeData, obstacles, freeSpace) }
-            .max(compareBy({ it.weight }, { -it.contour.shape.area })).orElse(Cluster.EMPTY)
-    }.max(compareBy({ it.weight }, { -it.contour.shape.area })).orElse(Cluster.EMPTY)
+            .maxWith(compareBy({ it.weight }, { -it.contour.shape.area })) ?: Cluster.EMPTY
+    }.maxWith(compareBy({ it.weight }, { -it.contour.shape.area })) ?: Cluster.EMPTY
 }
 
 private fun compatible(q: Point, r: Point, s: Point) = orientation(q.pos, r.pos, s.pos) != Orientation.LEFT

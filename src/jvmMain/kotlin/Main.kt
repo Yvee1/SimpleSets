@@ -1,7 +1,3 @@
-import io.ExampleInput
-import io.getExampleInput
-import io.ipeToPoints
-import io.writeToIpe
 import islands.Island
 import islands.toIsland
 import islands.visibilityContours
@@ -351,6 +347,7 @@ fun main() = application {
                     when(v) {
                         is PointVertex -> (v.pos - tmp).squaredLength
                         is IslandVertex -> if (tmp in islands[v.island].contour) 0.0 else (islands[v.island].contour.nearest(tmp).position - tmp).squaredLength
+                        else -> error("Satisfying the compiler.")
                     }
                 }
 

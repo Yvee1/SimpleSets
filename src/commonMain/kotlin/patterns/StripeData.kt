@@ -8,8 +8,8 @@ import geometric.orientation
 import kotlin.math.abs
 import kotlin.math.atan2
 
-fun <K> Map<K, Int>.get0(key: K) = getOrDefault(key, 0)
-fun <K> Map<K, Map<Int, Int>>.getE(key: K) = getOrDefault(key, emptyMap())
+fun <K> Map<K, Int>.get0(key: K) = getOrElse(key) { 0 }
+fun <K> Map<K, Map<Int, Int>>.getE(key: K) = getOrElse(key) { emptyMap() }
 
 /**
  * Returns a data structure that takes O(n^2 log n) preprocessing time to provide O(1) access to
@@ -133,7 +133,7 @@ fun compareAround(p: Vector2, start: Double, dir: Orientation) = Comparator<Vect
     if (dir == Orientation.RIGHT) x else -x
 }
 
-fun awayFrom(p: Point): Comparator<Point> = Comparator.comparing { (p.pos - it.pos).squaredLength }
+fun awayFrom(p: Point): Comparator<Point> = compareBy { (p.pos - it.pos).squaredLength }
 
 fun <K, V1, V2, R> Map<K, V1>.mergeReduce(other: Map<K, V2>, reduce: (key: K, value1: V1?, value2: V2?) -> R): Map<K, R> =
     (this.keys + other.keys).associateWith { reduce(it, this[it], other[it]) }

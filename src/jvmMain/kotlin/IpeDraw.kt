@@ -1,9 +1,4 @@
-package io
-
-import geometric.buffer
-import patterns.Pattern
 import patterns.Point
-import patterns.SinglePoint
 import org.openrndr.math.Vector2
 import org.w3c.dom.NamedNodeMap
 import org.w3c.dom.Node
@@ -690,26 +685,6 @@ class IpeDrawBuilder(private val colors: List<String>) {
                 size = "large"
             )
         )
-    }
-
-    fun pattern(pattern: Pattern, expandRadius: Double){
-        if (pattern.isEmpty()) return
-        if (pattern is SinglePoint) {
-            val op = (pattern.point.originalPoint ?: pattern.point).pos
-            s.append(
-                IpeDraw.drawIpeCircle(
-                    op.x, op.y, expandRadius, pen = "heavier",
-                    stroke = "black", fill = colors[pattern.type], opacity = "island"
-                )
-            )
-        } else {
-            val island = pattern.original().contour.buffer(expandRadius)
-            val points = island.segments.map { it.start } + island.segments.last().end
-            s.append(IpeDraw.drawIpePolygon(points.map { it.x }, points.map { it.y }, pen = "heavier",
-                stroke = "black", fill = colors[pattern.type], opacity = "island"
-            )
-            )
-        }
     }
 
     fun toIpeString(): String {

@@ -2,7 +2,7 @@ package patterns
 
 import org.openrndr.shape.LineSegment
 
-fun <K> Map<K, Boolean>.getF(key: K) = getOrDefault(key, false)
+fun <K> Map<K, Boolean>.getF(key: K) = this.getOrElse(key) { false }
 
 class CapsuleData(points: List<Point>, radius: Double) {
     val capsule: Map<Pair<Point, Point>, Boolean>

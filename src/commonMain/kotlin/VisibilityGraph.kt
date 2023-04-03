@@ -5,7 +5,6 @@ import islands.Island
 import islands.visibilityIntervals
 import org.openrndr.math.Vector2
 import org.openrndr.shape.*
-import java.util.PriorityQueue
 
 sealed class Vertex(val edges: MutableList<VisEdge>)
 
@@ -115,7 +114,7 @@ data class Graph(val islands: List<Island>, val obstacles: List<Island>, val vor
 
     private fun connectIslandsAndVertices() {
         // Connect the vertices
-        islands.indices.toList().parallelStream().flatMap { i1 ->
+        islands.indices.toList().asSequence().flatMap { i1 ->
             val newEdges = mutableListOf<Pair<Pair<Vertex, Vertex>, ShapeContour>>()
 
             val v1 = islandVertices[i1]
@@ -133,13 +132,13 @@ data class Graph(val islands: List<Island>, val obstacles: List<Island>, val vor
                     newEdges.add(v1 to v2 to segment.contour)
                 }
             }
-            newEdges.stream()
-        }.toList().forEach { (verts, contour) ->
+            newEdges
+        }.forEach { (verts, contour) ->
             val (v1, v2) = verts
             createEdge(v1, v2, contour)
         }
 
-        chainVertices.parallelStream().flatMap { v1 ->
+        chainVertices.asSequence().flatMap { v1 ->
             val newEdges = mutableListOf<Pair<Pair<Vertex, Vertex>, ShapeContour>>()
             for (v2 in chainVertices) {
                 val segment = freeSegment(v1, v2)
@@ -147,8 +146,8 @@ data class Graph(val islands: List<Island>, val obstacles: List<Island>, val vor
                     newEdges.add(v1 to v2 to segment.contour)
                 }
             }
-            newEdges.stream()
-        }.toList().forEach { (verts, contour) ->
+            newEdges
+        }.forEach { (verts, contour) ->
             val (v1, v2) = verts
             createEdge(v1, v2, contour)
         }
@@ -156,7 +155,7 @@ data class Graph(val islands: List<Island>, val obstacles: List<Island>, val vor
 
     private fun createTangents() {
         // Create chainVertex--circle tangents
-        chainVertices.parallelStream().flatMap { v1 ->
+        chainVertices.asSequence().flatMap { v1 ->
             val tangentEdges = mutableListOf<Pair<Pair<ChainVertex, Int>, LineSegment>>()
             for (i2 in obstacles.indices) {
                 for (clearanceCircle in obstacles[i2].circles) {
@@ -172,14 +171,14 @@ data class Graph(val islands: List<Island>, val obstacles: List<Island>, val vor
                         }
                 }
             }
-            tangentEdges.stream()
-        }.toList().forEach { (verts, ls) ->
+            tangentEdges
+        }.forEach { (verts, ls) ->
             val (v1, i2) = verts
             val tv = createTangentVertex(i2, ls.end)
             createEdge(v1, tv, ls.contour)
         }
 
-        islands.indices.toList().parallelStream().flatMap { i1 ->
+        islands.indices.asSequence().flatMap { i1 ->
             val newEdges = mutableListOf<Pair<Pair<Vertex, Vertex>, ShapeContour>>()
             val v1 = islandVertices[i1]
             for (i2 in islands.indices) {
@@ -225,8 +224,8 @@ data class Graph(val islands: List<Island>, val obstacles: List<Island>, val vor
                     }
                 }
             }
-            newEdges.stream()
-        }.toList().forEach { (verts, contour) ->
+            newEdges
+        }.forEach { (verts, contour) ->
             val (v1, v2) = verts
             createEdge(v1, v2, contour)
         }
@@ -463,7 +462,7 @@ data class Graph(val islands: List<Island>, val obstacles: List<Island>, val vor
     fun spanningTrees(): List<Bridge> {
         val costs = MutableList(islands.size) { Double.POSITIVE_INFINITY }
         val bridges = MutableList<Bridge?>(islands.size) { null }
-        val left = PriorityQueue<Int>(vertices.size, compareBy { costs[it] })
+        val left = PriorityQueue<Int>(compareBy { costs[it] })
         left.addAll(islands.indices)
         while (left.isNotEmpty()) {
             val i1 = left.poll()

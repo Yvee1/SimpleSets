@@ -1,17 +1,16 @@
-package patterns
-
-import ProblemInstance
 import geometric.convexHull
 import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.yield
 import org.openrndr.application
 import org.openrndr.color.ColorRGBa
 import org.openrndr.extra.noise.uniform
 import org.openrndr.launch
 import org.openrndr.shape.ShapeContour
 import org.openrndr.shape.contains
+import patterns.Cluster
+import patterns.Point
+import patterns.coverRadius
+import patterns.largestCluster
 
 fun ProblemInstance.largestClusterExhaustive(): Cluster {
     if (clusterRadius <= 0) return Cluster.EMPTY

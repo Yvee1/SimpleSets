@@ -1,7 +1,3 @@
-package io
-
-import ProblemInstance
-import patterns.Pattern
 import patterns.Point
 import org.openrndr.math.Vector2
 import org.openrndr.shape.Circle
@@ -74,28 +70,6 @@ fun getExampleInput(e: ExampleInput): List<Point> =
             ipeToPoints(f)
         }
     }
-
-
-fun writeToIpe(instance: ProblemInstance, solution: List<Pattern>, fileName: String) {
-    val colors = listOf("CB light blue", "CB light red", "CB light green")
-
-    val file = File(fileName)
-
-    try {
-        val s = ipeDraw(colors) {
-            for (pat in solution){
-                pattern(pat, instance.expandRadius)
-            }
-            for (p in instance.points){
-                point(p)
-            }
-        }
-        file.writeText(s)
-    } catch (e: IOException) {
-        println("Could not write to output file!")
-        e.printStackTrace()
-    }
-}
 
 fun writeToIpe(points: List<Point>, fileName: String) {
     val colors = listOf("CB light blue", "CB light red", "CB light green", "CB light orange", "CB light purple")

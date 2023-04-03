@@ -6,92 +6,35 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 group = "org.openrndr.template"
 version = "0.4.0"
 
-tasks.test {
-    useJUnitPlatform()
-}
+//tasks.test {
+//    useJUnitPlatform()
+//}
 
 val applicationMainClass = "MainKt"
 
 /**  ## additional ORX features to be added to this project */
 val orxFeatures = setOf<String>(
-//  "orx-boofcv",
-//  "orx-camera",
-//  "orx-chataigne",
     "orx-color",
     "orx-compositor",
-//  "orx-dnk3",
-//  "orx-easing",
-//  "orx-file-watcher",
-//  "orx-filter-extension",
     "orx-fx",
-//  "orx-glslify",
-//  "orx-gradient-descent",
-    "orx-git-archiver",
-    "orx-gui",
-    "orx-image-fit",
-//  "orx-integral-image",
-//  "orx-interval-tree",
-//  "orx-jumpflood",
-//  "orx-kdtree",
-//  "orx-keyframer",      
-//  "orx-kinect-v1",
-//  "orx-kotlin-parser",
-//  "orx-mesh-generators",
-//  "orx-midi",
-//  "orx-minim",
-//  "orx-no-clear",
+//    "orx-git-archiver",
+//    "orx-gui",
     "orx-noise",
-//  "orx-obj-loader",
-    "orx-olive",
-//  "orx-osc",
-//  "orx-palette",
-    "orx-panel",
-//  "orx-parameters",
-//  "orx-poisson-fill",
-//  "orx-rabbit-control",
-//  "orx-realsense2",
-//  "orx-runway",
+//    "orx-olive",
+//    "orx-panel",
     "orx-shade-styles",
-//  "orx-shader-phrases",
     "orx-shapes",
-//  "orx-syphon",
-//  "orx-temporal-blur",
-//  "orx-tensorflow",    
-//  "orx-time-operators",
-//  "orx-timer",
     "orx-triangulation",
-//  "orx-video-profiles",
 )
-
-/** ## additional ORML features to be added to this project */
-val ormlFeatures = setOf<String>(
-//    "orml-blazepose",
-//    "orml-dbface",
-//    "orml-facemesh",
-//    "orml-image-classifier",
-//    "orml-psenet",
-//    "orml-ssd",
-//    "orml-style-transfer",
-//    "orml-super-resolution",
-//    "orml-u2net",
-)
-
-/** ## additional OPENRNDR features to be added to this project */
-val openrndrFeatures = setOfNotNull(
-    if (DefaultNativePlatform("current").architecture.name != "arm-v8") "video" else null
-)
-
-/** ## configure the type of logging this project uses */
-enum class Logging { NONE, SIMPLE, FULL }
-
-val applicationLogging = Logging.FULL
 
 // ------------------------------------------------------------------------------------------------------------------ //
 
 @Suppress("DSL_SCOPE_VIOLATION")
 plugins {
-    java
-    alias(libs.plugins.kotlin.jvm)
+//    kotlin("js") version "1.8.10"
+//    java
+    kotlin("multiplatform") version "1.8.10"
+//    alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.shadow)
     alias(libs.plugins.runtime)
     alias(libs.plugins.gitarchive.tomarkdown).apply(false)
@@ -99,42 +42,103 @@ plugins {
 
 repositories {
     mavenCentral()
-    maven {
-        url = uri("https://repo.eclipse.org/content/groups/releases")
+}
+
+val openrndrVersion = libs.versions.openrndr.get()
+val orxVersion = libs.versions.orx.get()
+val os = if (project.hasProperty("targetPlatform")) {
+    val supportedPlatforms = setOf("windows", "macos", "linux-x64", "linux-arm64")
+    val platform: String = project.property("targetPlatform") as String
+    if (platform !in supportedPlatforms) {
+        throw IllegalArgumentException("target platform not supported: $platform")
+    } else {
+        platform
     }
-    maven {
-        url = uri("https://repo.eclipse.org/content/repositories/jts-snapshots")
+} else when (OperatingSystem.current()) {
+    OperatingSystem.WINDOWS -> "windows"
+    OperatingSystem.MAC_OS -> when (val h = DefaultNativePlatform("current").architecture.name) {
+        "aarch64", "arm-v8" -> "macos-arm64"
+        else -> "macos"
+    }
+    OperatingSystem.LINUX -> when (val h = DefaultNativePlatform("current").architecture.name) {
+        "x86-64" -> "linux-x64"
+        "aarch64" -> "linux-arm64"
+        else -> throw IllegalArgumentException("architecture not supported: $h")
+    }
+    else -> throw IllegalArgumentException("os not supported")
+}
+fun openrndr(module: String) = "org.openrndr:openrndr-$module:$openrndrVersion"
+fun orx(module: String) = "org.openrndr.extra:$module:$orxVersion"
+fun openrndrNatives(module: String) = "org.openrndr:openrndr-$module-natives-$os:$openrndrVersion"
+
+kotlin {
+    js(IR) {
+        browser {
+        }
+        binaries.executable()
+    }
+
+    jvm {
+
+    }
+
+    sourceSets {
+        val commonMain by getting {
+            dependencies {
+                implementation(libs.kotlinx.coroutines.core)
+                implementation(openrndr("application"))
+                for (feature in orxFeatures) {
+                    implementation(orx(feature))
+                }
+            }
+        }
+
+        val commonTest by getting {
+            dependencies {
+                implementation(kotlin("test"))
+            }
+        }
+
+        val jvmMain by getting {
+            dependencies {
+                implementation(orx("orx-gui"))
+                runtimeOnly(openrndr("gl3"))
+                runtimeOnly(openrndrNatives("gl3"))
+                implementation(openrndr("openal"))
+                runtimeOnly(openrndrNatives("openal"))
+                implementation(openrndr("svg"))
+                implementation(openrndr("animatable"))
+                implementation(openrndr("extensions"))
+                implementation(openrndr("filter"))
+            }
+        }
+
+        val jvmTest by getting {
+            dependencies {
+                implementation(kotlin("test"))
+                implementation("org.junit.jupiter:junit-jupiter:5.8.1")
+            }
+        }
+
+        val jsMain by getting {
+            dependencies {
+                // React, React DOM + Wrappers
+                implementation(enforcedPlatform("org.jetbrains.kotlin-wrappers:kotlin-wrappers-bom:1.0.0-pre.354"))
+                implementation("org.jetbrains.kotlin-wrappers:kotlin-react")
+                implementation("org.jetbrains.kotlin-wrappers:kotlin-react-dom")
+
+                // Kotlin React Emotion (CSS)
+                implementation("org.jetbrains.kotlin-wrappers:kotlin-emotion")
+            }
+        }
     }
 }
 
 dependencies {
-
-//    implementation(libs.jsoup)
-//    implementation(libs.gson)
-//    implementation(libs.csv)
-
-    implementation("org.locationtech.jts:jts-core:1.19.0")
-
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlin.logging)
 
-    when (applicationLogging) {
-        Logging.NONE -> {
-            runtimeOnly(libs.slf4j.nop)
-        }
-        Logging.SIMPLE -> {
-            runtimeOnly(libs.slf4j.simple)
-        }
-        Logging.FULL -> {
-            runtimeOnly(libs.log4j.slf4j)
-            runtimeOnly(libs.jackson.databind)
-            runtimeOnly(libs.jackson.json)
-        }
-    }
     implementation(kotlin("stdlib-jdk8"))
-    implementation("org.junit.jupiter:junit-jupiter:5.8.1")
-    testImplementation(libs.junit)
-    testImplementation(kotlin("test"))
 }
 
 // ------------------------------------------------------------------------------------------------------------------ //
@@ -267,19 +271,9 @@ class Openrndr {
             implementation(openrndr("animatable"))
             implementation(openrndr("extensions"))
             implementation(openrndr("filter"))
-            if ("video" in openrndrFeatures) {
-                implementation(openrndr("ffmpeg"))
-                runtimeOnly(openrndrNatives("ffmpeg"))
-            }
             for (feature in orxFeatures) {
                 implementation(orx(feature))
             }
-            for (feature in ormlFeatures) {
-                implementation(orml(feature))
-            }
-            if ("orx-tensorflow" in orxFeatures) runtimeOnly("org.openrndr.extra:$orxTensorflowBackend-natives-$os:$orxVersion")
-            if ("orx-kinect-v1" in orxFeatures) runtimeOnly(orxNatives("orx-kinect-v1"))
-            if ("orx-olive" in orxFeatures) implementation(libs.kotlin.script.runtime)
         }
     }
 }
