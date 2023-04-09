@@ -30,8 +30,8 @@ fun ProblemInstance.largestCluster(uncovered: List<Point> = points, obstacles: L
             else null
         pts.asSequence()
             .map { largestClusterAt(it, uncovered, uncoveredStripeData, obstacles, freeSpace) }
-            .maxWith(compareBy({ it.weight }, { -it.contour.shape.area })) ?: Cluster.EMPTY
-    }.maxWith(compareBy({ it.weight }, { -it.contour.shape.area })) ?: Cluster.EMPTY
+            .maxWithOrNull(compareBy({ it.weight }, { -it.contour.shape.area })) ?: Cluster.EMPTY
+    }.maxWithOrNull(compareBy({ it.weight }, { -it.contour.shape.area })) ?: Cluster.EMPTY
 }
 
 private fun compatible(q: Point, r: Point, s: Point) = orientation(q.pos, r.pos, s.pos) != Orientation.LEFT
@@ -42,7 +42,8 @@ fun ProblemInstance.largestClusterAt(p: Point,
                                      uncovered: List<Point> = points,
                                      uncoveredStripeData: StripeData = stripeData,
                                      obstacles: List<Pattern> = emptyList(),
-                                     providedFreeSpace: Shape? = null): Cluster {
+                                     providedFreeSpace: Shape? = null,
+                                     recLevel: Int = 0): Cluster {
     val t = p.type
 
     val P = uncovered
@@ -218,8 +219,8 @@ fun ProblemInstance.largestClusterAt(p: Point,
 
     val largest = Cluster(trace(maxEdge), maxEdge.weight!!)
     val pointsInLargest = (P + p).filter { it in largest }
-    if (coverRadius(pointsInLargest.map { it.pos }) > clusterRadius + 0.1) {
-        return largestClusterAt(p, pointsInLargest, StripeData(pointsInLargest), obstacles)
+    if (recLevel < 2 && coverRadius(pointsInLargest.map { it.pos }) > clusterRadius + 0.1) {
+        return largestClusterAt(p, pointsInLargest, StripeData(pointsInLargest), obstacles, recLevel = recLevel + 1)
     }
     return largest
 }

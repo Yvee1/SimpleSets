@@ -7,7 +7,7 @@ import kotlin.math.max
 fun approximateVoronoiDiagram(patterns: List<Pattern>, expandRadius: Double): List<ShapeContour> {
     val points = patterns.map {
         (it.boundaryPoints.map { it.pos } +
-                if (it.contour.segments.isNotEmpty()) it.contour.equidistantPositions((it.contour.length * 0.5).toInt()) else emptyList()).toSet().toList()
+                if (it.contour.segments.isNotEmpty()) it.contour.equidistantPositions((it.contour.length * 0.05).toInt()) else emptyList()).toSet().toList()
     }
     val allPoints = points.flatten()
     val bounds = allPoints.bounds.offsetEdges(expandRadius*1.1)

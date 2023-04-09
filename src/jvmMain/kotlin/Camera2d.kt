@@ -23,16 +23,6 @@ class Camera2D : Extension {
 
     val changed = Event<Unit>()
 
-    private var dirty = true
-        set(value) {
-            if (value && !field) {
-                changed.trigger(Unit)
-            }
-            field = value
-        }
-    val hasChanged: Boolean
-        get() = dirty
-
     fun setupMouseEvents(mouse: MouseEvents) {
         mouse.buttonDown.listen {
             if (!it.propagationCancelled) {
@@ -49,15 +39,8 @@ class Camera2D : Extension {
                         } * view
                     }
 
-    //                MouseButton.RIGHT -> view = buildTransform {
-    //                    translate(rotationCenter)
-    //                    rotate(it.dragDisplacement.x + it.dragDisplacement.y)
-    //                    translate(-rotationCenter)
-    //                } * view
-
                     else -> Unit
                 }
-                dirty = true
             }
         }
         mouse.scrolled.listen {
@@ -69,7 +52,6 @@ class Camera2D : Extension {
                     translate(-it.position)
                 } * view
                 it.cancelPropagation()
-                dirty = true
             }
         }
     }
@@ -85,7 +67,6 @@ class Camera2D : Extension {
     }
 
     override fun afterDraw(drawer: Drawer, program: Program) {
-        dirty = false
         drawer.popTransforms()
     }
 }

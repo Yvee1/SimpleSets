@@ -6,10 +6,6 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 group = "org.openrndr.template"
 version = "0.4.0"
 
-//tasks.test {
-//    useJUnitPlatform()
-//}
-
 val applicationMainClass = "MainKt"
 
 /**  ## additional ORX features to be added to this project */
@@ -17,11 +13,7 @@ val orxFeatures = setOf<String>(
     "orx-color",
     "orx-compositor",
     "orx-fx",
-//    "orx-git-archiver",
-//    "orx-gui",
     "orx-noise",
-//    "orx-olive",
-//    "orx-panel",
     "orx-shade-styles",
     "orx-shapes",
     "orx-triangulation",
@@ -31,16 +23,16 @@ val orxFeatures = setOf<String>(
 
 @Suppress("DSL_SCOPE_VIOLATION")
 plugins {
-//    kotlin("js") version "1.8.10"
-//    java
-    kotlin("multiplatform") version "1.8.10"
-//    alias(libs.plugins.kotlin.jvm)
+    kotlin("multiplatform") version "1.8.20-RC2"
+    kotlin("plugin.serialization") version "1.8.20"
+    java
     alias(libs.plugins.shadow)
     alias(libs.plugins.runtime)
     alias(libs.plugins.gitarchive.tomarkdown).apply(false)
 }
 
 repositories {
+    mavenLocal()
     mavenCentral()
 }
 
@@ -78,6 +70,15 @@ kotlin {
         binaries.executable()
     }
 
+    js("webworker", IR) {
+        binaries.executable()
+        browser{
+            commonWebpackConfig {
+                outputFileName = "worker.js"
+            }
+        }
+    }
+
     jvm {
 
     }
@@ -90,6 +91,8 @@ kotlin {
                 for (feature in orxFeatures) {
                     implementation(orx(feature))
                 }
+
+                implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.0")
             }
         }
 
@@ -123,22 +126,25 @@ kotlin {
         val jsMain by getting {
             dependencies {
                 // React, React DOM + Wrappers
-                implementation(enforcedPlatform("org.jetbrains.kotlin-wrappers:kotlin-wrappers-bom:1.0.0-pre.354"))
+                implementation(enforcedPlatform("org.jetbrains.kotlin-wrappers:kotlin-wrappers-bom:1.0.0-pre.527"))
                 implementation("org.jetbrains.kotlin-wrappers:kotlin-react")
                 implementation("org.jetbrains.kotlin-wrappers:kotlin-react-dom")
 
                 // Kotlin React Emotion (CSS)
                 implementation("org.jetbrains.kotlin-wrappers:kotlin-emotion")
+
+                implementation(openrndr("dds"))
+                implementation(openrndr("draw"))
+                implementation(openrndr("webgl"))
+            }
+        }
+
+        val webworkerMain by getting {
+            dependencies {
+
             }
         }
     }
-}
-
-dependencies {
-    implementation(libs.kotlinx.coroutines.core)
-    implementation(libs.kotlin.logging)
-
-    implementation(kotlin("stdlib-jdk8"))
 }
 
 // ------------------------------------------------------------------------------------------------------------------ //
@@ -215,66 +221,3 @@ runtime {
 tasks.register<org.openrndr.extra.gitarchiver.GitArchiveToMarkdown>("gitArchiveToMarkDown") {
     historySize.set(20)
 }
-
-// ------------------------------------------------------------------------------------------------------------------ //
-
-class Openrndr {
-    val openrndrVersion = libs.versions.openrndr.get()
-    val orxVersion = libs.versions.orx.get()
-    val ormlVersion = libs.versions.orml.get()
-
-    // choices are "orx-tensorflow-gpu", "orx-tensorflow"
-    val orxTensorflowBackend = "orx-tensorflow"
-
-    val os = if (project.hasProperty("targetPlatform")) {
-        val supportedPlatforms = setOf("windows", "macos", "linux-x64", "linux-arm64")
-        val platform: String = project.property("targetPlatform") as String
-        if (platform !in supportedPlatforms) {
-            throw IllegalArgumentException("target platform not supported: $platform")
-        } else {
-            platform
-        }
-    } else when (OperatingSystem.current()) {
-        OperatingSystem.WINDOWS -> "windows"
-        OperatingSystem.MAC_OS -> when (val h = DefaultNativePlatform("current").architecture.name) {
-            "aarch64", "arm-v8" -> "macos-arm64"
-            else -> "macos"
-        }
-        OperatingSystem.LINUX -> when (val h = DefaultNativePlatform("current").architecture.name) {
-            "x86-64" -> "linux-x64"
-            "aarch64" -> "linux-arm64"
-            else -> throw IllegalArgumentException("architecture not supported: $h")
-        }
-        else -> throw IllegalArgumentException("os not supported")
-    }
-
-    fun orx(module: String) = "org.openrndr.extra:$module:$orxVersion"
-    fun orml(module: String) = "org.openrndr.orml:$module:$ormlVersion"
-    fun openrndr(module: String) = "org.openrndr:openrndr-$module:$openrndrVersion"
-    fun openrndrNatives(module: String) = "org.openrndr:openrndr-$module-natives-$os:$openrndrVersion"
-    fun orxNatives(module: String) = "org.openrndr.extra:$module-natives-$os:$orxVersion"
-
-    init {
-        repositories {
-            if (listOf(openrndrVersion, orxVersion, ormlVersion).any { "SNAPSHOT" in it }) {
-                mavenLocal()
-            }
-            maven(url = "https://maven.openrndr.org")
-        }
-        dependencies {
-            runtimeOnly(openrndr("gl3"))
-            runtimeOnly(openrndrNatives("gl3"))
-            implementation(openrndr("openal"))
-            runtimeOnly(openrndrNatives("openal"))
-            implementation(openrndr("application"))
-            implementation(openrndr("svg"))
-            implementation(openrndr("animatable"))
-            implementation(openrndr("extensions"))
-            implementation(openrndr("filter"))
-            for (feature in orxFeatures) {
-                implementation(orx(feature))
-            }
-        }
-    }
-}
-val openrndr = Openrndr()

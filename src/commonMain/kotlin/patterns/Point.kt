@@ -1,8 +1,10 @@
 package patterns
 
+import kotlinx.serialization.Serializable
 import org.openrndr.math.Vector2
 import kotlin.math.roundToInt
 
+@Serializable
 data class Point(val pos: Vector2, val type: Int, val originalPoint: Point? = null) {
     override fun toString(): String {
         return "(${pos.x.roundToDecimals(1)}, ${pos.y.roundToDecimals(1)})"
