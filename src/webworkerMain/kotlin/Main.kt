@@ -7,11 +7,29 @@ import org.w3c.dom.MessageEvent
 external val self: DedicatedWorkerGlobalScope
 
 fun main() {
-    self.onmessage = { m: MessageEvent ->
-        val assignment:Assignment = Json.decodeFromString(m.data as String)
-        val svg = compute(assignment.settings, assignment.points)
-        val completedWork = CompletedWork(svg)
+    var lastSolution: Solution? = null
+    var lastComputeAssignment: Compute? = null
 
+    self.onmessage = { m: MessageEvent ->
+        val assignment: Assignment = Json.decodeFromString(m.data as String)
+        val svg = when (assignment) {
+            is Compute -> {
+                val solution = Solution.compute(ProblemInstance(assignment.points, assignment.computeSettings), assignment.computeSettings)
+                lastSolution = solution
+                lastComputeAssignment = assignment
+                createSvg(assignment.points, assignment.computeSettings, assignment.drawSettings, solution)
+            }
+
+            is DrawSvg -> {
+                if (lastSolution == null || lastComputeAssignment == null) {
+                    ""
+                } else {
+                    createSvg(lastComputeAssignment!!.points, lastComputeAssignment!!.computeSettings, assignment.drawSettings, lastSolution!!)
+                }
+            }
+        }
+
+        val completedWork = CompletedWork(svg)
         self.postMessage(Json.encodeToString(completedWork))
     }
 }

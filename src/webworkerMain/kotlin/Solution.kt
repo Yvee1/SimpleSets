@@ -19,7 +19,7 @@ data class Solution(
     var visibilityEdges: List<ShapeContour> = listOf<ShapeContour>(),
     var bridges: List<Bridge> = listOf<Bridge>(),
 ) {
-    fun compute(problemInstance: ProblemInstance, s: Settings) {
+    fun compute(problemInstance: ProblemInstance, s: ComputeSettings) {
         try {
             patterns = problemInstance.computePartition(s.disjoint)
             islands = patterns.map { it.toIsland(s.expandRadius) }
@@ -62,11 +62,11 @@ data class Solution(
             mergedIndex = tmp.map { (i, target) ->
                 i to mergedIslands.withIndex().find { it.value == target }!!.index
             }.toMap().toMutableMap()
-            if (s.showVisibilityGraph || s.showBridges) {
+//            if (s.showVisibilityGraph || s.showBridges) {
                 visibilityGraph = Graph(islands, obstacles, voronoiCells)
                 visibilityEdges = visibilityGraph.edges.map { it.contour }
                 bridges = visibilityGraph.spanningTrees()
-            }
+//            }
         }
         catch(e: Throwable) {
             e.printStackTrace()
@@ -74,7 +74,7 @@ data class Solution(
     }
 
     companion object {
-        fun compute(problemInstance: ProblemInstance, s: Settings): Solution {
+        fun compute(problemInstance: ProblemInstance, s: ComputeSettings): Solution {
             val sol = Solution()
             sol.compute(problemInstance, s)
             return sol

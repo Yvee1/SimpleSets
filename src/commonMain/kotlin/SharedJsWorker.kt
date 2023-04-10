@@ -4,10 +4,14 @@ import patterns.Point
 //This source is shared between client and worker
 
 @Serializable
-data class Assignment (
-    val settings: Settings,
-    val points: List<Point>
-)
+sealed class Assignment
+
+@Serializable
+data class Compute(val computeSettings: ComputeSettings, val points: List<Point>, val drawSettings: DrawSettings) :
+    Assignment()
+
+@Serializable
+data class DrawSvg(val drawSettings: DrawSettings) : Assignment()
 
 @Serializable
 data class CompletedWork (

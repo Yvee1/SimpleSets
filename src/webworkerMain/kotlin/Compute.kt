@@ -1,35 +1,12 @@
 import patterns.Point
 import org.openrndr.color.ColorRGBa
-import org.openrndr.color.rgb
 import org.openrndr.draw.LineJoin
 import org.openrndr.shape.*
 import kotlin.math.roundToInt
 
-fun compute(set: Settings, points: List<Point>): String {
-    val blue = rgb(0.651, 0.807, 0.89) to rgb(0.121, 0.47, 0.705)
-    val red = rgb(0.984, 0.603, 0.6) to rgb(0.89, 0.102, 0.109)
-    val green = rgb(0.698, 0.874, 0.541) to rgb(0.2, 0.627, 0.172)
-    val orange = rgb(0.992, 0.749, 0.435) to rgb(1.0, 0.498, 0.0)
-    val purple = rgb(0.792, 0.698, 0.839) to rgb(0.415, 0.239, 0.603)
-
-    val colorPairs = listOf(blue, red, green, orange, purple)
-    val lightColors = colorPairs.map { it.first }
-    val darkColors = colorPairs.map { it.second }
-
-    val problemInstance = ProblemInstance(
-        points,
-        set.expandRadius,
-        set.clusterRadius,
-        set.bendDistance,
-        set.bendInflection,
-        set.maxBendAngle,
-        set.maxTurningAngle
-    )
-
-    val sol = Solution.compute(problemInstance, set)
-
-    val composition = drawComposition(CompositionDimensions(0.0.pixels, 0.0.pixels, 800.0.pixels, 800.0.pixels)) {
-        if (set.showVoronoi) {
+fun createSvg(points: List<Point>, compSet: ComputeSettings, drawSet: DrawSettings, sol: Solution): String =
+    drawComposition(CompositionDimensions(0.0.pixels, 0.0.pixels, 800.0.pixels, 800.0.pixels)) {
+        if (drawSet.showVoronoi) {
             isolated {
                 stroke = ColorRGBa.BLACK
                 fill = ColorRGBa.GRAY.opacify(0.3)
@@ -37,20 +14,20 @@ fun compute(set: Settings, points: List<Point>): String {
             }
         }
 
-        if (set.showClusterCircles && set.clusterRadius > 0) {
+        if (drawSet.showClusterCircles && compSet.clusterRadius > 0) {
             fill = ColorRGBa.GRAY.opacify(0.3)
             stroke = null
-            circles(points.map { it.pos }, set.clusterRadius)
+            circles(points.map { it.pos }, compSet.clusterRadius)
         }
 
-        if (set.showBendDistance) {
+        if (drawSet.showBendDistance) {
             fill = ColorRGBa.GRAY.opacify(0.3)
             stroke = null
-            circles(points.map { it.pos }, set.bendDistance)
+            circles(points.map { it.pos }, compSet.bendDistance)
         }
 
         if (sol.obstacles.size > 1) {
-            if (set.showBridges) {
+            if (drawSet.showBridges) {
                 for (bridge in sol.bridges) {
                     isolated {
                         fill = null
@@ -60,20 +37,20 @@ fun compute(set: Settings, points: List<Point>): String {
                         contour(bridge.contour)
 
                         strokeWeight /= 3
-                        stroke = lightColors[sol.islands[bridge.island1].type]
+                        stroke = drawSet.colorSettings.lightColors[sol.islands[bridge.island1].type].toColorRGBa()
                         contour(bridge.contour)
                     }
                 }
             }
         }
 
-        val end = (set.subset * sol.islands.size).roundToInt()
+        val end = (drawSet.subset * sol.islands.size).roundToInt()
 
         for (i in 0 until end) {
             val island = sol.islands[i]
-            strokeWeight = set.contourStrokeWeight
+            strokeWeight = drawSet.contourStrokeWeight
             stroke = ColorRGBa.BLACK
-            fill = lightColors[island.type].opacify(0.3)
+            fill = drawSet.colorSettings.lightColors[island.type].toColorRGBa().opacify(0.3)
 
             val mi = sol.mergedIndex[i]
             when {
@@ -88,9 +65,9 @@ fun compute(set: Settings, points: List<Point>): String {
                 else -> contour(island.contour)
             }
 
-            if (set.showVisibilityContours) {
+            if (drawSet.showVisibilityContours) {
                 isolated {
-                    stroke = darkColors[island.type].opacify(0.3)
+                    stroke = drawSet.colorSettings.darkColors[island.type].toColorRGBa().opacify(0.3)
                     strokeWeight *= 4
                     fill = null
 
@@ -102,13 +79,13 @@ fun compute(set: Settings, points: List<Point>): String {
             }
         }
 
-        if (set.showVisibilityGraph) {
+        if (drawSet.showVisibilityGraph) {
             isolated {
                 stroke = ColorRGBa.BLACK
                 fill = ColorRGBa.BLACK
                 circles(
                     sol.visibilityGraph.vertices.filterIsInstance<PointVertex>().map { it.pos },
-                    set.pSize / 5.0
+                    drawSet.pSize / 5.0
                 )
             }
 
@@ -122,13 +99,10 @@ fun compute(set: Settings, points: List<Point>): String {
 
         isolated {
             stroke = ColorRGBa.BLACK
-            strokeWeight = set.pointStrokeWeight
+            strokeWeight = drawSet.pointStrokeWeight
             for (p in points) {
-                fill = lightColors[p.type]
-                circle(p.pos, set.pSize)
+                fill = drawSet.colorSettings.lightColors[p.type].toColorRGBa()
+                circle(p.pos, drawSet.pSize)
             }
         }
-    }
-
-    return composition.toSVG()
-}
+    }.toSVG()

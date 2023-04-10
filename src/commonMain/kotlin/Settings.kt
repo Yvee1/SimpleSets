@@ -1,26 +1,50 @@
 import kotlinx.serialization.Serializable
+import org.openrndr.color.rgb
 
 @Serializable
-data class Settings(
-    var pSize: Double = 10.0,
-    var useGrid: Boolean = true,
-    var gridSize: Double = 40.0,
-    var disjoint: Boolean = true,
-    var bendDistance: Double = 20.0,
-    var bendInflection: Boolean = true,
-    var maxBendAngle: Double = 180.0,
-    var maxTurningAngle: Double = 180.0,
-    var clusterRadius: Double = 50.0,
-    var clearance: Double = 5.0,
-    var showVisibilityContours: Boolean = true,
-    var showBridges: Boolean = true,
-    var showClusterCircles: Boolean = false,
-    var showBendDistance: Boolean = false,
-    var showVisibilityGraph: Boolean = false,
-    var showVoronoi: Boolean = false,
-    var subset: Double = 1.0,
+data class ComputeSettings(
+    val expandRadius: Double = 30.0, // pSize * 3
+    val disjoint: Boolean = true,
+    val bendDistance: Double = 20.0,
+    val bendInflection: Boolean = true,
+    val maxBendAngle: Double = 180.0,
+    val maxTurningAngle: Double = 180.0,
+    val clusterRadius: Double = 50.0,
+    val clearance: Double = 5.0,
+)
+
+@Serializable
+data class DrawSettings(
+    val pSize: Double = 10.0,
+    val pointStrokeWeight: Double = pSize / 3,
+    val contourStrokeWeight: Double = pSize / 3.5,
+    val showVisibilityContours: Boolean = true,
+    val showBridges: Boolean = true,
+    val showClusterCircles: Boolean = false,
+    val showBendDistance: Boolean = false,
+    val showVisibilityGraph: Boolean = false,
+    val showVoronoi: Boolean = false,
+    val subset: Double = 1.0,
+    val colorSettings: ColorSettings
+//    var useGrid: Boolean = true,
+//    var gridSize: Double = 40.0,
+)
+
+@Serializable
+data class ColorSettings(
+    val colors: List<Pair<ColorRGB, ColorRGB>>
 ) {
-    val expandRadius get() = pSize * 3
-    val pointStrokeWeight get() = pSize / 3
-    val contourStrokeWeight get () = pSize / 3.5
+    val lightColors: List<ColorRGB> by lazy {
+        colors.map { it.first }
+    }
+
+    val darkColors: List<ColorRGB> by lazy {
+        colors.map { it.second }
+    }
+}
+
+@Serializable
+data class ColorRGB(val r: Double, val g: Double, val b: Double) {
+    fun toColorRGBa() = rgb(r, g, b)
+    fun toSvgString() = "rgb(${(r*255).toInt()}, ${(g*255).toInt()}, ${(b*255).toInt()})"
 }

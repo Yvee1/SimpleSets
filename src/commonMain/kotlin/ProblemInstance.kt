@@ -22,4 +22,14 @@ class ProblemInstance(originalPoints: List<Point>,
     val points = if (transformPoints) transformPoints(originalPoints) else originalPoints
     val stripeData = StripeData(points)
     val capsuleData = CapsuleData(points, expandRadius)
+
+    constructor(originalPoints: List<Point>, set: ComputeSettings) :
+            this(originalPoints,
+                set.expandRadius,
+                set.clusterRadius,
+                set.bendDistance,
+                set.bendInflection,
+                set.maxBendAngle,
+                set.maxTurningAngle
+            )
 }

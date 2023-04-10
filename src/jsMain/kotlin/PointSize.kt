@@ -19,6 +19,7 @@ external interface PointSizeProps : Props {
     var pointSize: Double
     var onChange: (Double) -> Unit
     var strokeWeight: Double
+    var fillColor: String
 }
 
 val PointSize = FC<PointSizeProps> { props ->
@@ -28,7 +29,7 @@ val PointSize = FC<PointSizeProps> { props ->
                 val svgSize = props.max * 2.0 + 6.0
                 width = svgSize
                 height = svgSize
-                fill = "#a6cde2"
+                fill = props.fillColor
                 stroke = "black"
                 strokeWidth = props.strokeWeight
                 circle {
