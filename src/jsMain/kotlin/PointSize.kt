@@ -51,6 +51,7 @@ val PointSize = FC<PointSizeProps> { props ->
                 min = props.min
                 max = props.max
                 value = props.pointSize
+                unit = ""
                 label = "Point size"
                 onChange = {
                     props.onChange(it.currentTarget.valueAsNumber)

@@ -66,7 +66,7 @@ fun writeSVG(
     val styleSer = "style=width:100%;height:100%"
     val docStyleSer = composition.documentStyle.serialize()
 
-    sb.append("<svg version=\"1.2\" baseProfile=\"tiny\" id=\"$topLevelId\" $namespaces $styleSer $docStyleSer>")
+//    sb.append("<svg version=\"1.2\" baseProfile=\"tiny\" id=\"$topLevelId\" $namespaces $styleSer $docStyleSer>")
 
     var textPathID = 0
     process(composition.root) { stage ->
@@ -104,7 +104,7 @@ fun writeSVG(
             }
         }
     }
-    sb.append("</svg>")
+//    sb.append("</svg>")
     return sb.toString()
 }
 

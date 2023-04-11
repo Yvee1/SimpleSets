@@ -32,11 +32,11 @@ fun createSvg(points: List<Point>, compSet: ComputeSettings, drawSet: DrawSettin
                     isolated {
                         fill = null
                         stroke = ColorRGBa.BLACK
-                        strokeWeight *= 4
+                        strokeWeight = drawSet.contourStrokeWeight * 3.5
                         lineJoin = LineJoin.ROUND
                         contour(bridge.contour)
 
-                        strokeWeight /= 3
+                        strokeWeight = drawSet.contourStrokeWeight * 1.5
                         stroke = drawSet.colorSettings.lightColors[sol.islands[bridge.island1].type].toColorRGBa()
                         contour(bridge.contour)
                     }

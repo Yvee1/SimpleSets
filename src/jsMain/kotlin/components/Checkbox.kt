@@ -1,5 +1,7 @@
 package components
 
+import csstype.Float
+import emotion.react.css
 import react.FC
 import react.dom.html.InputHTMLAttributes
 import react.dom.html.ReactHTML
@@ -17,6 +19,9 @@ val Checkbox = FC<CheckboxProps> { props ->
         }
         ReactHTML.input {
             +props
+            css {
+                float = Float.right
+            }
             type = InputType.checkbox
         }
     }
