@@ -382,9 +382,7 @@ val App = FC<Props> {
                 onTouchMove = { e ->
                     if (previousTouch != null) {
                         val touch = e.touches.asList()
-                            .map { it to Vector2(it.clientX, it.clientY).squaredDistanceTo(Vector2(previousTouch!!.clientX, previousTouch!!.clientY)) }
-                            .filter { it.second < 20.0 }
-                            .minByOrNull { it.second }?.first ?: previousTouch!!
+                            .minBy { Vector2(it.clientX, it.clientY).squaredDistanceTo(Vector2(previousTouch!!.clientX, previousTouch!!.clientY)) }
                         val dx = touch.clientX - previousTouch!!.clientX
                         val dy = touch.clientY - previousTouch!!.clientY
                         println("dx: $dx     dy: $dy")
