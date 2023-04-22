@@ -29,6 +29,42 @@ plugins {
     alias(libs.plugins.shadow)
     alias(libs.plugins.runtime)
     alias(libs.plugins.gitarchive.tomarkdown).apply(false)
+    id("io.github.turansky.kfc.application") version "7.5.0"
+}
+
+tasks {
+    patchWebpackConfig {
+        patch(
+            "don't clean",
+            """
+                if (!!config.output) {
+                  config.output.clean = false
+                }
+                """.trimIndent()
+        )
+    }
+}
+
+// Does not work...
+tasks.compileKotlinJs {
+    kotlinOptions {
+        allWarningsAsErrors = false
+    }
+}
+
+fun String.runCommand(workingDir: File) {
+    ProcessBuilder(*split(" ").toTypedArray())
+        .directory(workingDir)
+        .redirectOutput(ProcessBuilder.Redirect.INHERIT)
+        .redirectError(ProcessBuilder.Redirect.INHERIT)
+        .start()
+        .waitFor(60, TimeUnit.MINUTES)
+}
+
+tasks.register("pyHttpServer") {
+    doLast {
+        "py -m http.server".runCommand(File("build/distributions/"))
+    }
 }
 
 repositories {
@@ -62,6 +98,7 @@ val os = if (project.hasProperty("targetPlatform")) {
 fun openrndr(module: String) = "org.openrndr:openrndr-$module:$openrndrVersion"
 fun orx(module: String) = "org.openrndr.extra:$module:$orxVersion"
 fun openrndrNatives(module: String) = "org.openrndr:openrndr-$module-natives-$os:$openrndrVersion"
+fun kotlinw(target: String): String = "org.jetbrains.kotlin-wrappers:kotlin-$target"
 
 kotlin {
     js(IR) {
@@ -126,16 +163,18 @@ kotlin {
         val jsMain by getting {
             dependencies {
                 // React, React DOM + Wrappers
-                implementation(enforcedPlatform("org.jetbrains.kotlin-wrappers:kotlin-wrappers-bom:1.0.0-pre.527"))
-                implementation("org.jetbrains.kotlin-wrappers:kotlin-react")
-                implementation("org.jetbrains.kotlin-wrappers:kotlin-react-dom")
+                implementation(enforcedPlatform(kotlinw("wrappers-bom:1.0.0-pre.527")))
+                implementation(kotlinw("react"))
+                implementation(kotlinw("react-dom"))
 
                 // Kotlin React Emotion (CSS)
-                implementation("org.jetbrains.kotlin-wrappers:kotlin-emotion")
+                implementation(kotlinw("emotion"))
 
-                implementation(openrndr("dds"))
+                // MUI
+//                implementation(kotlinw("mui-icons"))
+
+                // OPENRNDR
                 implementation(openrndr("draw"))
-                implementation(openrndr("webgl"))
             }
         }
 

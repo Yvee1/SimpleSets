@@ -47,28 +47,9 @@ private fun Styleable.serialize(parentStyleable: Styleable? = null): String {
 
 
 fun writeSVG(
-    composition: Composition,
-    topLevelId: String = "openrndr-svg"
+    composition: Composition
 ): String {
     val sb = StringBuilder()
-    sb.append("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n")
-
-    val defaultNamespaces = mapOf(
-        "xmlns" to "http://www.w3.org/2000/svg",
-        "xmlns:xlink" to "http://www.w3.org/1999/xlink"
-    )
-
-    val namespaces = (defaultNamespaces + composition.namespaces).map { (k, v) ->
-        "$k=\"$v\""
-    }.joinToString(" ")
-
-//    val styleSer = composition.style.serialize()
-    val styleSer = "style=width:100%;height:100%"
-    val docStyleSer = composition.documentStyle.serialize()
-
-//    sb.append("<svg version=\"1.2\" baseProfile=\"tiny\" id=\"$topLevelId\" $namespaces $styleSer $docStyleSer>")
-
-    var textPathID = 0
     process(composition.root) { stage ->
         if (stage == VisitStage.PRE) {
 
@@ -104,7 +85,6 @@ fun writeSVG(
             }
         }
     }
-//    sb.append("</svg>")
     return sb.toString()
 }
 

@@ -1,4 +1,5 @@
 import geometric.convexHull
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import org.openrndr.application
@@ -56,6 +57,7 @@ fun List<Point>.isMonochromatic(): Boolean {
     return all { it.type == first().type }
 }
 
+@OptIn(DelicateCoroutinesApi::class)
 fun main() = application {
     configure {
         width = 800

@@ -19,8 +19,13 @@ import react.dom.svg.ReactSVG.circle
 import react.dom.svg.ReactSVG.svg
 import org.w3c.dom.MessageEvent
 import org.w3c.dom.Worker
+import web.buffer.Blob
+import web.buffer.BlobPart
+import web.dom.document
+import web.html.HTMLAnchorElement
 import web.html.HTMLDivElement
 import web.uievents.Touch
+import web.url.URL
 
 enum class Tool {
     None,
@@ -67,12 +72,7 @@ val App = FC<Props> {
         val svgContainer = svgContainerRef.current ?: return@useEffect
         svgSize = IntVector2(svgContainer.clientWidth, svgContainer.clientHeight)
     }
-
-    val emptySvg = """
-        <!--?xml version="1.0" encoding="utf-8"?-->
-        <svg version="1.2" baseProfile="tiny" id="openrndr-svg" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0" y="0" style="width:100%;height:100%">
-        </svg>
-    """.trimIndent()
+    val emptySvg = ""
     var svg: String by useState(emptySvg)
 
     var tool: Tool by useState(Tool.PlacePoints)
@@ -297,11 +297,12 @@ val App = FC<Props> {
 
                     IconButton {
                         title = "Clear"
+//                        ariaLabel = "clear"
                         onClick = {
                             svg = emptySvg
                             points = emptyList()
                         }
-                        +"C"
+                        Clear()
                     }
 
                     IconButton {
@@ -311,7 +312,7 @@ val App = FC<Props> {
                             worker.postMessage(Json.encodeToString(assignment))
                             computing = true
                         }
-                        +"R"
+                        Run()
                     }
 
                     +whiteSpace
@@ -328,7 +329,29 @@ val App = FC<Props> {
                         }
                     }
 
-//                    +whiteSpace
+                    +whiteSpace
+
+                    IconButton {
+                        title = "Download output as an SVG file"
+                        onClick = {
+                            // Adapted from: https://stackoverflow.com/a/38019175
+                            val downloadee: BlobPart =
+                                "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
+                                "<svg version=\"1.2\" baseProfile=\"tiny\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\">" +
+                                        svg +
+                                        "</svg>"
+                            val svgBlob = Blob(arrayOf(downloadee), jso { type = "image/svg+xml;charset=utf-8" })
+                            val svgUrl = URL.createObjectURL(svgBlob)
+                            val downloadLink = document.createElement("a").unsafeCast<HTMLAnchorElement>()
+                            downloadLink.href = svgUrl
+                            downloadLink.download = "output.svg"
+//                            downloadLink.style = jso { display = "none" }
+                            document.body.appendChild(downloadLink)
+                            downloadLink.click()
+                            document.body.removeChild(downloadLink)
+                        }
+                        DownloadSvg()
+                    }
 
                     div {
                         css {

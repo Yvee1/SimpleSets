@@ -9,7 +9,7 @@ fun main() {
     val patterns = instance.computePartition(disjoint=true)
     val islands = patterns.map { it.toIsland(instance.expandRadius) }
     val obstacles = islands.map { it.scale(2.0) }
-    val visContours = islands.map { i1 -> islands.filter { i2 -> i2.type == i1.type }.flatMap { i2 -> i1.visibilityContours(i2) } }
+    islands.map { i1 -> islands.filter { i2 -> i2.type == i1.type }.flatMap { i2 -> i1.visibilityContours(i2) } }
     val voronoiCells = approximateVoronoiDiagram(patterns.map { it.original() }, instance.expandRadius)
     Graph(islands, obstacles, voronoiCells)
 }

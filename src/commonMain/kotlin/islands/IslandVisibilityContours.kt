@@ -91,7 +91,6 @@ fun Island.visibilityIntervals(other: Island): List<VisibilityInterval> {
         is PointIsland -> circles.mapNotNull { it.visibilityInterval(other) }
         is ConvexIsland -> circles.zip(circularArcs).mapNotNull { it.visibilityInterval(other) } + segments.mapNotNull { it.visibilityInterval(other) }
         is BendIsland -> circles.zip(circularArcs).mapNotNull { it.visibilityInterval(other) } + segments.mapNotNull { it.visibilityInterval(other) }
-        else -> error("Satisfying the compiler..., impossible case")
     }).mergeIntervals()
 }
 

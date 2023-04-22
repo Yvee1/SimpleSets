@@ -1,6 +1,7 @@
 import islands.Island
 import islands.toIsland
 import islands.visibilityContours
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import patterns.Pattern
@@ -26,6 +27,7 @@ import java.util.concurrent.TimeUnit
 import kotlin.math.round
 import kotlin.math.roundToInt
 
+@OptIn(DelicateCoroutinesApi::class)
 fun main() = application {
     configure {
         width = 800
@@ -46,8 +48,8 @@ fun main() = application {
         val darkColors = colorPairs.map { it.second }
         var points = mutableListOf<Point>()
         var type = 0
-        var problemInstance = ProblemInstance(points)
-        var patterns = listOf<Pattern>()
+        var problemInstance: ProblemInstance
+        var patterns: List<Pattern>
         var islands = listOf<Island>()
         var clippedIslands = listOf<ShapeContour>()
         var mergedIndex = mutableMapOf<Int, Int>()
@@ -347,7 +349,6 @@ fun main() = application {
                     when(v) {
                         is PointVertex -> (v.pos - tmp).squaredLength
                         is IslandVertex -> if (tmp in islands[v.island].contour) 0.0 else (islands[v.island].contour.nearest(tmp).position - tmp).squaredLength
-                        else -> error("Satisfying the compiler.")
                     }
                 }
 
