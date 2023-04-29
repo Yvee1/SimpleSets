@@ -1,6 +1,6 @@
 package components
 
-import csstype.Float
+import web.cssom.Float
 import emotion.react.css
 import react.FC
 import react.dom.html.InputHTMLAttributes

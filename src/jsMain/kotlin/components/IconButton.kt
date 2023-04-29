@@ -1,7 +1,7 @@
 package components
 
-import csstype.*
-import csstype.None.Companion.none
+import web.cssom.*
+import web.cssom.None.Companion.none
 import emotion.react.css
 import react.FC
 import react.dom.html.ButtonHTMLAttributes

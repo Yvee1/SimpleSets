@@ -23,13 +23,19 @@ val orxFeatures = setOf<String>(
 
 @Suppress("DSL_SCOPE_VIOLATION")
 plugins {
-    kotlin("multiplatform") version "1.8.20-RC2"
+    kotlin("multiplatform") version "1.8.20"
     kotlin("plugin.serialization") version "1.8.20"
     java
     alias(libs.plugins.shadow)
     alias(libs.plugins.runtime)
     alias(libs.plugins.gitarchive.tomarkdown).apply(false)
-    id("io.github.turansky.kfc.application") version "7.5.0"
+    id("io.github.turansky.kfc.application") version "7.6.0"
+}
+
+tasks {
+    wrapper {
+        gradleVersion = "8.1"
+    }
 }
 
 tasks {
@@ -41,6 +47,21 @@ tasks {
                   config.output.clean = false
                 }
                 """.trimIndent()
+        )
+
+        patch(
+            "raw load ipe files",
+            """
+            config.module.rules.push( 
+              {
+                test: /\.ipe${'$'}/i,
+                loader: 'raw-loader',
+                options: {
+                  esModule: false,
+                },
+            }
+            )
+            """.trimIndent()
         )
     }
 }
@@ -101,10 +122,13 @@ fun openrndrNatives(module: String) = "org.openrndr:openrndr-$module-natives-$os
 fun kotlinw(target: String): String = "org.jetbrains.kotlin-wrappers:kotlin-$target"
 
 kotlin {
-    js(IR) {
-        browser {
-        }
+    js("js", IR) {
         binaries.executable()
+        browser {
+            commonWebpackConfig {
+                outputFileName = "islands-and-bridges.js"
+            }
+        }
     }
 
     js("webworker", IR) {
@@ -163,7 +187,7 @@ kotlin {
         val jsMain by getting {
             dependencies {
                 // React, React DOM + Wrappers
-                implementation(enforcedPlatform(kotlinw("wrappers-bom:1.0.0-pre.527")))
+                implementation(enforcedPlatform(kotlinw("wrappers-bom:1.0.0-pre.542")))
                 implementation(kotlinw("react"))
                 implementation(kotlinw("react-dom"))
 
@@ -171,10 +195,13 @@ kotlin {
                 implementation(kotlinw("emotion"))
 
                 // MUI
-//                implementation(kotlinw("mui-icons"))
+//                implementation(kotlinw("mui"))
 
                 // OPENRNDR
                 implementation(openrndr("draw"))
+
+                // Webpack loaders
+                implementation(devNpm("raw-loader", "4.0.2"))
             }
         }
 

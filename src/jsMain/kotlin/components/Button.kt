@@ -1,6 +1,6 @@
 package components
 
-import csstype.px
+import web.cssom.px
 import emotion.react.css
 import react.FC
 import react.dom.html.ButtonHTMLAttributes

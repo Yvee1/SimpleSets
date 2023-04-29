@@ -1,13 +1,12 @@
 package components
 
-import csstype.px
+import web.cssom.px
 import emotion.react.css
 import js.core.jso
 import react.FC
 import react.Props
 import react.dom.html.ReactHTML.div
-
-external fun require(path: String): String
+import require
 
 fun createIcon(rawSvg: String) = FC<Props> {
     div {

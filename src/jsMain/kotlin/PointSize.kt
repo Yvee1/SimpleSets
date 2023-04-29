@@ -1,10 +1,10 @@
 import components.Expandable
 import components.IconNonButton
 import components.Slider
-import csstype.Display
-import csstype.FlexDirection
-import csstype.Padding
-import csstype.px
+import web.cssom.Display
+import web.cssom.FlexDirection
+import web.cssom.Padding
+import web.cssom.px
 import emotion.react.css
 import react.FC
 import react.Props

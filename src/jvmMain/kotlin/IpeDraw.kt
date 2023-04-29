@@ -1,11 +1,16 @@
-import patterns.Point
 import org.openrndr.math.Vector2
+import org.w3c.dom.Document
 import org.w3c.dom.NamedNodeMap
 import org.w3c.dom.Node
 import org.w3c.dom.NodeList
+import org.xml.sax.InputSource
+import patterns.Point
 import java.io.File
+import java.io.IOException
+import java.io.StringReader
 import java.text.DecimalFormat
 import javax.xml.parsers.DocumentBuilderFactory
+
 
 /**
  * This class helps creating ipe-files in Java by providing functions for most
@@ -707,30 +712,36 @@ internal fun NamedNodeMap.asMap(): Map<String, String> = buildMap(length) {
     }
 }
 
-fun ipeToPoints(ipeXML: File): List<Point> {
-    ipeXML.writeText(ipeXML.readText().lines().filterNot { it.contains("""<!DOCTYPE ipe SYSTEM "ipe.dtd">""") }.joinToString("\n"))
-    val doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(ipeXML)
-    val nodeList = doc.getElementsByTagName("use").asList()
+fun ipeToPoints(badIpeXML: String): List<Point> {
+    val ipeXML = badIpeXML.lines().filterNot { it.contains("""<!DOCTYPE ipe SYSTEM "ipe.dtd">""") }.joinToString("\n")
+    val doc = loadXMLFromString(ipeXML)
+    val nodeList = doc.getElementsByTagName("use").asList().map { it.attributes.asMap() }
 
-    return nodeList.map { n ->
-        val m = n.attributes.asMap()
-        val posString = m["pos"]!!.split(' ')
-        val matrixString = m["matrix"]?.split(' ')
-        val pos = Vector2(posString[0].toDouble() + (matrixString?.get(4)?.toDouble() ?: 0.0),
-            posString[1].toDouble() + (matrixString?.get(5)?.toDouble() ?: 0.0))
+    return nodesToPoints(nodeList)
+}
 
-        val f = m["fill"]!!
-        val type = when(f) {
-            "CB light blue" -> 0
-            "CB light red" -> 1
-            "CB light green" -> 2
-            "CB light orange" -> 3
-            "CB light purple" -> 4
-            else -> {
-                println("Unknown color: $f")
-                5
+@Throws(Exception::class)
+fun loadXMLFromString(xml: String): Document {
+    val factory = DocumentBuilderFactory.newInstance()
+    val builder = factory.newDocumentBuilder()
+    val inputSource = InputSource(StringReader(xml))
+    return builder.parse(inputSource)
+}
+
+fun writeToIpe(points: List<Point>, fileName: String) {
+    val colors = listOf("CB light blue", "CB light red", "CB light green", "CB light orange", "CB light purple")
+
+    val file = File(fileName)
+
+    try {
+        val s = ipeDraw(colors) {
+            for (p in points){
+                point(p)
             }
         }
-        Point(pos, type)
+        file.writeText(s)
+    } catch (e: IOException) {
+        println("Could not write to output file!")
+        e.printStackTrace()
     }
 }

@@ -1,6 +1,6 @@
 package components
 
-import csstype.Display
+import web.cssom.Display
 import emotion.react.css
 import react.FC
 import react.PropsWithChildren

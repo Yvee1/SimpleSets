@@ -87,7 +87,16 @@ fun main() = application {
             @DoubleParameter("Point size", 0.1, 10.0, order = 0)
             var pSize = 3.0
 
-            val expandRadius get() = pSize * 3
+            @BooleanParameter("Expand to islands", order = 1)
+            var expand = true
+
+            @BooleanParameter("Intersect islands with voronoi", order = 1)
+            var voronoiIntersect = true
+
+            @BooleanParameter("Merge islands", order = 1)
+            var mergeIslands = true
+
+            val expandRadius get() = if (expand) pSize * 3 else 0.0001
 
             val pointStrokeWeight get() = pSize / 3
 
@@ -103,7 +112,7 @@ fun main() = application {
             var disjoint = true
 
             @OptionParameter("Example input", order = 10)
-            var exampleInput = ExampleInput.LowerBound
+            var exampleInput = ExampleInput.NYC
 
             @ActionParameter("Load example input", order = 11)
             fun loadExample() {
@@ -118,8 +127,8 @@ fun main() = application {
             fun loadInput() {
                 clearData()
                 try {
-                val f = File("input-output/$inputFileName.ipe")
-                points = ipeToPoints(f).toMutableList()
+                    val ipe = File("input-output/$inputFileName.ipe").readText()
+                    points = ipeToPoints(ipe).toMutableList()
                 } catch (e: IOException) {
                     println("Could not read input file")
                     e.printStackTrace()
@@ -278,11 +287,11 @@ fun main() = application {
                                         patterns.map { it.original() },
                                         s.expandRadius + s.clearance
                                     )
-                                clippedIslands = islands.withIndex().map { (i, island) ->
+                                clippedIslands = if (!s.disjoint || !s.voronoiIntersect) islands.map { it.contour } else islands.withIndex().map { (i, island) ->
                                     intersection(island.contour, voronoiCells[i]).outline
                                 }
                                 val tmp = mutableMapOf<Int, Pair<ShapeContour, List<Int>>>()
-                                mergedIslands = buildList {
+                                mergedIslands = if (!s.mergeIslands) emptyList() else buildList {
                                     for (i1 in islands.indices) {
                                         for (i2 in i1 + 1 until islands.size) {
                                             if (islands[i1].type != islands[i2].type

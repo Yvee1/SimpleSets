@@ -1,6 +1,6 @@
 package components
 
-import csstype.Float
+import web.cssom.Float
 import emotion.react.css
 import patterns.roundToDecimals
 import react.FC
