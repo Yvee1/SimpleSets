@@ -1,11 +1,5 @@
 import web.cssom.Display
 import emotion.react.css
-//import mui.base.OptionUnstyled
-//import mui.base.OptionUnstyledProps
-//import mui.base.SelectUnstyled
-//import mui.base.SelectUnstyledProps
-//import mui.material.MenuItem
-//import mui.material.Select
 import react.FC
 import react.Props
 import react.dom.html.ReactHTML
@@ -54,41 +48,3 @@ val SelectExample = FC<SelectExampleProps> { props ->
         }
     }
 }
-
-//val MuiSelectExample = FC<SelectExampleProps> { props ->
-//    var selectedExampleInput: ExampleInput by useState(ExampleInput.NYC)
-//    div {
-//        label {
-//            title = "Select example input"
-//            div {
-//                +"Example input"
-//            }
-////            val SelectExampleInput: FC<SelectUnstyledProps<String>> = SelectUnstyled
-////            val ExampleInputOption: FC<OptionUnstyledProps<String>> = OptionUnstyled
-//            Select {
-////                css {
-////                    display = Display.block
-////                }
-//                value = selectedExampleInput.name
-//                ExampleInput.values().forEach {
-//                    MenuItem {
-//                        value = it.name
-//                        +it.name
-//                    }
-//                }
-//                onChange = { _, _ ->
-////                    selectedExampleInput = ExampleInput.valueOf(it!!)
-//                }
-//            }
-//        }
-//        button {
-//            css {
-//                display = Display.block
-//            }
-//            +"Load example"
-//            onClick = {
-//                props.onLoadExample(selectedExampleInput)
-//            }
-//        }
-//    }
-//}

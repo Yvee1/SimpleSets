@@ -6,6 +6,8 @@ import react.FC
 import react.PropsWithChildren
 import react.dom.html.HTMLAttributes
 import react.dom.html.ReactHTML.div
+import web.cssom.Margin
+import web.cssom.px
 import web.html.HTMLDivElement
 
 external interface ToolbarProps: PropsWithChildren, HTMLAttributes<HTMLDivElement>

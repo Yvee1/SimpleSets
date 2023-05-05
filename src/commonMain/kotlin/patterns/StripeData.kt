@@ -105,7 +105,7 @@ class StripeData(points: List<Point>) {
 }
 
 /**
- * Clockwise ordering around a point `Patterns.p`.
+ * Clockwise ordering around a point `p`.
  * @param p the reference point
  * @param start the start angle in degrees, counter-clockwise starting at 3 o'clock.
  */
@@ -114,7 +114,7 @@ fun compareAround(p: Point, start: Double, dir: Orientation) = Comparator<Point>
     }
 
 /**
- * Clockwise ordering around a point `Patterns.p`.
+ * Clockwise ordering around a point `p`.
  * @param p the reference point
  * @param start the start angle in degrees, counter-clockwise starting at 3 o'clock.
  */

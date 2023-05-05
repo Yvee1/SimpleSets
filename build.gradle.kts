@@ -1,6 +1,8 @@
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import org.gradle.internal.os.OperatingSystem
 import org.gradle.nativeplatform.platform.internal.DefaultNativePlatform
+import org.jetbrains.kotlin.gradle.targets.js.yarn.YarnPlugin
+import org.jetbrains.kotlin.gradle.targets.js.yarn.YarnRootExtension
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 group = "org.openrndr.template"
@@ -187,7 +189,7 @@ kotlin {
         val jsMain by getting {
             dependencies {
                 // React, React DOM + Wrappers
-                implementation(enforcedPlatform(kotlinw("wrappers-bom:1.0.0-pre.542")))
+                implementation(enforcedPlatform(kotlinw("wrappers-bom:1.0.0-pre.545")))
                 implementation(kotlinw("react"))
                 implementation(kotlinw("react-dom"))
 
@@ -196,6 +198,7 @@ kotlin {
 
                 // MUI
 //                implementation(kotlinw("mui"))
+//                implementation(kotlinw("mui-icons"))
 
                 // OPENRNDR
                 implementation(openrndr("draw"))
@@ -286,4 +289,54 @@ runtime {
 
 tasks.register<org.openrndr.extra.gitarchiver.GitArchiveToMarkdown>("gitArchiveToMarkDown") {
     historySize.set(20)
+}
+
+//rootProject.plugins.withType<YarnPlugin> {
+//    rootProject.the<YarnRootExtension>().apply {
+//        resolution("@mui/material", "5.11.2")
+//    }
+//}
+
+// ------------------------------------------------------------------------------------------------------------------ //
+
+if (properties["openrndr.tasks"] == "true") {
+    task("create executable jar for $applicationMainClass") {
+        group = " \uD83E\uDD8C OPENRNDR"
+        dependsOn("jar")
+    }
+
+    task("run $applicationMainClass") {
+        group = " \uD83E\uDD8C OPENRNDR"
+        dependsOn("run")
+    }
+
+    task("create standalone executable for $applicationMainClass") {
+        group = " \uD83E\uDD8C OPENRNDR"
+        dependsOn("jpackageZip")
+    }
+
+    task("add IDE file scopes") {
+        group = " \uD83E\uDD8C OPENRNDR"
+        val scopesFolder = File("${project.projectDir}/.idea/scopes")
+        scopesFolder.mkdirs()
+
+        val files = listOf(
+            "Code" to "file:*.kt||file:*.frag||file:*.vert||file:*.glsl",
+            "Text" to "file:*.txt||file:*.md||file:*.xml||file:*.json",
+            "Gradle" to "file[*buildSrc*]:*/||file:*gradle.*||file:*.gradle||file:*/gradle-wrapper.properties||file:*.toml",
+            "Images" to "file:*.png||file:*.jpg||file:*.dds||file:*.exr"
+        )
+        files.forEach { (name, pattern) ->
+            val file = File(scopesFolder, "__$name.xml")
+            if (!file.exists()) {
+                file.writeText(
+                    """
+                    <component name="DependencyValidationManager">
+                      <scope name=" ★ $name" pattern="$pattern" />
+                    </component>
+                    """.trimIndent()
+                )
+            }
+        }
+    }
 }

@@ -16,13 +16,14 @@ val Checkbox = FC<CheckboxProps> { props ->
     ReactHTML.div {
         ReactHTML.label {
             +props.label
-        }
-        ReactHTML.input {
-            +props
-            css {
-                float = Float.right
+
+            ReactHTML.input {
+                +props
+                css {
+                    float = Float.right
+                }
+                type = InputType.checkbox
             }
-            type = InputType.checkbox
         }
     }
 }

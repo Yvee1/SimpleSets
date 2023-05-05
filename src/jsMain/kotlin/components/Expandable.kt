@@ -30,7 +30,7 @@ val Expandable = FC<ExpandableProps> { props ->
                     position = Position.absolute
                     top = 100.pct
                     background = NamedColor.white
-                    boxShadow = BoxShadow(0.px, 10.px, 10.px, 0.px, rgba(0, 0, 0, 0.25))
+                    boxShadow = BoxShadow(0.px, 10.px, 10.px, 0.px, rgb(0, 0, 0, 0.25))
                     borderBottomLeftRadius = 10.px
                     borderBottomRightRadius = 10.px
 

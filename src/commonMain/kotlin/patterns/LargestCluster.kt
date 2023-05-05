@@ -97,7 +97,7 @@ fun ProblemInstance.largestClusterAt(p: Point,
             Ai[P[j]]!!.add(P[i])
             Bi[P[i]]!!.add(P[j])
 
-            // If Patterns.p, P[i], and P[j] are collinear, then add an edge in the other direction as well.
+            // If p, P[i], and P[j] are collinear, then add an edge in the other direction as well.
             if (orientation(p.pos, P[i].pos, P[j].pos) == Orientation.STRAIGHT) {
                 edges[P[j] to P[i]] = Edge(P[j], P[i], if (i == 0) triUncov.get0(t) else null)
                 Ai[P[i]]!!.add(P[j])
@@ -147,7 +147,7 @@ fun ProblemInstance.largestClusterAt(p: Point,
             }
         }
 
-        // For each m, s[m] is the largest integer such that A[s[m]] and B[m] are Patterns.p-Patterns.compatible.
+        // For each m, s[m] is the largest integer such that A[s[m]] and B[m] are p-compatible.
         // So it is the index of the last incoming edge of pi that B[m] can be 'joined' to.
         val s = buildList {
             var k = 0

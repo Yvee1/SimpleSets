@@ -27,17 +27,17 @@ import react.dom.events.PointerEvent
 import react.dom.html.ReactHTML.button
 import react.dom.html.ReactHTML.input
 import react.dom.html.ReactHTML.label
-import react.dom.html.ReactHTML.option
-import react.dom.html.ReactHTML.select
-import react.dom.html.ReactHTML.span
 import web.buffer.Blob
 import web.buffer.BlobPart
 import web.dom.Element
 import web.dom.document
 import web.html.HTMLAnchorElement
 import web.html.HTMLDivElement
+import web.html.HTMLElement
 import web.html.InputType
 import web.url.URL
+import kotlin.math.min
+import kotlin.math.max
 
 enum class Tool {
     None,
@@ -46,9 +46,12 @@ enum class Tool {
 
 val worker = Worker("worker.js")
 
+// Card border radius
+val cardBr = 20.px
+
 val App = FC<Props> {
-    var pSize: Double by useState(5.0)
     var useGrid: Boolean by useState(true)
+    var pSize: Double by useState(5.0)
     var bendDistance: Double by useState(75.0)
     var bendInflection: Boolean by useState(true)
     var maxBendAngle: Double by useState(180.0)
@@ -81,12 +84,6 @@ val App = FC<Props> {
     val topRight = viewMatrix * svgSize
     val viewBoxTransform = "${bottomLeft.x} ${bottomLeft.y} ${topRight.x - bottomLeft.x} ${topRight.y - bottomLeft.y}"
 
-    val windowSize = useWindowSize()
-
-    useEffect(windowSize) {
-        val svgContainer = svgContainerRef.current ?: return@useEffect
-        svgSize = IntVector2(svgContainer.clientWidth, svgContainer.clientHeight)
-    }
     val emptySvg = ""
     var svg: String by useState(emptySvg)
 
@@ -105,6 +102,18 @@ val App = FC<Props> {
 
     var evCache: List<PointerEvent<HTMLDivElement>> by useState(emptyList())
     var prevDiff: Double? = null
+
+    var sideWindowRatio: Double by useState(0.382)
+    var sideWindowMovingStart: Double? by useState(null)
+    val sideWindowMoving: Boolean = sideWindowMovingStart != null
+    val sideWindowContainer: MutableRefObject<HTMLDivElement> = useRef(null)
+
+    val windowSize = useWindowSize()
+
+    useEffect(windowSize, sideWindowRatio) {
+        val svgContainer = svgContainerRef.current ?: return@useEffect
+        svgSize = IntVector2(svgContainer.clientWidth, svgContainer.clientHeight)
+    }
 
     worker.onmessage = { m: MessageEvent ->
         val completedWork: CompletedWork = Json.decodeFromString(m.data as String)
@@ -129,22 +138,85 @@ val App = FC<Props> {
             height= 100.pct
         }
 
-        h1 {
-            +"Islands and bridges"
-            css {
-                fontWeight = FontWeight.normal
-            }
-        }
-
         div {
+            ref = sideWindowContainer
             css {
-                padding = 10.px
+                boxShadow = BoxShadow(0.px, 0.px, 10.px, 4.px, rgb(200, 200, 200))
+                borderRadius = cardBr
+                margin = Margin(20.px, 20.px)
                 boxSizing = BoxSizing.borderBox
-                display = Display.grid
-                gap = 10.px
-                width = 100.pct
-                height = 100.pct
-                gridTemplateColumns = "auto max-content".unsafeCast<GridTemplateColumns>()
+                display = Display.flex
+                width = 100.pct - 40.px
+                height = 100.pct - 40.px
+                flexDirection = FlexDirection.row
+
+            }
+            div {
+                css {
+                    height = 100.pct
+                    width = (100 * sideWindowRatio).pct
+                    overflow = Overflow.hidden
+                }
+
+                div {
+                    css {
+                        width = 100.pct
+                        height = 100.pct
+                        display = Display.flex
+                        flexDirection = FlexDirection.column
+                        boxSizing = BoxSizing.borderBox
+                        padding = Padding(20.px, 30.px)
+                    }
+                    h1 {
+                        css {
+                            marginTop = 0.px
+
+                        }
+                        +"Islands and bridges"
+                    }
+
+                }
+
+
+            }
+            div {
+                css {
+                    display = Display.flex
+                    alignItems = AlignItems.center
+                    justifyContent = JustifyContent.center
+                    width = 20.px
+                    overscrollBehavior = OverscrollBehavior.contain
+                    cursor = Cursor.colResize
+                }
+
+                onPointerDown = { ev ->
+                    val target = ev.target as HTMLElement
+                    val diff = target.getBoundingClientRect().left - ev.currentTarget.getBoundingClientRect().left
+                    sideWindowMovingStart = ev.offset.x + diff
+                    ev.currentTarget.setPointerCapture(ev.pointerId)
+                }
+
+                onPointerMove = { ev ->
+                    if (sideWindowMoving) {
+                        sideWindowContainer.current?.let { container ->
+                            val left = container.getBoundingClientRect().left
+                            sideWindowRatio = max(0.0, min(0.5, (ev.clientX - sideWindowMovingStart!! - left) / container.clientWidth))
+                        }
+                    }
+                }
+
+                onPointerUp = { ev ->
+                    sideWindowMovingStart = null
+                    ev.stopPropagation()
+                }
+
+                div {
+                    css {
+                        height = 66.pct
+                        border = Border(1.px, LineStyle.solid, rgb(200, 200, 200))
+
+                    }
+                }
             }
             div {
                 css {
@@ -152,9 +224,11 @@ val App = FC<Props> {
                     display = Display.flex
                     flexDirection = FlexDirection.column
                     boxSizing = BoxSizing.borderBox
-                    border = Border(1.px, LineStyle.solid, NamedColor.black)
                     fontFamily = FontFamily.sansSerif
                     fontSize = (13 + 1.0 / 3.0).px
+                    flex = auto
+                    margin = 10.px
+                    marginLeft = 0.px
                 }
 
                 tabIndex = 0
@@ -173,7 +247,7 @@ val App = FC<Props> {
                             position = Position.absolute
                             width = 100.pct
                             height = 100.pct
-                            background = rgba(255, 255, 255, 0.9)
+                            background = rgb(255, 255, 255, 0.9)
                             display = Display.flex
                             alignItems = AlignItems.center
                             justifyContent = JustifyContent.center
@@ -192,8 +266,8 @@ val App = FC<Props> {
 
                 div {
                     css {
-                        borderBottom = Border(1.px, LineStyle.solid, NamedColor.black)
                         zIndex = integer(20)
+                        margin = Margin(0.px, 10.px)
                     }
                     Toolbar {
                         val whiteSpace = div.create {
@@ -392,7 +466,8 @@ val App = FC<Props> {
                                             type = InputType.color
                                             value = colors[i - 1].first.toHex()
                                             onChange = { ev ->
-                                                colors = colors.replace(i-1) { it.copy(first = ColorRGB.fromHex(ev.currentTarget.value)) }
+                                                colors =
+                                                    colors.replace(i - 1) { it.copy(first = ColorRGB.fromHex(ev.currentTarget.value)) }
                                                 recomputeSvg()
                                             }
                                         }
@@ -414,14 +489,15 @@ val App = FC<Props> {
                                             type = InputType.color
                                             value = colors[i - 1].second.toHex()
                                             onChange = { ev ->
-                                                colors = colors.replace(i - 1) { it.copy(second = ColorRGB.fromHex(ev.currentTarget.value)) }
+                                                colors =
+                                                    colors.replace(i - 1) { it.copy(second = ColorRGB.fromHex(ev.currentTarget.value)) }
                                                 recomputeSvg()
                                             }
                                         }
                                     }
                                     button {
                                         onClick = {
-                                            colors = colors.replace(i-1, originalColors[i - 1])
+                                            colors = colors.replace(i - 1, originalColors[i - 1])
                                             recomputeSvg()
                                         }
                                         +"Reset"
@@ -438,7 +514,7 @@ val App = FC<Props> {
                                 // Adapted from: https://stackoverflow.com/a/38019175
                                 val downloadee: BlobPart =
                                     "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
-                                            "<svg version=\"1.2\" baseProfile=\"tiny\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\">" +
+                                            "<svg version=\"1.2\" baseProfile=\"tiny\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" viewBox=\"$viewBoxTransform\">" +
                                             svg +
                                             "</svg>"
                                 val svgBlob = Blob(arrayOf(downloadee), jso { type = "image/svg+xml;charset=utf-8" })
@@ -466,6 +542,8 @@ val App = FC<Props> {
                     css {
                         height = 100.pct
                         width = 100.pct
+                        borderBottomRightRadius = 20.px
+                        border = Border(1.px, LineStyle.solid, rgb(200, 200, 200))
                     }
                     div {
                         css {
@@ -484,18 +562,20 @@ val App = FC<Props> {
 
                         ref = svgContainerRef
 
-                        onClick = { ev ->
+                        onContextMenu = { ev ->
                             ev.preventDefault()
-                            if (tool == Tool.PlacePoints) {
-                                points += Point(viewMatrix * ev.offset, currentType)
-                            }
                         }
 
                         onPointerDown = { ev ->
                             ev.preventDefault()
                             ev.currentTarget.setPointerCapture(ev.pointerId)
                             evCache += ev
+
+                            if (tool == Tool.PlacePoints) {
+                                points += Point(viewMatrix * ev.offset, currentType)
+                            }
                         }
+
                         onPointerUp = { ev ->
                             ev.preventDefault()
                             evCache = evCache.filterNot {
@@ -554,8 +634,9 @@ val App = FC<Props> {
                                 width = 100.pct
                                 position = Position.absolute
                                 zIndex = integer(2)
+                                borderBottomRightRadius = cardBr
                                 if (changedProblem)
-                                    background = rgba(255, 255, 255, 0.9)
+                                    background = rgb(255, 255, 255, 0.9)
                             }
                         }
 
@@ -566,6 +647,7 @@ val App = FC<Props> {
                                 position = Position.absolute
                                 display = if (changedProblem) Display.block else none
                                 zIndex = integer(3)
+                                borderBottomRightRadius = cardBr
                             }
 
                             viewBox = viewBoxTransform
@@ -592,6 +674,7 @@ val App = FC<Props> {
                                 css {
                                     height = 100.pct
                                     width = 100.pct
+                                    borderBottomRightRadius = cardBr
                                 }
 
                                 viewBox = viewBoxTransform
@@ -606,57 +689,22 @@ val App = FC<Props> {
                         div {
                             css {
                                 position = Position.absolute
-                                borderLeft = Border(1.px, LineStyle.solid, NamedColor.black)
-                                borderTop = Border(1.px, LineStyle.solid, NamedColor.black)
                                 zIndex = integer(100)
-                                padding = 5.px
+                                padding = 10.px
                                 bottom = 0.px
                                 right = 0.px
                                 userSelect = none
                                 cursor = Cursor.pointer
-                                background = NamedColor.white
+                                background = rgb(65, 65, 65)
+                                borderRadius = 10.px
+                                color = NamedColor.whitesmoke
+                                fontSize = 1.rem
+                                margin = 10.px
                             }
                             onClick = {
                                 viewMatrix = Matrix44.IDENTITY
                             }
                             +"Reset"
-                        }
-                    }
-                }
-            }
-            div {
-                css {
-                    display = Display.flex
-                    border = Border(1.px, LineStyle.solid, NamedColor.black)
-                }
-                div {
-                    css {
-                        display = Display.flex
-                        flexDirection = FlexDirection.column
-                        alignItems = AlignItems.center
-                        justifyContent = JustifyContent.center
-                    }
-                    span {
-                        css {
-                            userSelect = none
-                            cursor = Cursor.pointer
-                        }
-                        +"<"
-                    }
-                }
-                div {
-                    css {
-                        display = Display.flex
-                        flexDirection = FlexDirection.column
-                    }
-//                    MuiSelectExample {
-//                        onLoadExample = {
-//                            points = getExampleInput(it)
-//                        }
-//                    }
-                    SelectExample {
-                        onLoadExample = {
-                            points = getExampleInput(it)
                         }
                     }
                 }

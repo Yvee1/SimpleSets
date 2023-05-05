@@ -1,7 +1,9 @@
 application.log
 build
 out
-.idea
+.idea/*
+!.idea/icon.svg
+!.idea/codeInsightSettings.xml
 .gradle
 video/
 screenshots/

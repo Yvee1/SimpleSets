@@ -1,5 +1,4 @@
 import js.core.asList
-import org.openrndr.math.Vector2
 import patterns.Point
 import web.dom.NamedNodeMap
 import web.dom.parsing.DOMParser
