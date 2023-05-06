@@ -32,18 +32,8 @@ data class DrawSettings(
 )
 
 @Serializable
-data class ColorSettings(
-    val colors: List<Pair<ColorRGB, ColorRGB>>
-) {
-    val lightColors: List<ColorRGB> by lazy {
-        colors.map { it.first }
-    }
-
-    val darkColors: List<ColorRGB> by lazy {
-        colors.map { it.second }
-    }
-
-    constructor(colors: List<ColorRGB>) : this(colors.map { it to it.toColorRGBa().shade(0.8).toColorRGB() })
+data class ColorSettings(val lightColors: List<ColorRGB>, val darkColors: List<ColorRGB>) {
+    constructor(colors: List<ColorRGB>): this(colors, colors.map { it.toColorRGBa().shade(0.8).toColorRGB() })
 }
 
 @Serializable
