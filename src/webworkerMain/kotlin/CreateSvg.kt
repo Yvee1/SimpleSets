@@ -85,7 +85,7 @@ fun createSvg(points: List<Point>, compSet: ComputeSettings, drawSet: DrawSettin
                 fill = ColorRGBa.BLACK
                 circles(
                     sol.visibilityGraph.vertices.filterIsInstance<PointVertex>().map { it.pos },
-                    drawSet.pSize / 5.0
+                    drawSet.pointSize / 5.0
                 )
             }
 
@@ -102,7 +102,7 @@ fun createSvg(points: List<Point>, compSet: ComputeSettings, drawSet: DrawSettin
             strokeWeight = drawSet.pointStrokeWeight
             for (p in points) {
                 fill = drawSet.colorSettings.lightColors[p.type].toColorRGBa()
-                circle(p.pos, drawSet.pSize)
+                circle(p.pos, drawSet.pointSize)
             }
         }
     }.toSVG()

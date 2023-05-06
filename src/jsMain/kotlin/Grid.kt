@@ -1,4 +1,5 @@
 import components.IconButton
+import js.core.jso
 import react.FC
 import react.Props
 import react.dom.events.MouseEventHandler
@@ -13,9 +14,11 @@ external interface GridProps: Props {
 
 val Grid = FC<GridProps> { props ->
     IconButton {
-        title = "Turn ${if (props.showGrid) "off" else "on"} grid"
-        checked = props.showGrid
-        onClick = props.onClick
+        buttonProps = jso {
+            title = "Turn ${if (props.showGrid) "off" else "on"} grid"
+            onClick = props.onClick
+        }
+        isPressed = props.showGrid
         svg {
             width = 16.0
             height = 16.0

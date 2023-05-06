@@ -5,7 +5,7 @@ import web.events.EventType
 import web.window.window
 
 fun useWindowSize(): IntVector2 {
-    var size: IntVector2 by useState(IntVector2.ZERO)
+    var size: IntVector2 by useState(IntVector2(window.innerWidth, window.innerHeight))
     useEffect {
         val listener = { _: Any -> size = IntVector2(window.innerWidth, window.innerHeight) }
         window.addEventListener(EventType("resize"), listener)

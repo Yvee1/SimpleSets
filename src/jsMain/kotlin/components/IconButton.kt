@@ -4,18 +4,20 @@ import web.cssom.*
 import web.cssom.None.Companion.none
 import emotion.react.css
 import react.FC
+import react.PropsWithChildren
 import react.dom.html.ButtonHTMLAttributes
 import react.dom.html.ReactHTML.button
 import react.dom.html.ReactHTML.span
 import web.html.HTMLButtonElement
 
-external interface IconButtonProps : ButtonHTMLAttributes<HTMLButtonElement> {
-    var checked: Boolean
+external interface IconButtonProps : PropsWithChildren {
+    var isPressed: Boolean
+    var buttonProps: ButtonHTMLAttributes<HTMLButtonElement>
 }
 
 val IconButton = FC<IconButtonProps> { props ->
     button {
-        +props
+        +props.buttonProps
 
         css {
             width = 32.px
@@ -28,7 +30,7 @@ val IconButton = FC<IconButtonProps> { props ->
 
             backgroundPosition = GeometryPosition.center
             transition = Transition(PropertyName.background, duration=0.4.s, delay=0.s)
-            if (props.checked) {
+            if (props.isPressed) {
                 backgroundColor = Color("#ECEBEB")
                 hover {
                     transition = Transition(PropertyName.background, duration=0.2.s, delay=0.s)

@@ -1,8 +1,8 @@
 import components.*
+import contexts.*
 import web.cssom.*
 import web.cssom.Auto.Companion.auto
 import web.cssom.Globals.Companion.initial
-import web.cssom.Length.Companion.maxContent
 import web.cssom.None.Companion.none
 import emotion.react.css
 import js.core.jso
@@ -16,7 +16,6 @@ import org.openrndr.math.transforms.transform
 import patterns.Point
 import react.*
 import react.dom.html.ReactHTML.div
-import react.dom.html.ReactHTML.h1
 import react.dom.svg.ReactSVG.circle
 import react.dom.svg.ReactSVG.svg
 import org.w3c.dom.MessageEvent
@@ -24,20 +23,18 @@ import org.w3c.dom.Worker
 import react.dom.events.MouseEvent
 import react.dom.events.NativeMouseEvent
 import react.dom.events.PointerEvent
-import react.dom.html.ReactHTML.button
-import react.dom.html.ReactHTML.input
-import react.dom.html.ReactHTML.label
+import sideWindow.Divider
+import sideWindow.SideWindow
+import sideWindow.settings.BendSettingsPanel
+import sideWindow.settings.ClusterSettingsPanel
+import sideWindow.settings.ColorSettingsPanel
+import sideWindow.settings.PointSettingsPanel
 import web.buffer.Blob
 import web.buffer.BlobPart
 import web.dom.Element
 import web.dom.document
-import web.html.HTMLAnchorElement
-import web.html.HTMLDivElement
-import web.html.HTMLElement
-import web.html.InputType
+import web.html.*
 import web.url.URL
-import kotlin.math.min
-import kotlin.math.max
 
 enum class Tool {
     None,
@@ -51,14 +48,43 @@ val cardBr = 20.px
 
 val App = FC<Props> {
     var useGrid: Boolean by useState(true)
-    var pSize: Double by useState(5.0)
-    var bendDistance: Double by useState(75.0)
-    var bendInflection: Boolean by useState(true)
-    var maxBendAngle: Double by useState(180.0)
-    var maxTurningAngle: Double by useState(90.0)
-    var clusterRadius: Double by useState(50.0)
+
+    val (pointSize, pointSizeSetter) = useState(5.0)
+    val pointSettings = object: PointSettings {
+        override var pointSize: Double
+            get() = pointSize
+            set(v) = pointSizeSetter(v)
+    }
+
+    val (bendDistance, bendDistanceSetter) = useState(75.0)
+    val (bendInflection, bendInflectionSetter) = useState(true)
+    val (maxBendAngle, maxBendAngleSetter) = useState(180.0)
+    val (maxTurningAngle, maxTurningAngleSetter) = useState(90.0)
+
+    val bendSettings = object: BendSettings {
+        override var bendDistance: Double
+            get() = bendDistance
+            set(v) = bendDistanceSetter(v)
+        override var bendInflection: Boolean
+            get() = bendInflection
+            set(v) = bendInflectionSetter(v)
+        override var maxBendAngle: Double
+            get() = maxBendAngle
+            set(v) = maxBendAngleSetter(v)
+        override var maxTurningAngle: Double
+            get() = maxTurningAngle
+            set(v) = maxTurningAngleSetter(v)
+    }
+
+    val (clusterRadius, clusterRadiusSetter) = useState(50.0)
+    val clusterSettings = object: ClusterSettings {
+        override var clusterRadius: Double
+            get() = clusterRadius
+            set(v) = clusterRadiusSetter(v)
+    }
+
     val computeSettings = ComputeSettings(
-        expandRadius = 3 * pSize,
+        expandRadius = 3 * pointSize,
         bendDistance = bendDistance,
         bendInflection = bendInflection,
         maxBendAngle = maxBendAngle,
@@ -66,16 +92,24 @@ val App = FC<Props> {
         clusterRadius = clusterRadius,
     )
 
-    val blue = ColorRGB(0.651, 0.807, 0.89) to ColorRGB(0.121, 0.47, 0.705)
-    val red = ColorRGB(0.984, 0.603, 0.6) to ColorRGB(0.89, 0.102, 0.109)
-    val green = ColorRGB(0.698, 0.874, 0.541) to ColorRGB(0.2, 0.627, 0.172)
-    val orange = ColorRGB(0.992, 0.749, 0.435) to ColorRGB(1.0, 0.498, 0.0)
-    val purple = ColorRGB(0.792, 0.698, 0.839) to ColorRGB(0.415, 0.239, 0.603)
-    val originalColors = listOf(blue, red, green, orange, purple)
-    var colors: List<Pair<ColorRGB, ColorRGB>> by useState(originalColors)
+    val blue = ColorRGB(0.651, 0.807, 0.89)// to ColorRGB(0.121, 0.47, 0.705)
+    val red = ColorRGB(0.984, 0.603, 0.6)// to ColorRGB(0.89, 0.102, 0.109)
+    val green = ColorRGB(0.698, 0.874, 0.541)// to ColorRGB(0.2, 0.627, 0.172)
+    val orange = ColorRGB(0.992, 0.749, 0.435)// to ColorRGB(1.0, 0.498, 0.0)
+    val purple = ColorRGB(0.792, 0.698, 0.839)// to ColorRGB(0.415, 0.239, 0.603)
+    val defaultColors = listOf(blue, red, green, orange, purple)
 
+    val (colors, colorsSetter) = useState(defaultColors)
+    val colorsObj = object: Colors {
+        override val defaultColors: List<ColorRGB>
+            get() = defaultColors
+        override var colors: List<ColorRGB>
+            get() = colors
+            set(v) = colorsSetter(v)
+
+    }
     val colorSettings = ColorSettings(colors)
-    val drawSettings = DrawSettings(pSize = pSize, colorSettings = colorSettings)
+    val drawSettings = DrawSettings(pointSize = pointSize, colorSettings = colorSettings)
 
     var viewMatrix: Matrix44 by useState(Matrix44.IDENTITY)
     val svgContainerRef: MutableRefObject<HTMLDivElement> = useRef(null)
@@ -103,12 +137,12 @@ val App = FC<Props> {
     var evCache: List<PointerEvent<HTMLDivElement>> by useState(emptyList())
     var prevDiff: Double? = null
 
-    var sideWindowRatio: Double by useState(0.382)
-    var sideWindowMovingStart: Double? by useState(null)
-    val sideWindowMoving: Boolean = sideWindowMovingStart != null
+    val (sideWindowRatio, setSideWindowRatio) = useState(0.382)
+
     val sideWindowContainer: MutableRefObject<HTMLDivElement> = useRef(null)
 
     val windowSize = useWindowSize()
+    val horizontal = windowSize.x > windowSize.y
 
     useEffect(windowSize, sideWindowRatio) {
         val svgContainer = svgContainerRef.current ?: return@useEffect
@@ -135,7 +169,7 @@ val App = FC<Props> {
             flexDirection = FlexDirection.column
             alignItems = AlignItems.center
             width = 100.pct
-            height= 100.pct
+            height = 100.pct
         }
 
         div {
@@ -148,76 +182,48 @@ val App = FC<Props> {
                 display = Display.flex
                 width = 100.pct - 40.px
                 height = 100.pct - 40.px
-                flexDirection = FlexDirection.row
+                flexDirection = if (horizontal) FlexDirection.row else FlexDirection.column
 
             }
-            div {
-                css {
+
+            SideWindow {
+                if (horizontal) {
                     height = 100.pct
                     width = (100 * sideWindowRatio).pct
-                    overflow = Overflow.hidden
+                } else {
+                    height = (100 * sideWindowRatio).pct
+                    width = 100.pct
                 }
 
-                div {
-                    css {
-                        width = 100.pct
-                        height = 100.pct
-                        display = Display.flex
-                        flexDirection = FlexDirection.column
-                        boxSizing = BoxSizing.borderBox
-                        padding = Padding(20.px, 30.px)
-                    }
-                    h1 {
-                        css {
-                            marginTop = 0.px
-
-                        }
-                        +"Islands and bridges"
-                    }
-
+                BendSettingsContext.Provider {
+                    value = bendSettings
+                    BendSettingsPanel()
                 }
-
-
-            }
-            div {
-                css {
-                    display = Display.flex
-                    alignItems = AlignItems.center
-                    justifyContent = JustifyContent.center
-                    width = 20.px
-                    overscrollBehavior = OverscrollBehavior.contain
-                    cursor = Cursor.colResize
+                ClusterSettingsContext.Provider {
+                    value = clusterSettings
+                    ClusterSettingsPanel()
                 }
-
-                onPointerDown = { ev ->
-                    val target = ev.target as HTMLElement
-                    val diff = target.getBoundingClientRect().left - ev.currentTarget.getBoundingClientRect().left
-                    sideWindowMovingStart = ev.offset.x + diff
-                    ev.currentTarget.setPointerCapture(ev.pointerId)
-                }
-
-                onPointerMove = { ev ->
-                    if (sideWindowMoving) {
-                        sideWindowContainer.current?.let { container ->
-                            val left = container.getBoundingClientRect().left
-                            sideWindowRatio = max(0.0, min(0.5, (ev.clientX - sideWindowMovingStart!! - left) / container.clientWidth))
-                        }
+                PointSettingsContext.Provider {
+                    value = pointSettings
+                    PointSettingsPanel {
+                        strokeWeight = drawSettings.pointStrokeWeight
+                        fillColor = colorSettings.lightColors[currentType].toSvgString()
                     }
                 }
-
-                onPointerUp = { ev ->
-                    sideWindowMovingStart = null
-                    ev.stopPropagation()
-                }
-
-                div {
-                    css {
-                        height = 66.pct
-                        border = Border(1.px, LineStyle.solid, rgb(200, 200, 200))
-
+                ColorsContext.Provider {
+                    value = colorsObj
+                    ColorSettingsPanel {
+                        recomputeSvg = ::recomputeSvg
                     }
                 }
             }
+
+            Divider {
+                isHorizontal = horizontal
+                windowContainer = sideWindowContainer
+                valueSetter = setSideWindowRatio
+            }
+
             div {
                 css {
                     position = Position.relative
@@ -228,16 +234,17 @@ val App = FC<Props> {
                     fontSize = (13 + 1.0 / 3.0).px
                     flex = auto
                     margin = 10.px
-                    marginLeft = 0.px
+                    if (horizontal) {
+                        marginLeft = 0.px
+                    } else {
+                        marginTop = 0.px
+                    }
                 }
 
                 tabIndex = 0
                 onKeyDown = {
                     if (it.key in (1..5).map { it.toString() }) {
                         currentType = it.key.toInt() - 1
-                    }
-                    if (it.key == "R") {
-
                     }
                 }
 
@@ -278,122 +285,7 @@ val App = FC<Props> {
                             }
                         }
 
-                        Expandable {
-                            expander = div.create {
-                                css {
-                                    alignItems = AlignItems.center
-                                    justifyContent = JustifyContent.center
-                                    display = Display.flex
-                                    flexWrap = FlexWrap.nowrap
-                                    val padW = 8.px
-                                    padding = Padding(0.px, padW)
-                                    height = 100.pct
-                                    width = 100.pct - 2 * padW
-                                    cursor = Cursor.default
-                                }
-                                +"Bend"
-                            }
-                            expandee = div.create {
-                                css {
-                                    display = Display.flex
-                                    flexDirection = FlexDirection.column
-                                    padding = Padding(7.5.px, 10.px)
-                                }
-                                Checkbox {
-                                    title = "Allow bend inflection"
-                                    checked = bendInflection
-                                    label = "Bend inflection"
-                                    onClick = {
-                                        bendInflection = !bendInflection
-                                    }
-                                }
-                                Slider {
-                                    title = "Change bend distance"
-                                    step = "any".unsafeCast<Double>()
-                                    min = 1.0
-                                    max = 500.0
-                                    value = bendDistance
-                                    unit = ""
-                                    label = "Bend distance"
-                                    onChange = {
-                                        bendDistance = it.currentTarget.valueAsNumber
-                                    }
-                                }
-                                Slider {
-                                    title = "Change max bend angle"
-                                    step = "any".unsafeCast<Double>()
-                                    min = 0.0
-                                    max = 180.0
-                                    value = maxBendAngle
-                                    unit = "°"
-                                    label = "Max bend angle"
-                                    onChange = {
-                                        maxBendAngle = it.currentTarget.valueAsNumber
-                                    }
-                                }
-                                Slider {
-                                    title = "Change max turning angle"
-                                    step = "any".unsafeCast<Double>()
-                                    min = 0.0
-                                    max = 180.0
-                                    value = maxTurningAngle
-                                    unit = "°"
-                                    label = "Max turning angle"
-                                    onChange = {
-                                        maxTurningAngle = it.currentTarget.valueAsNumber
-                                    }
-                                }
-                            }
-                        }
-
-                        Expandable {
-                            expander = div.create {
-                                css {
-                                    alignItems = AlignItems.center
-                                    justifyContent = JustifyContent.center
-                                    display = Display.flex
-                                    flexWrap = FlexWrap.nowrap
-                                    val padW = 8.px
-                                    padding = Padding(0.px, padW)
-                                    height = 100.pct
-                                    width = 100.pct - 2 * padW
-                                    cursor = Cursor.default
-                                }
-                                +"Cluster"
-                            }
-                            expandee = div.create {
-                                css {
-                                    display = Display.flex
-                                    flexDirection = FlexDirection.column
-                                    padding = Padding(7.5.px, 10.px)
-                                }
-                                Slider {
-                                    title = "Change cluster radius"
-                                    step = "any".unsafeCast<Double>()
-                                    min = 0.0
-                                    max = 100.0
-                                    value = clusterRadius
-                                    unit = ""
-                                    label = "Cluster radius"
-                                    onChange = {
-                                        clusterRadius = it.currentTarget.valueAsNumber
-                                    }
-                                }
-                            }
-                        }
-
                         +whiteSpace
-
-                        PointSize {
-                            pointSize = pSize
-                            min = 1.0
-                            max = 10.0
-                            onChange = {
-                                pSize = it
-                            }
-                            strokeWeight = drawSettings.pointStrokeWeight
-                            fillColor = colorSettings.lightColors[currentType].toSvgString()
-                        }
 
                         Grid {
                             showGrid = useGrid
@@ -403,24 +295,29 @@ val App = FC<Props> {
                         }
 
                         IconButton {
-                            title = "Clear"
+                            buttonProps = jso {
+                                title = "Clear"
 //                        ariaLabel = "clear"
-                            onClick = {
-                                svg = emptySvg
-                                points = emptyList()
+                                onClick =
+                                {
+                                    svg = emptySvg
+                                    points = emptyList()
+                                }
                             }
                             Clear()
                         }
 
                         IconButton {
-                            title = "Run computations"
-                            onClick = {
-                                if (changedProblem) {
-                                    val assignment: Assignment = Compute(computeSettings, points, drawSettings)
-                                    worker.postMessage(Json.encodeToString(assignment))
-                                    computing = true
-                                    lastSentPoints = points
-                                    lastSentSettings = computeSettings
+                            buttonProps = jso {
+                                title = "Run computations"
+                                onClick = {
+                                    if (changedProblem) {
+                                        val assignment: Assignment = Compute(computeSettings, points, drawSettings)
+                                        worker.postMessage(Json.encodeToString(assignment))
+                                        computing = true
+                                        lastSentPoints = points
+                                        lastSentSettings = computeSettings
+                                    }
                                 }
                             }
                             Run()
@@ -429,103 +326,43 @@ val App = FC<Props> {
                         +whiteSpace
 
                         for (i in 1..5) {
-                            Expandable {
-                                expander = IconButton.create {
+                            IconButton {
+                                buttonProps = jso {
                                     title = "Add points of color $i with mouse"
-                                    checked = currentType == i - 1 && tool == Tool.PlacePoints
                                     onClick = {
                                         tool =
                                             if (tool == Tool.PlacePoints && currentType == i - 1) Tool.None else Tool.PlacePoints
                                         currentType = i - 1
                                     }
-                                    +"$i"
                                 }
-
-                                expandee = div.create {
-                                    css {
-                                        padding = Padding(7.5.px, 10.px)
-                                        display = Display.flex
-                                        flexDirection = FlexDirection.column
-                                        alignItems = AlignItems.center
-                                        rowGap = 8.px
-                                    }
-                                    label {
-                                        css {
-                                            display = Display.flex
-                                            flexDirection = FlexDirection.column
-                                            alignItems = AlignItems.center
-                                        }
-                                        div {
-                                            css {
-                                                width = maxContent
-                                                marginBottom = 4.px
-                                            }
-                                            +"Light color"
-                                        }
-                                        input {
-                                            type = InputType.color
-                                            value = colors[i - 1].first.toHex()
-                                            onChange = { ev ->
-                                                colors =
-                                                    colors.replace(i - 1) { it.copy(first = ColorRGB.fromHex(ev.currentTarget.value)) }
-                                                recomputeSvg()
-                                            }
-                                        }
-                                    }
-                                    label {
-                                        css {
-                                            display = Display.flex
-                                            flexDirection = FlexDirection.column
-                                            alignItems = AlignItems.center
-                                        }
-                                        div {
-                                            css {
-                                                width = maxContent
-                                                marginBottom = 4.px
-                                            }
-                                            +"Dark color"
-                                        }
-                                        input {
-                                            type = InputType.color
-                                            value = colors[i - 1].second.toHex()
-                                            onChange = { ev ->
-                                                colors =
-                                                    colors.replace(i - 1) { it.copy(second = ColorRGB.fromHex(ev.currentTarget.value)) }
-                                                recomputeSvg()
-                                            }
-                                        }
-                                    }
-                                    button {
-                                        onClick = {
-                                            colors = colors.replace(i - 1, originalColors[i - 1])
-                                            recomputeSvg()
-                                        }
-                                        +"Reset"
-                                    }
-                                }
+                                isPressed = currentType == i - 1 && tool == Tool.PlacePoints
+                                +"$i"
                             }
                         }
 
                         +whiteSpace
 
                         IconButton {
-                            title = "Download output as an SVG file"
-                            onClick = {
-                                // Adapted from: https://stackoverflow.com/a/38019175
-                                val downloadee: BlobPart =
-                                    "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
-                                            "<svg version=\"1.2\" baseProfile=\"tiny\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" viewBox=\"$viewBoxTransform\">" +
-                                            svg +
-                                            "</svg>"
-                                val svgBlob = Blob(arrayOf(downloadee), jso { type = "image/svg+xml;charset=utf-8" })
-                                val svgUrl = URL.createObjectURL(svgBlob)
-                                val downloadLink = document.createElement("a").unsafeCast<HTMLAnchorElement>()
-                                downloadLink.href = svgUrl
-                                downloadLink.download = "output.svg"
+                            buttonProps = jso {
+                                title = "Download output as an SVG file"
+                                onClick = {
+                                    // Adapted from: https://stackoverflow.com/a/38019175
+                                    val downloadee: BlobPart =
+                                        "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" +
+                                                "<svg version=\"1.2\" baseProfile=\"tiny\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" viewBox=\"$viewBoxTransform\">" +
+                                                svg +
+                                                "</svg>"
+                                    val svgBlob =
+                                        Blob(arrayOf(downloadee), jso { type = "image/svg+xml;charset=utf-8" })
+                                    val svgUrl = URL.createObjectURL(svgBlob)
+                                    val downloadLink = document.createElement("a").unsafeCast<HTMLAnchorElement>()
+                                    downloadLink.href = svgUrl
+                                    downloadLink.download = "output.svg"
 //                            downloadLink.style = jso { display = "none" }
-                                document.body.appendChild(downloadLink)
-                                downloadLink.click()
-                                document.body.removeChild(downloadLink)
+                                    document.body.appendChild(downloadLink)
+                                    downloadLink.click()
+                                    document.body.removeChild(downloadLink)
+                                }
                             }
                             DownloadSvg()
                         }
@@ -552,7 +389,7 @@ val App = FC<Props> {
                             if (tool == Tool.PlacePoints) {
                                 cursor = Cursor.pointer
                             }
-                            if (tool == Tool.None && evCache.isNotEmpty()) {
+                            if (evCache.isNotEmpty() && (tool == Tool.None || evCache[0].button != 0)) {
                                 cursor = Cursor.move
                             }
                             position = Position.relative
@@ -569,10 +406,11 @@ val App = FC<Props> {
                         onPointerDown = { ev ->
                             ev.preventDefault()
                             ev.currentTarget.setPointerCapture(ev.pointerId)
-                            evCache += ev
 
-                            if (tool == Tool.PlacePoints) {
+                            if (tool == Tool.PlacePoints && ev.button == 0) {
                                 points += Point(viewMatrix * ev.offset, currentType)
+                            } else {
+                                evCache += ev
                             }
                         }
 
@@ -606,11 +444,11 @@ val App = FC<Props> {
                             }
 
                             if (evCache.size == 1 && prevEv != null) {
-                                if (tool == Tool.None && evCache.isNotEmpty()) {
+//                                if (tool == Tool.None) {
                                     viewMatrix *= transform {
                                         translate(-(ev.clientX - prevEv.clientX), -(ev.clientY - prevEv.clientY))
                                     }
-                                }
+//                                }
                             }
 
                             if (prevEv != null) {
@@ -656,7 +494,7 @@ val App = FC<Props> {
                                 circle {
                                     cx = p.pos.x
                                     cy = p.pos.y
-                                    r = pSize
+                                    r = pointSize
                                     fill = colorSettings.lightColors[p.type].toSvgString()
                                     stroke = "black"
                                     strokeWidth = drawSettings.pointStrokeWeight
@@ -670,6 +508,7 @@ val App = FC<Props> {
                                 width = 100.pct
                                 position = Position.absolute
                             }
+
                             svg {
                                 css {
                                     height = 100.pct
@@ -685,6 +524,7 @@ val App = FC<Props> {
                             }
                         }
                     }
+
                     if (viewMatrix != Matrix44.IDENTITY) {
                         div {
                             css {
@@ -712,16 +552,6 @@ val App = FC<Props> {
         }
     }
 }
-
-private fun <E> List<E>.replace(i: Int, function: (E) -> E): List<E> =
-    withIndex().map {
-        if (it.index == i) function(it.value) else it.value
-    }
-
-private fun <E> List<E>.replace(i: Int, new: E): List<E> =
-    withIndex().map {
-        if (it.index == i) new else it.value
-    }
 
 val <T: Element, E : NativeMouseEvent> MouseEvent<T, E>.offset: Vector2
     get() = Vector2(nativeEvent.offsetX, nativeEvent.offsetY)

@@ -1,4 +1,5 @@
 import kotlinx.serialization.Serializable
+import org.openrndr.color.ColorRGBa
 import org.openrndr.color.rgb
 
 @Serializable
@@ -15,9 +16,9 @@ data class ComputeSettings(
 
 @Serializable
 data class DrawSettings(
-    val pSize: Double = 10.0,
-    val pointStrokeWeight: Double = pSize / 3,
-    val contourStrokeWeight: Double = pSize / 3.5,
+    val pointSize: Double = 10.0,
+    val pointStrokeWeight: Double = pointSize / 3,
+    val contourStrokeWeight: Double = pointSize / 3.5,
     val showVisibilityContours: Boolean = true,
     val showBridges: Boolean = true,
     val showClusterCircles: Boolean = false,
@@ -41,6 +42,8 @@ data class ColorSettings(
     val darkColors: List<ColorRGB> by lazy {
         colors.map { it.second }
     }
+
+    constructor(colors: List<ColorRGB>) : this(colors.map { it to it.toColorRGBa().shade(0.8).toColorRGB() })
 }
 
 @Serializable
@@ -58,3 +61,5 @@ data class ColorRGB(val r: Double, val g: Double, val b: Double) {
         }
     }
 }
+
+fun ColorRGBa.toColorRGB() = ColorRGB(r, g, b)
