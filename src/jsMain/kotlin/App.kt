@@ -24,6 +24,7 @@ import react.dom.events.MouseEvent
 import react.dom.events.NativeMouseEvent
 import react.dom.events.PointerEvent
 import sideWindow.Divider
+import sideWindow.DraggableDivider
 import sideWindow.SideWindow
 import sideWindow.settings.BendSettingsPanel
 import sideWindow.settings.ClusterSettingsPanel
@@ -58,8 +59,8 @@ val App = FC<Props> {
 
     val (bendDistance, bendDistanceSetter) = useState(75.0)
     val (bendInflection, bendInflectionSetter) = useState(true)
-    val (maxBendAngle, maxBendAngleSetter) = useState(180.0)
-    val (maxTurningAngle, maxTurningAngleSetter) = useState(90.0)
+    val (maxBendAngle, maxBendAngleSetter) = useState(120.0)
+    val (maxTurningAngle, maxTurningAngleSetter) = useState(60.0)
 
     val bendSettings = object: BendSettings {
         override var bendDistance: Double
@@ -187,22 +188,25 @@ val App = FC<Props> {
             }
 
             SideWindow {
-                if (horizontal) {
-                    height = 100.pct
-                    width = (100 * sideWindowRatio).pct
-                } else {
-                    height = (100 * sideWindowRatio).pct
-                    width = 100.pct
-                }
+                isHorizontal = horizontal
+                size = (100 * sideWindowRatio).pct
 
                 BendSettingsContext.Provider {
                     value = bendSettings
-                    BendSettingsPanel()
+                    BendSettingsPanel {
+                        ptSize = pointSize
+                        ptStrokeWeight = drawSettings.pointStrokeWeight
+                        lineStrokeWeight = drawSettings.contourStrokeWeight
+                        expandRadius = computeSettings.expandRadius
+                        color = colors[currentType].toHex()
+                    }
                 }
+                Divider()
                 ClusterSettingsContext.Provider {
                     value = clusterSettings
                     ClusterSettingsPanel()
                 }
+                Divider()
                 PointSettingsContext.Provider {
                     value = pointSettings
                     PointSettingsPanel {
@@ -210,6 +214,7 @@ val App = FC<Props> {
                         fillColor = colorSettings.lightColors[currentType].toSvgString()
                     }
                 }
+                Divider()
                 ColorsContext.Provider {
                     value = colorsObj
                     ColorSettingsPanel {
@@ -218,7 +223,7 @@ val App = FC<Props> {
                 }
             }
 
-            Divider {
+            DraggableDivider {
                 isHorizontal = horizontal
                 windowContainer = sideWindowContainer
                 valueSetter = setSideWindowRatio
@@ -381,17 +386,20 @@ val App = FC<Props> {
                         width = 100.pct
                         borderBottomRightRadius = 20.px
                         border = Border(1.px, LineStyle.solid, rgb(200, 200, 200))
+                        position = Position.relative
+                        overflow = Overflow.hidden
+
+                        if (tool == Tool.PlacePoints) {
+                            cursor = Cursor.pointer
+                        }
+                        if (evCache.isNotEmpty() && (tool == Tool.None || evCache[0].button != 0)) {
+                            cursor = Cursor.move
+                        }
                     }
                     div {
                         css {
                             height = 100.pct
                             width = 100.pct
-                            if (tool == Tool.PlacePoints) {
-                                cursor = Cursor.pointer
-                            }
-                            if (evCache.isNotEmpty() && (tool == Tool.None || evCache[0].button != 0)) {
-                                cursor = Cursor.move
-                            }
                             position = Position.relative
                             overscrollBehavior = OverscrollBehavior.contain
                             touchAction = none
@@ -405,6 +413,7 @@ val App = FC<Props> {
 
                         onPointerDown = { ev ->
                             ev.preventDefault()
+                            ev.stopPropagation()
                             ev.currentTarget.setPointerCapture(ev.pointerId)
 
                             if (tool == Tool.PlacePoints && ev.button == 0) {
@@ -416,6 +425,7 @@ val App = FC<Props> {
 
                         onPointerUp = { ev ->
                             ev.preventDefault()
+                            ev.stopPropagation()
                             evCache = evCache.filterNot {
                                 it.pointerId == ev.pointerId
                             }
@@ -423,6 +433,7 @@ val App = FC<Props> {
 
                         onPointerMove = { ev ->
                             ev.preventDefault()
+                            ev.stopPropagation()
                             val prevEv = evCache.find {
                                 it.pointerId == ev.pointerId
                             }

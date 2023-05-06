@@ -6,6 +6,7 @@ import emotion.react.css
 import react.VFC
 import react.dom.html.ReactHTML.div
 import react.useContext
+import sideWindow.PanelHeader
 import web.cssom.Display
 import web.cssom.FlexDirection
 
@@ -15,6 +16,9 @@ val ClusterSettingsPanel = VFC {
             css {
                 display = Display.flex
                 flexDirection = FlexDirection.column
+            }
+            PanelHeader {
+                title = "Clusters"
             }
             Slider {
                 title = "Change cluster radius"

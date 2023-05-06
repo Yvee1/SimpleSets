@@ -186,7 +186,13 @@ kotlin {
             }
         }
 
+        val jsCommon by creating {
+            dependsOn(commonMain)
+        }
+
         val jsMain by getting {
+            dependsOn(jsCommon)
+
             dependencies {
                 // React, React DOM + Wrappers
                 implementation(enforcedPlatform(kotlinw("wrappers-bom:1.0.0-pre.545")))
@@ -209,6 +215,8 @@ kotlin {
         }
 
         val webworkerMain by getting {
+            dependsOn(jsCommon)
+
             dependencies {
 
             }

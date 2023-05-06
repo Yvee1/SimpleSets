@@ -8,16 +8,21 @@ import react.dom.html.ReactHTML.div
 import web.cssom.*
 
 external interface SideWindowProps: PropsWithChildren {
-    var width: Width?
-    var height: Height?
+    var isHorizontal: Boolean
+    var size: Length
 }
 
 val SideWindow = FC<SideWindowProps> { props ->
     div {
         css {
-            width = props.width
-            height = props.height
             overflow = Overflow.hidden
+            if (props.isHorizontal) {
+                height = 100.pct
+                width = props.size
+            } else {
+                height = props.size
+                width = 100.pct
+            }
         }
 
         div {
@@ -28,17 +33,25 @@ val SideWindow = FC<SideWindowProps> { props ->
                 flexDirection = FlexDirection.column
                 boxSizing = BoxSizing.borderBox
                 padding = Padding(20.px, 30.px)
-                paddingRight = 0.px
                 minWidth = 250.px
+                if (props.isHorizontal) {
+                    paddingRight = 5.px
+                } else {
+                    paddingBottom = 0.px
+                }
             }
             ReactHTML.h1 {
                 css {
                     marginTop = 0.px
-
                 }
                 +"Islands and bridges"
             }
-            +props.children
+            div {
+                css {
+                    overflow = Auto.auto
+                }
+                +props.children
+            }
         }
     }
 }

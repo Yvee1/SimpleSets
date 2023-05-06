@@ -6,6 +6,7 @@ import react.*
 import react.dom.html.ReactHTML.div
 import react.dom.svg.ReactSVG.svg
 import react.dom.svg.ReactSVG.circle
+import sideWindow.PanelHeader
 
 external interface PointSizeProps : Props {
     var min: Double
@@ -17,6 +18,10 @@ external interface PointSizeProps : Props {
 val PointSize = FC<PointSizeProps> { props ->
     with(useContext(PointSettingsContext)!!) {
         div {
+            PanelHeader {
+                title = "Points"
+            }
+
             Slider {
                 title = "Change point size"
                 step = "any".unsafeCast<Double>()

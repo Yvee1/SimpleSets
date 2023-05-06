@@ -7,6 +7,7 @@ import react.Props
 import react.dom.html.ReactHTML
 import react.dom.html.ReactHTML.div
 import react.useContext
+import sideWindow.PanelHeader
 import web.cssom.*
 import web.html.InputType
 
@@ -16,6 +17,9 @@ external interface ColorSettingsPanelProps: Props {
 
 val ColorSettingsPanel = FC<ColorSettingsPanelProps> { props ->
     with(useContext(ColorsContext)!!) {
+        PanelHeader {
+            title = "Colors"
+        }
         div {
             css {
                 display = Display.flex
