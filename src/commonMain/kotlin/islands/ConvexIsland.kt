@@ -7,7 +7,7 @@ import patterns.SinglePoint
 import org.openrndr.math.YPolarity
 import org.openrndr.shape.*
 
-class ConvexIsland(val allPoints: List<Point>, expandRadius: Double): Island() {
+class ConvexIsland(override val allPoints: List<Point>, expandRadius: Double): Island() {
     override val type = allPoints.firstOrNull()?.type ?: -1
     /* Points lying on the convex hull, in clockwise order. */
     override val points: List<Point> = convexHull(allPoints)

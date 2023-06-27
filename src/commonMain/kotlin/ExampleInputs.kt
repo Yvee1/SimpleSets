@@ -2,7 +2,7 @@ import org.openrndr.math.Vector2
 import patterns.Point
 
 enum class ExampleInput {
-    NYC, Amsterdam, KelpFusion, SmallExample, FiveColors
+    NYC, Amsterdam, KelpFusion, SmallExample, FiveColors, OverlapExample
 }
 
 fun getFileName(e: ExampleInput): String = when(e) {
@@ -11,6 +11,7 @@ fun getFileName(e: ExampleInput): String = when(e) {
     ExampleInput.KelpFusion -> "kelp-fusion"
     ExampleInput.SmallExample -> "small-example"
     ExampleInput.FiveColors -> "5-colors"
+    ExampleInput.OverlapExample -> "overlap-example"
 }
 
 fun nodesToPoints(nodes: List<Map<String, String>>): List<Point> =

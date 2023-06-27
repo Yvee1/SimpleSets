@@ -10,6 +10,7 @@ class ProblemInstance(originalPoints: List<Point>,
                       val bendInflection: Boolean = true,
                       val maxBendAngle: Double = 180.0,
                       val maxTurningAngle: Double = 180.0,
+                      val avoidOverlap: Double = 0.25,
                       transformPoints: Boolean = true) {
     init {
         require(maxBendAngle in 0.0..180.0) {
@@ -18,10 +19,13 @@ class ProblemInstance(originalPoints: List<Point>,
         require(bendDistance > 0) {
             "Bend distance should be a positive number."
         }
+        require(avoidOverlap in 0.0..1.0) {
+            "The avoid overlap parameter should be between 0.0 and 1.0."
+        }
     }
     val points = if (transformPoints) transformPoints(originalPoints) else originalPoints
     val stripeData = StripeData(points)
-    val capsuleData = CapsuleData(points, expandRadius)
+    val capsuleData = CapsuleData(points, expandRadius * avoidOverlap)
 
     constructor(originalPoints: List<Point>, set: ComputeSettings) :
             this(originalPoints,

@@ -2,6 +2,7 @@ package geometric
 
 import org.openrndr.math.Matrix33
 import org.openrndr.math.Vector2
+import org.openrndr.math.YPolarity
 import kotlin.math.abs
 import kotlin.math.sign
 
@@ -14,6 +15,11 @@ enum class Orientation {
         LEFT -> RIGHT
         RIGHT -> LEFT
         STRAIGHT -> STRAIGHT
+    }
+
+    val polarity get() = when(this) {
+        RIGHT -> YPolarity.CCW_POSITIVE_Y
+        else -> YPolarity.CW_NEGATIVE_Y
     }
 }
 

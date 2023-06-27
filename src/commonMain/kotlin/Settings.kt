@@ -15,6 +15,16 @@ data class ComputeSettings(
     val clearance: Double = 5.0,
 )
 
+val blue = rgb(0.651, 0.807, 0.89) to rgb(0.121, 0.47, 0.705)
+val red = rgb(0.984, 0.603, 0.6) to rgb(0.89, 0.102, 0.109)
+val green = rgb(0.698, 0.874, 0.541) to rgb(0.2, 0.627, 0.172)
+val orange = rgb(0.992, 0.749, 0.435) to rgb(1.0, 0.498, 0.0)
+val purple = rgb(0.792, 0.698, 0.839) to rgb(0.415, 0.239, 0.603)
+
+val colorPairs = listOf(blue, red, green, orange, purple)
+val lightColors = colorPairs.map { it.first }
+val darkColors = colorPairs.map { it.second }
+
 @Serializable
 data class DrawSettings(
     val pointSize: Double = 10.0,
@@ -27,7 +37,7 @@ data class DrawSettings(
     val showVisibilityGraph: Boolean = false,
     val showVoronoi: Boolean = false,
     val subset: Double = 1.0,
-    val colorSettings: ColorSettings
+    val colorSettings: ColorSettings = ColorSettings(lightColors.map { it.toColorRGB() }, darkColors.map { it.toColorRGB() })
 //    var useGrid: Boolean = true,
 //    var gridSize: Double = 40.0,
 )

@@ -1,3 +1,4 @@
+import geometric.approximateVoronoiDiagram
 import islands.toIsland
 import islands.visibilityContours
 import patterns.computePartition

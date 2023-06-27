@@ -1,3 +1,6 @@
+package sideWindow
+
+import ExampleInput
 import web.cssom.Display
 import emotion.react.css
 import react.FC
@@ -16,11 +19,11 @@ external interface SelectExampleProps: Props {
 val SelectExample = FC<SelectExampleProps> { props ->
     var selectedExampleInput: ExampleInput by useState(ExampleInput.NYC)
     div {
+        PanelHeader {
+            title = "Examples"
+        }
         label {
             title = "Select example input"
-            div {
-                +"Example input"
-            }
             ReactHTML.select {
                 css {
                     display = Display.block

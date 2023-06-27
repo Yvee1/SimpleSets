@@ -1,3 +1,4 @@
+import geometric.approximateVoronoiDiagram
 import islands.Island
 import islands.toIsland
 import islands.visibilityContours
@@ -9,7 +10,6 @@ import patterns.Point
 import patterns.computePartition
 import org.openrndr.*
 import org.openrndr.color.ColorRGBa
-import org.openrndr.color.rgb
 import org.openrndr.draw.LineJoin
 import org.openrndr.draw.isolated
 import org.openrndr.draw.loadFont
@@ -27,6 +27,13 @@ import java.util.concurrent.TimeUnit
 import kotlin.math.round
 import kotlin.math.roundToInt
 
+fun fakeMain() {
+    val c = Circle(Vector2.ZERO, 100.0)
+    val pts = c.contour.equidistantPositions(100000)
+    val c2 = ShapeContour.fromPoints(pts, closed = true)
+    c.shape.difference(c2.shape)
+}
+
 @OptIn(DelicateCoroutinesApi::class)
 fun main() = application {
     configure {
@@ -37,15 +44,6 @@ fun main() = application {
     }
 
     program {
-        val blue = rgb(0.651, 0.807, 0.89) to rgb(0.121, 0.47, 0.705)
-        val red = rgb(0.984, 0.603, 0.6) to rgb(0.89, 0.102, 0.109)
-        val green = rgb(0.698, 0.874, 0.541) to rgb(0.2, 0.627, 0.172)
-        val orange = rgb(0.992, 0.749, 0.435) to rgb(1.0, 0.498, 0.0)
-        val purple = rgb(0.792, 0.698, 0.839) to rgb(0.415, 0.239, 0.603)
-
-        val colorPairs = listOf(blue, red, green, orange, purple)
-        val lightColors = colorPairs.map { it.first }
-        val darkColors = colorPairs.map { it.second }
         var points = mutableListOf<Point>()
         var type = 0
         var problemInstance: ProblemInstance
@@ -54,6 +52,7 @@ fun main() = application {
         var clippedIslands = listOf<ShapeContour>()
         var mergedIndex = mutableMapOf<Int, Int>()
         var mergedIslands = listOf<Pair<ShapeContour, List<Int>>>()
+        var overlapIslands = listOf<ShapeContour>()
         var visibilityContours = listOf<List<ShapeContour>>()
         var voronoiCells = listOf<ShapeContour>()
         var obstacles = listOf<Island>()
@@ -72,6 +71,7 @@ fun main() = application {
             clippedIslands = emptyList()
             mergedIndex = mutableMapOf()
             mergedIslands = emptyList()
+            overlapIslands = emptyList()
             visibilityContours = emptyList()
             voronoiCells = emptyList()
             obstacles = emptyList()
@@ -91,10 +91,16 @@ fun main() = application {
             var expand = true
 
             @BooleanParameter("Intersect islands with voronoi", order = 1)
-            var voronoiIntersect = true
+            var voronoiIntersect = false
 
             @BooleanParameter("Merge islands", order = 1)
-            var mergeIslands = true
+            var mergeIslands = false
+
+            @BooleanParameter("Overlap islands (*)", order = 1)
+            var overlapIslands = true
+
+            @BooleanParameter("Shadows", order = 1)
+            var shadows = true
 
             val expandRadius get() = if (expand) pSize * 3 else 0.0001
 
@@ -170,11 +176,23 @@ fun main() = application {
             @DoubleParameter("Clearance", 2.0, 20.0, order = 7000)
             var clearance = 5.0
 
+            @DoubleParameter("Avoid overlap", 0.0, 1.0, order = 8000)
+            var avoidOverlap = 0.25
+
+            @BooleanParameter("Show points", order = 8980)
+            var showPoints = true
+
+            @BooleanParameter("Show islands", order = 8990)
+            var showIslands = true
+
             @BooleanParameter("Show visibility contours", order = 9000)
             var showVisibilityContours = true
 
             @BooleanParameter("Show bridges", order = 9010)
             var showBridges = true
+
+            @BooleanParameter("Smooth bridges", order = 9015)
+            var smoothBridges = true
 
             @BooleanParameter("Show cluster circles", order = 10000)
             var showClusterCircles = false
@@ -269,7 +287,8 @@ fun main() = application {
                         s.bendDistance,
                         s.bendInflection,
                         s.maxBendAngle,
-                        s.maxTurningAngle
+                        s.maxTurningAngle,
+                        s.avoidOverlap
                     )
                     launch {
                         GlobalScope.launch {
@@ -285,39 +304,48 @@ fun main() = application {
                                 voronoiCells =
                                     approximateVoronoiDiagram(
                                         patterns.map { it.original() },
-                                        s.expandRadius + s.clearance
+                                        s.expandRadius + s.clearance,
+                                        approxFactor = 1.0
                                     )
-                                clippedIslands = if (!s.disjoint || !s.voronoiIntersect) islands.map { it.contour } else islands.withIndex().map { (i, island) ->
-                                    intersection(island.contour, voronoiCells[i]).outline
-                                }
-                                val tmp = mutableMapOf<Int, Pair<ShapeContour, List<Int>>>()
-                                mergedIslands = if (!s.mergeIslands) emptyList() else buildList {
-                                    for (i1 in islands.indices) {
-                                        for (i2 in i1 + 1 until islands.size) {
-                                            if (islands[i1].type != islands[i2].type
-                                                || !islands[i1].contour.bounds.intersects(islands[i2].contour.bounds)
-                                            ) continue
-                                            if (islands[i1].contour.intersections(islands[i2].contour)
-                                                    .isNotEmpty()
-                                            ) {
-                                                val (c1, c2) = listOf(i1, i2).map { i ->
-                                                    tmp[i] ?: (clippedIslands[i] to listOf(i))
+                                if (s.overlapIslands) {
+                                    overlapIslands = islands.withIndex().map { (i, isle) ->
+                                        morphIsland(null, isle, islands.subList(0, i))
+                                    }
+                                } else {
+                                    clippedIslands =
+                                        if (!s.disjoint || !s.voronoiIntersect) islands.map { it.contour } else islands.withIndex()
+                                            .map { (i, island) ->
+                                                intersection(island.contour, voronoiCells[i]).outline
+                                            }
+                                    val tmp = mutableMapOf<Int, Pair<ShapeContour, List<Int>>>()
+                                    mergedIslands = if (!s.mergeIslands) emptyList() else buildList {
+                                        for (i1 in islands.indices) {
+                                            for (i2 in i1 + 1 until islands.size) {
+                                                if (islands[i1].type != islands[i2].type
+                                                    || !islands[i1].contour.bounds.intersects(islands[i2].contour.bounds)
+                                                ) continue
+                                                if (islands[i1].contour.intersections(islands[i2].contour)
+                                                        .isNotEmpty()
+                                                ) {
+                                                    val (c1, c2) = listOf(i1, i2).map { i ->
+                                                        tmp[i] ?: (clippedIslands[i] to listOf(i))
+                                                    }
+                                                    if (c1 == c2) continue
+                                                    removeIf { it == c1 || it == c2 }
+                                                    val entry =
+                                                        union(c1.first, c2.first).outline to (c1.second + c2.second)
+                                                    add(entry)
+                                                    (c1.second + c2.second).forEach { i -> tmp[i] = entry }
                                                 }
-                                                if (c1 == c2) continue
-                                                removeIf { it == c1 || it == c2 }
-                                                val entry =
-                                                    union(c1.first, c2.first).outline to (c1.second + c2.second)
-                                                add(entry)
-                                                (c1.second + c2.second).forEach { i -> tmp[i] = entry }
                                             }
                                         }
                                     }
+                                    mergedIndex = tmp.map { (i, target) ->
+                                        i to mergedIslands.withIndex().find { it.value == target }!!.index
+                                    }.toMap().toMutableMap()
                                 }
-                                mergedIndex = tmp.map { (i, target) ->
-                                    i to mergedIslands.withIndex().find { it.value == target }!!.index
-                                }.toMap().toMutableMap()
                                 if (s.showVisibilityGraph || s.showBridges) {
-                                    visibilityGraph = Graph(islands, obstacles, voronoiCells)
+                                    visibilityGraph = Graph(islands, obstacles, voronoiCells, s.smoothBridges)
                                     visibilityEdges = visibilityGraph.edges.map { it.contour }
                                     bridges = visibilityGraph.spanningTrees()
                                 }
@@ -379,7 +407,7 @@ fun main() = application {
                 if (s.showVoronoi) {
                     isolated {
                         stroke = ColorRGBa.BLACK
-                        fill = ColorRGBa.GRAY.opacify(0.3)
+                        fill = ColorRGBa.GRAY.opacify(0.1)
                         contours(voronoiCells)
                     }
                 }
@@ -399,7 +427,18 @@ fun main() = application {
                 if (obstacles.size > 1) {
                     if (s.showBridges) {
                         for (bridge in bridges) {
+                            if (bridge.contour.empty) continue
                             isolated {
+
+                                if (s.shadows) {
+                                    val shadows = contourShadows(bridge.contour, 0.5 * s.pSize, 10, 0.08 * s.pSize)
+                                    stroke = null
+                                    for ((i, shadow) in shadows.withIndex()) {
+                                        fill = ColorRGBa.GRAY.opacify(0.02 + (shadows.lastIndex - i.toDouble()) / shadows.size * 0.2)
+                                        contour(shadow)
+                                    }
+                                }
+
                                 fill = null
                                 stroke = ColorRGBa.BLACK
                                 strokeWeight *= 4
@@ -417,27 +456,11 @@ fun main() = application {
                 val end = (s.subset * islands.size).roundToInt()
 
                 for (i in 0 until end) {
-                    val island = islands[i]
-                    strokeWeight = s.contourStrokeWeight
-                    stroke = ColorRGBa.BLACK
-                    fill = lightColors[island.type].opacify(0.3)
-
-                    val mi = mergedIndex[i]
-                    when {
-                        mi != null -> {
-                            if (mergedIslands[mi].second.first() == i) {
-                                lineJoin = LineJoin.ROUND
-                                contour(mergedIslands[mi].first)
-                            }
-                        }
-                        i in clippedIslands.indices -> contour(clippedIslands[i])
-                        else -> contour(island.contour)
-                    }
-
                     if (s.showVisibilityContours) {
                         isolated {
-                            stroke = darkColors[island.type].opacify(0.3)
-                            strokeWeight *= 4
+                            stroke = darkColors[islands[i].type].opacify(0.3)
+                            strokeWeight = s.contourStrokeWeight
+                            strokeWeight *= 6
                             fill = null
 
                             if (i in voronoiCells.indices)
@@ -445,6 +468,42 @@ fun main() = application {
                             else if (i in visibilityContours.indices)
                                 contours(visibilityContours[i])
                         }
+                    }
+                }
+
+                for (i in 0 until end) {
+                    val island = islands[i]
+                    strokeWeight = s.contourStrokeWeight
+                    stroke = ColorRGBa.BLACK
+//                    fill = lightColors[island.type].opacify(0.3)
+                    fill = lightColors[island.type].mix(ColorRGBa.WHITE, 0.7)
+
+                    val mi = mergedIndex[i]
+                    val islandContour: ShapeContour = when {
+                        mi != null && mergedIslands[mi].second.first() == i -> {
+//                            if (m) {
+                                lineJoin = LineJoin.ROUND
+                                mergedIslands[mi].first
+//                            }
+                        }
+                        i in clippedIslands.indices -> clippedIslands[i]
+                        i in overlapIslands.indices -> overlapIslands[i]
+                        else -> island.contour
+                    }
+
+                    if (s.showIslands && !islandContour.empty) {
+                        if (s.shadows) {
+                            val shadows = contourShadows(islandContour, 0.08 * s.pSize, 10, 0.08 * s.pSize)
+                            stroke = null
+                            for ((i, shadow) in shadows.withIndex()) {
+                                fill = ColorRGBa.GRAY.opacify(0.02 + (shadows.lastIndex - i.toDouble()) / shadows.size * 0.2)
+                                contour(shadow)
+                            }
+                        }
+                        strokeWeight = s.contourStrokeWeight
+                        stroke = ColorRGBa.BLACK
+                        fill = lightColors[island.type].mix(ColorRGBa.WHITE, 0.7)
+                        contour(islandContour)
                     }
                 }
 
@@ -494,11 +553,13 @@ fun main() = application {
                 }
 
                 isolated {
-                    stroke = ColorRGBa.BLACK
-                    strokeWeight = s.pointStrokeWeight
-                    for (p in points) {
-                        fill = lightColors[p.type]
-                        circle(p.pos, s.pSize)
+                    if (s.showPoints) {
+                        stroke = ColorRGBa.BLACK
+                        strokeWeight = s.pointStrokeWeight
+                        for (p in points) {
+                            fill = lightColors[p.type]
+                            circle(p.pos, s.pSize)
+                        }
                     }
                 }
             }}

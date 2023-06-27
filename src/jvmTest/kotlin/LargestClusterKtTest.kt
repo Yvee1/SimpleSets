@@ -1,6 +1,6 @@
 import patterns.Cluster
 import patterns.largestClusterAt
-import patterns.p
+import patterns.p0
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.params.ParameterizedTest
@@ -23,33 +23,33 @@ internal class LargestClusterKtTest {
 
     private fun convexIslandInstances(): Stream<Arguments> {
         val pts0 = listOf(
-            2 p 0,
-            0 p 0,
-            1 p 1,
+            2 p0 0,
+            0 p0 0,
+            1 p0 1,
         )
 
         val pts1 = listOf(
-            4 p 0,
-            0 p 0,
-            1 p 2,
-            2 p 3,
-            3 p 2,
+            4 p0 0,
+            0 p0 0,
+            1 p0 2,
+            2 p0 3,
+            3 p0 2,
         )
 
         val pts2 = listOf(
-            1 p 0,
-            0 p 0,
-            0 p 1,
-            1 p 1,
+            1 p0 0,
+            0 p0 0,
+            0 p0 1,
+            1 p0 1,
         )
 
         val pts3 = listOf(
-            0 p 0,
-            0 p 1,
-            0 p 2,
-            0 p 3,
-            0 p 4,
-            0 p 5,
+            0 p0 0,
+            0 p0 1,
+            0 p0 2,
+            0 p0 3,
+            0 p0 4,
+            0 p0 5,
         )
 
         return Stream.of(

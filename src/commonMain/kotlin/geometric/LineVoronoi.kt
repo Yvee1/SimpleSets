@@ -1,13 +1,14 @@
-import geometric.PRECISION
+package geometric
+
 import org.openrndr.extra.triangulation.voronoiDiagram
 import org.openrndr.shape.*
 import patterns.Pattern
 import kotlin.math.max
 
-fun approximateVoronoiDiagram(patterns: List<Pattern>, expandRadius: Double): List<ShapeContour> {
+fun approximateVoronoiDiagram(patterns: List<Pattern>, expandRadius: Double, approxFactor: Double = 0.05): List<ShapeContour> {
     val points = patterns.map {
         (it.boundaryPoints.map { it.pos } +
-                if (it.contour.segments.isNotEmpty()) it.contour.equidistantPositions((it.contour.length * 0.05).toInt()) else emptyList()).toSet().toList()
+                if (it.contour.segments.isNotEmpty()) it.contour.equidistantPositions((it.contour.length * approxFactor).toInt()) else emptyList()).toSet().toList()
     }
     val allPoints = points.flatten()
     val bounds = allPoints.bounds.offsetEdges(expandRadius*1.1)

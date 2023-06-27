@@ -25,6 +25,7 @@ import react.dom.events.NativeMouseEvent
 import react.dom.events.PointerEvent
 import sideWindow.Divider
 import sideWindow.DraggableDivider
+import sideWindow.SelectExample
 import sideWindow.SideWindow
 import sideWindow.settings.BendSettingsPanel
 import sideWindow.settings.ClusterSettingsPanel
@@ -221,6 +222,14 @@ val App = FC<Props> {
                         recomputeSvg = ::recomputeSvg
                     }
                 }
+//                Divider()
+//                SelectExample {
+//                    onLoadExample = {
+//                        points = getExampleInput(it).map {
+//                            it.copy(pos = it.pos.copy(y = svgSize.y - it.pos.y))
+//                        }
+//                    }
+//                }
             }
 
             DraggableDivider {

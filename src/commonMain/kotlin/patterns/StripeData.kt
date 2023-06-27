@@ -5,6 +5,7 @@ import geometric.PRECISION
 import geometric.compare
 import org.openrndr.math.Vector2
 import geometric.orientation
+import org.openrndr.math.asDegrees
 import kotlin.math.abs
 import kotlin.math.atan2
 
@@ -132,6 +133,9 @@ fun compareAround(p: Vector2, start: Double, dir: Orientation) = Comparator<Vect
     }
     if (dir == Orientation.RIGHT) x else -x
 }
+
+fun compareAround(p: Vector2, start: Vector2, dir: Orientation): Comparator<Vector2> =
+    compareAround(p, atan2(start.y, start.x).asDegrees, dir)
 
 fun awayFrom(p: Point): Comparator<Point> = compareBy { (p.pos - it.pos).squaredLength }
 

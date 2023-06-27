@@ -35,7 +35,8 @@ open class VisEdge(val v: Vertex, val w: Vertex, val contour: ShapeContour) {
 
 class ChainEdge(v: Vertex, w: Vertex, contour: ShapeContour): VisEdge(v, w, contour)
 
-data class Graph(val islands: List<Island>, val obstacles: List<Island>, val voronoiCells: List<ShapeContour>) {
+data class Graph(val islands: List<Island>, val obstacles: List<Island>, val voronoiCells: List<ShapeContour>,
+                 val applySmoothing: Boolean = false) {
     val vertices: MutableList<Vertex> = mutableListOf()
     val edges: MutableList<VisEdge> = mutableListOf()
     val islandVertices = List(islands.size) { createIslandVertex(it) }
@@ -253,15 +254,19 @@ data class Graph(val islands: List<Island>, val obstacles: List<Island>, val vor
     }
 
     private fun freeSegment(v1: IslandVertex, v2: IslandVertex): LineSegment? {
-        val ls = islands[v1.island].contour.equidistantPositions(50).flatMap { p1 ->
-            islands[v2.island].contour.equidistantPositions(50).map { p2 ->
-                p1 to p2
-            }
+        if (islands[v1.island].contour.length > islands[v2.island].contour.length) return freeSegment(v2, v1)
+        val ls = islands[v1.island].contour.equidistantPositions(5000 + islands[v1.island].contour.length.toInt() + islands[v2.island].contour.length.toInt()).map { p1 ->
+            p1 to islands[v2.island].contour.nearest(p1).position
+//            islands[v2.island].contour.equidistantPositions(50 + islands[v2.island].contour.length.toInt() / 2).map { p2 ->
+//                p1 to p2
+//            }
         }.minBy { (p1, p2) -> (p2 - p1).squaredLength }.let { (p1, p2) -> LineSegment(p1, p2) }
 
         val overlapsEndIsland = listOf(smallerIslands[v1.island], smallerIslands[v2.island]).any {
             ls.contour.overlaps(it.contour)
         }
+        if (overlapsEndIsland) return null
+
         val overlapsObstacle = islands.zip(smallerObstacles).except(v1.island, v2.island).any { (island, obstacle) ->
             var obstacleShape = obstacle.contour.shape
             if (obstacleShape.bounds.intersects(obstacles[v1.island].contour.bounds)) {
@@ -273,7 +278,7 @@ data class Graph(val islands: List<Island>, val obstacles: List<Island>, val vor
             obstacleShape.contours.any { it.overlaps(ls.contour) } ||
                     island.contour.overlaps(ls.contour)
         }
-        return if (overlapsEndIsland || overlapsObstacle) null else ls
+        return if (overlapsObstacle) null else ls
     }
 
     private fun freeSegment(v1: ChainVertex, v2: ChainVertex): LineSegment? {
@@ -443,7 +448,7 @@ data class Graph(val islands: List<Island>, val obstacles: List<Island>, val vor
         val w = islandVertices[island2]
         if (distances[w]!!.isInfinite()) return null
         val edges = trace(previous, islandVertices[island2])
-        return Bridge(island1, island2, edgesToContour(edges)) to distances[w]!!
+        return Bridge(island1, island2, edgesToContour(edges, applySmoothing)) to distances[w]!!
     }
 //        islandVertices[island1].map { v ->
 //            val (distances, previous) = dijkstra(v)
@@ -491,7 +496,7 @@ fun trace(previous: Map<Vertex, VisEdge?>, v: Vertex): List<VisEdge> {
     }
 }
 
-fun edgesToContour(edges: List<VisEdge>): ShapeContour {
+fun edgesToContour(edges: List<VisEdge>, applySmoothing: Boolean): ShapeContour {
     val nonEmpty = edges.filter { it.contour.segments.isNotEmpty() }
     if (nonEmpty.isEmpty()) return ShapeContour.EMPTY
     val contours = mutableListOf(nonEmpty.first().contour)
@@ -507,7 +512,7 @@ fun edgesToContour(edges: List<VisEdge>): ShapeContour {
             sharpCorners.add(i)
         }
     }
-    val pieces = chaikin(contours, sharpCorners, 5)
+    val pieces = if (applySmoothing) chaikin(contours, sharpCorners, 5) else contours
     return pieces.reduce { acc, c -> acc + c }
 }
 

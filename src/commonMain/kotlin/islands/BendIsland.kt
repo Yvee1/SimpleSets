@@ -15,6 +15,7 @@ fun ccwCircularArc(circle: Circle, cp1: Vector2, cp2: Vector2) = contour {
 }
 
 class BendIsland(override val points: List<Point>, expandRadius: Double): Island() {
+    override val allPoints = points
     override val type = points.firstOrNull()?.type ?: -1
     override val circles: List<Circle> by lazy { points.map { Circle(it.pos, expandRadius) } }
 

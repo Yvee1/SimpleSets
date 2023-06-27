@@ -8,6 +8,7 @@ import patterns.*
 sealed class Island {
     abstract val type: Int
     abstract val points: List<Point>
+    abstract val allPoints: List<Point>
     abstract val circles: List<Circle>
     abstract val segments: List<LineSegment>
     abstract val contour: ShapeContour

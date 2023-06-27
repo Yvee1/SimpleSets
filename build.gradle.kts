@@ -4,6 +4,7 @@ import org.gradle.nativeplatform.platform.internal.DefaultNativePlatform
 import org.jetbrains.kotlin.gradle.targets.js.yarn.YarnPlugin
 import org.jetbrains.kotlin.gradle.targets.js.yarn.YarnRootExtension
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+//import org.jetbrains.kotlin.gradle.tasks.
 
 group = "org.openrndr.template"
 version = "0.4.0"
@@ -93,6 +94,12 @@ tasks.register("pyHttpServer") {
 repositories {
     mavenLocal()
     mavenCentral()
+    maven {
+        url = uri("https://repo.eclipse.org/content/groups/releases")
+    }
+    maven {
+        url = uri("https://repo.eclipse.org/content/repositories/jts-snapshots")
+    }
 }
 
 val openrndrVersion = libs.versions.openrndr.get()
@@ -168,6 +175,7 @@ kotlin {
         val jvmMain by getting {
             dependencies {
                 implementation(orx("orx-gui"))
+                implementation(orx("orx-olive"))
                 runtimeOnly(openrndr("gl3"))
                 runtimeOnly(openrndrNatives("gl3"))
                 implementation(openrndr("openal"))
@@ -176,6 +184,7 @@ kotlin {
                 implementation(openrndr("animatable"))
                 implementation(openrndr("extensions"))
                 implementation(openrndr("filter"))
+                implementation("org.locationtech.jts:jts-core:1.19.0")
             }
         }
 
@@ -232,6 +241,7 @@ java {
 }
 tasks.withType<KotlinCompile> {
     kotlinOptions.jvmTarget = "11"
+    kotlinOptions.allWarningsAsErrors = false
 }
 
 // ------------------------------------------------------------------------------------------------------------------ //
