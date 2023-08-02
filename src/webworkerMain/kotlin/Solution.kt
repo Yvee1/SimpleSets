@@ -1,4 +1,5 @@
 import geometric.approximateVoronoiDiagram
+import geometric.voronoiDiagram
 import islands.Island
 import org.openrndr.shape.ShapeContour
 import patterns.Pattern
@@ -30,7 +31,7 @@ data class Solution(
                     .flatMap { i2 -> i1.visibilityContours(i2) }
             }
             voronoiCells =
-                approximateVoronoiDiagram(
+                voronoiDiagram(
                     patterns.map { it.original() },
                     s.expandRadius + s.clearance
                 )

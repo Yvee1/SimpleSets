@@ -6,13 +6,14 @@ import kotlin.math.roundToInt
 
 fun createSvg(points: List<Point>, compSet: ComputeSettings, drawSet: DrawSettings, sol: Solution): String =
     drawComposition(CompositionDimensions(0.0.pixels, 0.0.pixels, 800.0.pixels, 800.0.pixels)) {
-        if (drawSet.showVoronoi) {
+//        if (drawSet.showVoronoi) {
             isolated {
                 stroke = ColorRGBa.BLACK
                 fill = ColorRGBa.GRAY.opacify(0.3)
+//                sol.voronoiCells
                 contours(sol.voronoiCells)
             }
-        }
+//        }
 
         if (drawSet.showClusterCircles && compSet.clusterRadius > 0) {
             fill = ColorRGBa.GRAY.opacify(0.3)

@@ -11,6 +11,7 @@ fun getExampleInput(e: ExampleInput): List<Point> {
         ExampleInput.KelpFusion -> require("example-input/kelp-fusion.ipe")
         ExampleInput.SmallExample -> require("example-input/small-example.ipe")
         ExampleInput.FiveColors -> require("example-input/5-colors.ipe")
+        ExampleInput.OverlapExample -> require("example-input/overlap-example.ipe")
     }
     return ipeToPoints(ipe)
 }

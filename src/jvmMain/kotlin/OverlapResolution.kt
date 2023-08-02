@@ -409,7 +409,8 @@ fun separatingCurve(drawer: CompositionDrawer?, interC: ShapeContour, gCircles: 
             } else true
         }
 
-        val validTangents = freeTangents.filter { (_, tp) ->
+        val validTangents = freeTangents.filter { ct ->
+            val (_, tp) = ct
             if (tp is TangentOrSharedPoint.Tangent) {
                 val perp = (tp.end - tp.start).perpendicular(orient.polarity.opposite)
                 val (included, excluded) = remaining.filterIsInstance<CircleOrEndpoint.BCircle>().partition { it.include }
@@ -423,7 +424,8 @@ fun separatingCurve(drawer: CompositionDrawer?, interC: ShapeContour, gCircles: 
                             orientation(tp.end, tp.end + perp, c.center) == orient &&
                             orientation(tp.start, tp.start + perp, c.center) == orient.opposite()
                 }
-                includedNotExcluded
+                val betweenExtremes = compAlt.compare(ct, largestExcluded) >= 0 && compAlt.compare(ct, largestIncluded) <= 0
+                includedNotExcluded && excludedNotIncluded && betweenExtremes
             } else {
                 true
             }
@@ -437,21 +439,21 @@ fun separatingCurve(drawer: CompositionDrawer?, interC: ShapeContour, gCircles: 
         val (cp, tp) = if (validTangents.size == 1)
             validTangents[0]
         else {
-//                    if (largestIncluded!! in validTangents)
-//                        largestIncluded
-//                    else {
-            val bsIndex = validTangents.binarySearch(largestExcluded!!, compAlt)
-            if (bsIndex >= 0) {
+            if (largestIncluded!! in validTangents)
+                largestIncluded
+            else if (largestExcluded!! in validTangents)
                 largestExcluded
-            } else {
-                val invIndex = -bsIndex - 1
-                if (invIndex > validTangents.lastIndex)
-                    validTangents[invIndex - 1]
-                else {
-                    validTangents[invIndex]
+            else {
+                val liT = largestIncluded.second as TangentOrSharedPoint.Tangent
+                val leC = largestExcluded.first as CircleOrEndpoint.BCircle
+                val iBeforeE = LineSegment(liT.start, liT.end).contour.intersections(leC.circle.contour).isEmpty()
+                //  except after c
+                if (iBeforeE) {
+                    validTangents.last()
+                } else {
+                    validTangents.first()
                 }
             }
-//                    }
         }
         current = cp
         currentPos = tp.end
@@ -592,7 +594,8 @@ fun separatingCurve(drawer: CompositionDrawer?, interC: ShapeContour, gCircles: 
                 }
             } else true
         }
-        val validTangents = freeTangents.filter { (_, tp) ->
+        val validTangents = freeTangents.filter { ct ->
+            val (_, tp) = ct
             if (tp is TangentOrSharedPoint.Tangent) {
                 val perp = (tp.end - tp.start).perpendicular(orient.polarity.opposite)
                 val (included, excluded) = remaining.filterIsInstance<CircleOrEndpoint.BCircle>().partition { it.include }
@@ -606,7 +609,8 @@ fun separatingCurve(drawer: CompositionDrawer?, interC: ShapeContour, gCircles: 
                             orientation(tp.end, tp.end + perp, c.center) == orient &&
                             orientation(tp.start, tp.start + perp, c.center) == orient.opposite()
                 }
-                includedNotExcluded
+                val betweenExtremes = compAlt.compare(ct, largestExcluded) >= 0 && compAlt.compare(ct, largestIncluded) <= 0
+                includedNotExcluded && excludedNotIncluded && betweenExtremes
             } else {
                 true
             }
@@ -616,9 +620,9 @@ fun separatingCurve(drawer: CompositionDrawer?, interC: ShapeContour, gCircles: 
         else if (validTangents.size == 1)
             validTangents[0]
         else {
-//                if (largestIncluded!! in tangents)
-//                    largestIncluded
-//                else {
+//            if (largestIncluded!! in validTangents)
+//                largestIncluded
+//            else if (largestExcluded!! in validTangents){
             val bsIndex = validTangents.binarySearch(largestExcluded!!, compAlt)
             if (bsIndex >= 0) {
                 largestExcluded

@@ -26,8 +26,8 @@ val orxFeatures = setOf<String>(
 
 @Suppress("DSL_SCOPE_VIOLATION")
 plugins {
-    kotlin("multiplatform") version "1.8.20"
-    kotlin("plugin.serialization") version "1.8.20"
+    kotlin("multiplatform") version "1.9.0"
+    kotlin("plugin.serialization") version "1.9.0"
     java
     alias(libs.plugins.shadow)
     alias(libs.plugins.runtime)
@@ -130,6 +130,8 @@ fun orx(module: String) = "org.openrndr.extra:$module:$orxVersion"
 fun openrndrNatives(module: String) = "org.openrndr:openrndr-$module-natives-$os:$openrndrVersion"
 fun kotlinw(target: String): String = "org.jetbrains.kotlin-wrappers:kotlin-$target"
 
+val dummyAttribute = Attribute.of("dummy", String::class.java)
+
 kotlin {
     js("js", IR) {
         binaries.executable()
@@ -141,6 +143,7 @@ kotlin {
     }
 
     js("webworker", IR) {
+        attributes.attribute(dummyAttribute, "KT-55751")
         binaries.executable()
         browser{
             commonWebpackConfig {
@@ -163,6 +166,8 @@ kotlin {
                 }
 
                 implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.0")
+
+                implementation("com.stevenvdb:kopenvoronoi:1.0-SNAPSHOT")
             }
         }
 

@@ -1,13 +1,10 @@
-import geometric.approximateVoronoiDiagram
+import geometric.voronoiDiagram
 import islands.Island
 import islands.toIsland
 import islands.visibilityContours
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
-import patterns.Pattern
-import patterns.Point
-import patterns.computePartition
 import org.openrndr.*
 import org.openrndr.color.ColorRGBa
 import org.openrndr.draw.LineJoin
@@ -21,6 +18,9 @@ import org.openrndr.extra.parameters.*
 import org.openrndr.math.*
 import org.openrndr.shape.*
 import org.openrndr.svg.toSVG
+import patterns.Pattern
+import patterns.Point
+import patterns.computePartition
 import java.io.File
 import java.io.IOException
 import java.util.concurrent.TimeUnit
@@ -302,10 +302,10 @@ fun main() = application {
                                         .flatMap { i2 -> i1.visibilityContours(i2) }
                                 }
                                 voronoiCells =
-                                    approximateVoronoiDiagram(
+                                    voronoiDiagram(
                                         patterns.map { it.original() },
                                         s.expandRadius + s.clearance,
-                                        approxFactor = 1.0
+//                                        approxFactor = 1.0
                                     )
                                 if (s.overlapIslands) {
                                     overlapIslands = islands.withIndex().map { (i, isle) ->
