@@ -100,7 +100,7 @@ fun main() = application {
             val island2 = pattern2.toIsland(computeSettings.expandRadius)
 
             val pts3 = points.filter { it.type == 2 }
-            print("$pts3\r")
+//            print("$pts3\r")
             val pattern3 = Cluster(pts3, pts3.size)
             val island3 = pattern3.toIsland(computeSettings.expandRadius)
 
@@ -157,7 +157,7 @@ fun main() = application {
 //                lineLoop(island1.points.map { it.pos })
 //                contour(island2.contour)
 //                val m =  morphIsland(null, island2, listOf(IslandOverlap(island2, island1, 1.0)))
-                val m =  morphIsland(null, island1, listOf(island2, island3, island4))
+                val m = morphIsland(null, island1, listOf(island2, island3, island4))
                 if (m.segments.isNotEmpty()) {
                     val shadows = contourShadows(m, 0.5, 10, 0.4)
                     stroke = null
@@ -185,6 +185,9 @@ fun main() = application {
 //                fill = ColorRGBa.WHITE.opacify(0.9)
 //                stroke = null
 //                rectangle(drawer.bounds)
+//                morphIsland(this, island1, listOf(island2, island4))
+
+
 //                morphIsland(this, island1, listOf(IslandOverlap(island1, island2, 1.0), IslandOverlap(island1, island3, 1.0)))
 
 //                morphIsland(this, island2, listOf(IslandOverlap(island2, island1, 1.0)))
@@ -238,6 +241,7 @@ sealed class TangentOrSharedPoint {
         override val start: Vector2 get() = t.first
         override val end: Vector2 get() = t.second
         override val dir: Vector2 get() = end - start
+        val ls: LineSegment get() = LineSegment(start, end)
     }
     data class SharedPoint(val pos: Vector2, override val dir: Vector2): TangentOrSharedPoint() {
         override val start: Vector2 = pos
@@ -338,23 +342,22 @@ fun separatingCurve(drawer: CompositionDrawer?, interC: ShapeContour, gCircles: 
     val orient = orientation(gClosest.position, gClosest.position + gClosestDir, gCircles[0].center)
 
     val interCE = interC.extend(0.1)
-    val circles = gCircles.map { it to true } + bCircles.map { it to false }
+    val circles = gCircles.map { CircleOrEndpoint.BCircle(it, true) } +
+            bCircles.map { CircleOrEndpoint.BCircle(it, false) }
     if (circles.size <= 1) {
         return interC
     }
-
-//            val (gSmallerCircles, bSmallerCircles) = growCircles(gCircles.map { it.center }, bCircles.map { it.center },
-//                circles[0].first.radius)
-    val smallerCircles = gCircles.map { CircleOrEndpoint.BCircle(it, true) } +
-            bCircles.map { CircleOrEndpoint.BCircle(it, false) }
     val endEnd = CircleOrEndpoint.Endpoint(interC.end)
-    val evenSmallerCircles = smallerCircles.map { it.copy(circle = it.circle.copy(radius = it.circle.radius * 0.98)) }
-    val remaining = (smallerCircles + endEnd).toMutableList()
+    val smallerCircles = circles.map { it.copy(circle = it.circle.copy(radius = it.circle.radius * 0.98)) }
+    val remaining = (circles + endEnd).toMutableList()
     var current: CircleOrEndpoint = CircleOrEndpoint.Endpoint(interC.start)
     var currentPos = interC.start
     var currentDir = (interC.start - interCE.start).normalized
     val tngnts = mutableListOf<TangentOrSharedPoint>()
     val seenCircles = mutableListOf<CircleOrEndpoint.BCircle>()
+
+    val chPoints = convexHull(gCircles.map { it.center })
+    val ch = ShapeContour.fromPoints(chPoints, true)
 
     fun next(): Boolean {
         remaining.remove(current)
@@ -365,16 +368,21 @@ fun separatingCurve(drawer: CompositionDrawer?, interC: ShapeContour, gCircles: 
         val tangents = remaining
             .map {
                 it to current.tangent(it, orient)
-            }.filter { (cp, tp) ->
-                if (cp is CircleOrEndpoint.Endpoint) true else {
-                    val notWrongDirection =
-                        if (current is CircleOrEndpoint.Endpoint || (current as CircleOrEndpoint.BCircle).include) {
-                            orientation(currentPos, currentPos + currentDir, tp.end) != orient.opposite()
-                        } else {
-                            orientation(currentPos, currentPos + currentDir, tp.end) != orient
-                        }
-                    notWrongDirection
+            }
+            .filter { (_, tp) ->
+                val notWrongDirection =
+                    if (current is CircleOrEndpoint.Endpoint || (current as CircleOrEndpoint.BCircle).include) {
+                        orientation(currentPos, currentPos + currentDir, tp.end) != orient.opposite()
+                    } else {
+                        orientation(currentPos, currentPos + currentDir, tp.end) != orient
+                    }
+
+                val crossesCh = when (tp) {
+                    is TangentOrSharedPoint.SharedPoint -> tp.pos in ch
+                    is TangentOrSharedPoint.Tangent -> LineSegment(tp.start, tp.end).contour.overlaps(ch)
                 }
+
+                notWrongDirection && !crossesCh
             }
 
         val pComp = compareAround(currentPos, -currentDir, orient)
@@ -384,7 +392,7 @@ fun separatingCurve(drawer: CompositionDrawer?, interC: ShapeContour, gCircles: 
                     pComp.compare(tp1.end, tp2.end)
                 } else {
                     val (c, b) = (current as CircleOrEndpoint.BCircle)
-                    val circleComp = compareAround(c.center, (currentPos - c.center).rotate(if (orient == Orientation.RIGHT) -90.0 else 90.0), orient)
+                    val circleComp = compareAround(c.center, (currentPos - c.center).rotate(if (orient == Orientation.RIGHT) -0.0 else 0.0), orient)
                     circleComp.compare(tp1.start, tp2.start)
                 }
             }
@@ -403,11 +411,14 @@ fun separatingCurve(drawer: CompositionDrawer?, interC: ShapeContour, gCircles: 
 
         val freeTangents = tangents.filter { (c1, t) ->
             if (t is TangentOrSharedPoint.Tangent) {
-                evenSmallerCircles.filter { it !in listOf(c1, current) }.none { (c, _) ->
+                smallerCircles.filter { it !in listOf(c1, current) }.none { (c, _) ->
                     LineSegment(t.start, t.end).contour.overlaps(c.contour)
                 }
             } else true
         }
+
+//        if (drawer != null)
+//            println("Free tangents: ${freeTangents.size}")
 
         val validTangents = freeTangents.filter { ct ->
             val (_, tp) = ct
@@ -424,30 +435,46 @@ fun separatingCurve(drawer: CompositionDrawer?, interC: ShapeContour, gCircles: 
                             orientation(tp.end, tp.end + perp, c.center) == orient &&
                             orientation(tp.start, tp.start + perp, c.center) == orient.opposite()
                 }
-                val betweenExtremes = compAlt.compare(ct, largestExcluded) >= 0 && compAlt.compare(ct, largestIncluded) <= 0
+                val betweenExtremes = (largestExcluded == null || compAlt.compare(ct, largestExcluded) >= 0)
+                        && (largestIncluded == null || compAlt.compare(ct, largestIncluded) <= 0)
                 includedNotExcluded && excludedNotIncluded && betweenExtremes
+//                true
             } else {
                 true
             }
         }.sortedWith(compAlt)
 
+//        if (drawer != null)
+//            println("Valid tangents: ${validTangents.size}")
+
         if (validTangents.isEmpty()) {
-            //println("Stopped early because there are no valid tangents")
+            println("Stopped early because there are no valid tangents")
             return false
         }
 
         val (cp, tp) = if (validTangents.size == 1)
             validTangents[0]
         else {
-            if (largestIncluded!! in validTangents)
+            val endInSight = validTangents.find { it.first == endEnd }
+            if (endInSight != null)
+                endInSight
+            else if (largestIncluded!! in validTangents)
                 largestIncluded
             else if (largestExcluded!! in validTangents)
                 largestExcluded
             else {
                 val liT = largestIncluded.second as TangentOrSharedPoint.Tangent
-                val leC = largestExcluded.first as CircleOrEndpoint.BCircle
-                val iBeforeE = LineSegment(liT.start, liT.end).contour.intersections(leC.circle.contour).isEmpty()
-                //  except after c
+//                if (largestExcluded !is CircleOrEndpoint.BCircle) {
+//
+//                }
+
+                val iBeforeE = if (largestExcluded.first is CircleOrEndpoint.BCircle) {
+                    val leC = largestExcluded.first as CircleOrEndpoint.BCircle
+                    LineSegment(liT.start, liT.end).contour.intersections(leC.circle.contour).isEmpty()
+                } else {
+                    false
+                }
+
                 if (iBeforeE) {
                     validTangents.last()
                 } else {
@@ -455,6 +482,11 @@ fun separatingCurve(drawer: CompositionDrawer?, interC: ShapeContour, gCircles: 
                 }
             }
         }
+//        if (drawer != null) {
+//            println("===============")
+//            println(current)
+//            println(cp)
+//        }
         current = cp
         currentPos = tp.end
         currentDir = tp.dir
@@ -469,7 +501,8 @@ fun separatingCurve(drawer: CompositionDrawer?, interC: ShapeContour, gCircles: 
 //            next()
 //            next()
 //            next()
-//            next()
+//    next()
+//    next()
 
     var final: ShapeContour = ShapeContour.EMPTY
 
@@ -532,9 +565,9 @@ fun separatingCurve(drawer: CompositionDrawer?, interC: ShapeContour, gCircles: 
         fill = ColorRGBa.GRAY
         fill = null
         strokeWeight /= 2
-        circles(circles.map { it.first })
+//        circles(circles.map { it.first })
         strokeWeight *= 2
-        for ((i, sc) in smallerCircles.withIndex()) {
+        for ((i, sc) in circles.withIndex()) {
             val (c, b) = sc
             val o = 0.1 + 0.5
             fill = if (b) ColorRGBa.GREEN.opacify(o) else ColorRGBa.RED.opacify(o)
@@ -543,21 +576,28 @@ fun separatingCurve(drawer: CompositionDrawer?, interC: ShapeContour, gCircles: 
         fill = null
 
         val tangents = remaining
-            .filter { it != current }
             .map {
                 it to current.tangent(it, orient)
             }
-//                    .filter { (cp, tp) ->
-//                        if (cp is CircleOrEndpoint.Endpoint) true else {
-//                            val notWrongDirection =
-//                                if (current is CircleOrEndpoint.Endpoint || (current as CircleOrEndpoint.BCircle).include) {
-//                                    orientation(currentPos, currentPos + currentDir, tp.end) != orient.opposite()
-//                                } else {
-//                                    orientation(currentPos, currentPos + currentDir, tp.end) != orient
-//                                }
-//                            notWrongDirection
-//                        }
-//                    }
+            .filter { (cp, tp) ->
+                val notWrongDirection =
+                    if (current is CircleOrEndpoint.Endpoint || (current as CircleOrEndpoint.BCircle).include) {
+                        orientation(currentPos, currentPos + currentDir, tp.end) != orient.opposite()
+                    } else {
+                        orientation(currentPos, currentPos + currentDir, tp.end) != orient
+                    }
+
+                val crossesCh = when (tp) {
+                    is TangentOrSharedPoint.SharedPoint -> tp.pos in ch
+                    is TangentOrSharedPoint.Tangent -> LineSegment(tp.start, tp.end).contour.overlaps(ch)
+                }
+
+//                println("Crosses ch: $crossesCh")
+
+                notWrongDirection && !crossesCh
+            }
+
+        contour(ch)
 
         val pComp = compareAround(currentPos, -currentDir, orient)
         val comp =
@@ -566,11 +606,11 @@ fun separatingCurve(drawer: CompositionDrawer?, interC: ShapeContour, gCircles: 
                     pComp.compare(tp1.end, tp2.end)
                 } else {
                     val (c, b) = (current as CircleOrEndpoint.BCircle)
-                    val circleComp = compareAround(c.center, (currentPos - c.center).rotate(if (orient == Orientation.RIGHT) -90.0 else 90.0), if (b) orient else orient)
+                    val circleComp = compareAround(c.center, (currentPos - c.center).rotate(if (orient == Orientation.RIGHT) -0.0 else 0.0), orient)
                     val pts = c.contour.equidistantPositions(10).sortedWith(circleComp)
                     for ((i, p) in pts.withIndex()) {
                         strokeWeight = 1.0
-                        fill = ColorRGBa.PINK.opacify(0.2 * i / (pts.size - 1.0))
+                        fill = ColorRGBa.PINK.opacify(0.7 * i / (pts.size - 1.0))
                         circle(p, 4.0)
                     }
                     circleComp.compare(tp1.start, tp2.start)
@@ -584,16 +624,19 @@ fun separatingCurve(drawer: CompositionDrawer?, interC: ShapeContour, gCircles: 
         val largestIncluded = tangents
             .filter { (a, _) -> if (a is CircleOrEndpoint.BCircle) a.include else true }
             .maxWithOrNull(compAlt)
+
         val largestExcluded = tangents
             .filter { (a, _) -> if (a is CircleOrEndpoint.BCircle) !a.include else true }
             .minWithOrNull(compAlt)
+
         val freeTangents = tangents.filter { (c1, t) ->
             if (t is TangentOrSharedPoint.Tangent) {
-                evenSmallerCircles.filter { it !in listOf(c1, current) }.none { (c, _) ->
+                smallerCircles.filter { it !in listOf(c1, current) }.none { (c, _) ->
                     LineSegment(t.start, t.end).contour.overlaps(c.contour)
                 }
             } else true
         }
+
         val validTangents = freeTangents.filter { ct ->
             val (_, tp) = ct
             if (tp is TangentOrSharedPoint.Tangent) {
@@ -609,8 +652,10 @@ fun separatingCurve(drawer: CompositionDrawer?, interC: ShapeContour, gCircles: 
                             orientation(tp.end, tp.end + perp, c.center) == orient &&
                             orientation(tp.start, tp.start + perp, c.center) == orient.opposite()
                 }
-                val betweenExtremes = compAlt.compare(ct, largestExcluded) >= 0 && compAlt.compare(ct, largestIncluded) <= 0
+                val betweenExtremes = (largestExcluded == null || compAlt.compare(ct, largestExcluded) >= 0)
+                        && (largestIncluded == null || compAlt.compare(ct, largestIncluded) <= 0)
                 includedNotExcluded && excludedNotIncluded && betweenExtremes
+//                true
             } else {
                 true
             }
@@ -620,22 +665,38 @@ fun separatingCurve(drawer: CompositionDrawer?, interC: ShapeContour, gCircles: 
         else if (validTangents.size == 1)
             validTangents[0]
         else {
-//            if (largestIncluded!! in validTangents)
-//                largestIncluded
-//            else if (largestExcluded!! in validTangents){
-            val bsIndex = validTangents.binarySearch(largestExcluded!!, compAlt)
-            if (bsIndex >= 0) {
+            val endInSight = validTangents.find { it.first == endEnd }
+            if (endInSight != null)
+                endInSight
+            else if (largestIncluded!! in validTangents)
+                largestIncluded
+            else if (largestExcluded!! in validTangents)
                 largestExcluded
-            } else {
-                val invIndex = -bsIndex - 1
-                if (invIndex > validTangents.lastIndex)
-                    validTangents[invIndex - 1]
-                else {
-                    validTangents[invIndex]
+            else {
+                val liT = largestIncluded.second as TangentOrSharedPoint.Tangent
+                val leC = largestExcluded.first as CircleOrEndpoint.BCircle
+                val iBeforeE = LineSegment(liT.start, liT.end).contour.intersections(leC.circle.contour).isEmpty()
+                //  except after c
+                if (iBeforeE) {
+                    validTangents.last()
+                } else {
+                    validTangents.first()
                 }
             }
-//                }
         }
+
+//        val tpnext = if (faketpnext != null) {
+//            val temp = faketpnext.second
+//            val closeToEnd = temp is TangentOrSharedPoint.Tangent && (temp.ls.nearest(endEnd.pos) - endEnd.pos).squaredLength < 1.0)
+//            if (closeToEnd)
+//
+//        } else {
+//            null
+//        }
+
+
+
+
         fill = null
         stroke = ColorRGBa.ORANGE.opacify(0.8)
         for ((_, t) in validTangents) {
@@ -651,6 +712,7 @@ fun separatingCurve(drawer: CompositionDrawer?, interC: ShapeContour, gCircles: 
             stroke = ColorRGBa.GREEN.opacify(0.8)
             tsp(largestIncluded.second)
         }
+//        println("Largest included: $largestIncluded")
 
         if (largestExcluded != null) {
             stroke = ColorRGBa.RED.opacify(0.8)
@@ -689,7 +751,7 @@ fun morphIsland(drawer: CompositionDrawer?, island: Island, overlapees: List<Isl
     for (overlapee in overlapees) {
         piece = difference(piece, overlapee.contour)
     }
-    val pieces = piece.contours.mergeAdjacent()
+    val pieces = piece.contours.filter { it.length > 1.0 }.mergeAdjacent()
     if (pieces.isEmpty()) return island.contour
 
     if (pieces.size == 1 && pieces[0].start.squaredDistanceTo(pieces[0].end) < 1E-6) {
@@ -701,15 +763,15 @@ fun morphIsland(drawer: CompositionDrawer?, island: Island, overlapees: List<Isl
     }
 
     drawer?.apply {
-        for ((i, c) in pieces.withIndex()) {
-            stroke = ColorRGBa.ORANGE.opacify(0.2 * (i + 1))
-            fill = null
-            contour(c)
-        }
-        for (c in broken) {
-            stroke = ColorRGBa.BLUE
-            contour(c)
-        }
+//        for (c in pieces) {
+//            stroke = ColorRGBa.ORANGE.opacify(0.5)
+//            fill = null
+//            contour(c)
+//        }
+//        for (c in broken) {
+//            stroke = ColorRGBa.BLUE.opacify(0.5)
+//            contour(c)
+//        }
     }
 
     val expandRadius = island.circles[0].radius
@@ -722,7 +784,14 @@ fun morphIsland(drawer: CompositionDrawer?, island: Island, overlapees: List<Isl
     }
     val circles = gCircles + bCircles
     val (gSmallerCircles, bSmallerCircles) = growCircles(gCircles.map { it.center }, bCircles.map { it.center },
-        circles[0].radius)
+        circles[0].radius, circles[0].radius * 0.625)
+
+//    drawer?.apply {
+//        fill = ColorRGBa.RED
+//        circles(bSmallerCircles)
+//        fill = ColorRGBa.GREEN
+//        circles(gSmallerCircles)
+//    }
 
     val mends = broken.map { interC ->
         if (interC.segments.isEmpty()) ShapeContour.EMPTY else {

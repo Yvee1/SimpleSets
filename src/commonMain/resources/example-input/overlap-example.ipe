@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <!DOCTYPE ipe SYSTEM "ipe.dtd">
-<ipe version="70218" creator="Ipe 7.2.24">
-<info created="D:20230621190934" modified="D:20230622102428"/>
+<ipe version="70218" creator="Ipe 7.2.27">
+<info created="D:20230621190934" modified="D:20230904150550"/>
 <ipestyle name="bettinacolors">
 <color name="Bettina blue" value="0 0.4 0.796"/>
 <color name="Bettina green" value="0.282 0.557 0"/>
@@ -433,7 +433,7 @@ h
 <use name="mark/fdisk(sfx)" pos="191.6 318.8" size="normal" stroke="black" fill="CB light blue"/>
 <use name="mark/fdisk(sfx)" pos="236.004 310.016" size="normal" stroke="black" fill="CB light blue"/>
 <use name="mark/fdisk(sfx)" pos="217.6 300.4" size="normal" stroke="black" fill="CB light green"/>
-<use name="mark/fdisk(sfx)" pos="259.6 310.399" size="normal" stroke="black" fill="CB light red"/>
+<use matrix="1 0 0 1 8.6281 -0.71044" name="mark/fdisk(sfx)" pos="259.6 310.399" size="normal" stroke="black" fill="CB light red"/>
 <use name="mark/fdisk(sfx)" pos="320 299.601" size="normal" stroke="black" fill="CB light red"/>
 <use name="mark/fdisk(sfx)" pos="298.8 338.801" size="normal" stroke="black" fill="CB light red"/>
 <use name="mark/fdisk(sfx)" pos="334.8 372.4" size="normal" stroke="black" fill="CB light red"/>
