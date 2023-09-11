@@ -12,7 +12,7 @@ import kotlin.math.acos
 import kotlin.math.cos
 import kotlin.math.sqrt
 
-data class Cluster(val points: List<Point>, val weightI: Int): Pattern() {
+data class Island(val points: List<Point>, val weightI: Int): Pattern() {
     override val type = points.firstOrNull()?.type ?: -1
     override val weight = weightI
     override val contour by lazy {
@@ -28,7 +28,7 @@ data class Cluster(val points: List<Point>, val weightI: Int): Pattern() {
     operator fun contains(p: Point) = p in points || (weight > points.size && p.pos in contour)
 
     companion object {
-        val EMPTY = Cluster(listOf(), 0)
+        val EMPTY = Island(listOf(), 0)
     }
 
     override fun original() = copy(points=points.map { it.originalPoint ?: it })

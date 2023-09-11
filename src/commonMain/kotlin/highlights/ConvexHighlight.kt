@@ -1,13 +1,14 @@
-package islands
+package highlights
 
+import geometric.Arc
 import geometric.convexHull
-import patterns.Cluster
+import patterns.Island
 import patterns.Point
 import patterns.SinglePoint
 import org.openrndr.math.YPolarity
 import org.openrndr.shape.*
 
-class ConvexIsland(override val allPoints: List<Point>, expandRadius: Double): Island() {
+class ConvexHighlight(override val allPoints: List<Point>, expandRadius: Double): Highlight() {
     override val type = allPoints.firstOrNull()?.type ?: -1
     /* Points lying on the convex hull, in clockwise order. */
     override val points: List<Point> = convexHull(allPoints)
@@ -25,7 +26,8 @@ class ConvexIsland(override val allPoints: List<Point>, expandRadius: Double): I
         }
     }
 
-    val circularArcs: List<ShapeContour> by lazy {
+    // TODO: Rewrite ShapeContour to Arc
+    override val arcs: List<Arc> by lazy {
         if (points.size == 1) return@lazy emptyList()
         (listOf(circles.last()) + circles + circles.first()).windowed(3) { (prev, curr, next) ->
             val d1 = curr.center - prev.center
@@ -33,11 +35,13 @@ class ConvexIsland(override val allPoints: List<Point>, expandRadius: Double): I
             val n1 = d1.perpendicular(YPolarity.CCW_POSITIVE_Y).normalized * expandRadius
             val n2 = d2.perpendicular(YPolarity.CCW_POSITIVE_Y).normalized * expandRadius
 
-            contour {
-                moveTo(curr.center + n1)
-                arcTo(curr.radius, curr.radius, 90.0, largeArcFlag=false, sweepFlag=false, curr.center + n2)
-            }
+//            contour {
+//                moveTo(curr.center + n1)
+//                arcTo(curr.radius, curr.radius, 90.0, largeArcFlag=false, sweepFlag=false, curr.center + n2)
+//            }
+            Arc(curr, curr.center + n1, curr.center + n2)
         }
+//        TODO()
     }
 
     override val contour: ShapeContour by lazy {
@@ -47,16 +51,16 @@ class ConvexIsland(override val allPoints: List<Point>, expandRadius: Double): I
 
         var c = ShapeContour.EMPTY
         for (i in points.indices) {
-            c += circularArcs[i]
+            c += arcs[i].contour // TODO: Check
             c += segments[i].contour
         }
         c.close().reversed
     }
 
-    override fun scale(s: Double) = ConvexIsland(allPoints, circles.first().radius * s)
+    override fun scale(s: Double) = ConvexHighlight(allPoints, circles.first().radius * s)
 }
 
-fun Cluster.toIsland(expandRadius: Double) = ConvexIsland(original().points, expandRadius)
+fun Island.toHighlight(expandRadius: Double) = ConvexHighlight(original().points, expandRadius)
 
-fun SinglePoint.toIsland(expandRadius: Double) =
-    PointIsland(original().point, expandRadius)
+fun SinglePoint.toHighlight(expandRadius: Double) =
+    PointHighlight(original().point, expandRadius)

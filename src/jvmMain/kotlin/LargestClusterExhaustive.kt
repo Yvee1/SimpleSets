@@ -8,13 +8,13 @@ import org.openrndr.extra.noise.uniform
 import org.openrndr.launch
 import org.openrndr.shape.ShapeContour
 import org.openrndr.shape.contains
-import patterns.Cluster
+import patterns.Island
 import patterns.Point
 import patterns.coverRadius
-import patterns.largestCluster
+import patterns.largestIsland
 
-fun ProblemInstance.largestClusterExhaustive(): Cluster {
-    if (clusterRadius <= 0) return Cluster.EMPTY
+fun PartitionInstance.largestClusterExhaustive(): Island {
+    if (density <= 0) return Island.EMPTY
 
     val nSubsets = 1 shl points.size
 //    val largest = (0 until nSubsets).toList().parallelStream().map { i ->
@@ -44,12 +44,12 @@ fun ProblemInstance.largestClusterExhaustive(): Cluster {
             subset
         }
         if (chPoints.size <= largest.size) continue
-        if (chPoints.isMonochromatic() && coverRadius(chPoints.map { it.pos }) <= clusterRadius) {
+        if (chPoints.isMonochromatic() && coverRadius(chPoints.map { it.pos }) <= density) {
             largest = chPoints
         }
     }
 
-    return Cluster(convexHull(largest), largest.size)
+    return Island(convexHull(largest), largest.size)
 }
 
 fun List<Point>.isMonochromatic(): Boolean {
@@ -68,11 +68,11 @@ fun main() = application {
         var bluePoints = List(15) { bounds.uniform(200.0) }
         var redPoints = List(0) { bounds.uniform(200.0) }
         var points = bluePoints.map { Point(it, 0) } + redPoints.map { Point(it, 1) }
-        var problemInstance = ProblemInstance(points, clusterRadius = 50.0, transformPoints = false)
+        var partitionInstance = PartitionInstance(points, density = 50.0, transformPoints = false)
 
-        var optimal = problemInstance.largestClusterExhaustive()
+        var optimal = partitionInstance.largestClusterExhaustive()
         println("Optimal: ${optimal.weight} $optimal")
-        var heuristic = problemInstance.largestCluster()
+        var heuristic = partitionInstance.largestIsland()
         println("Heuristic: ${heuristic.weight} $heuristic")
 
         launch {
@@ -81,11 +81,11 @@ fun main() = application {
                     bluePoints = List(15) { bounds.uniform(200.0) }
                     redPoints = List(0) { bounds.uniform(200.0) }
                     points = bluePoints.map { Point(it, 0) } + redPoints.map { Point(it, 1) }
-                    problemInstance = ProblemInstance(points, clusterRadius = 50.0, transformPoints = false)
+                    partitionInstance = PartitionInstance(points, density = 50.0, transformPoints = false)
 
-                    optimal = problemInstance.largestClusterExhaustive()
+                    optimal = partitionInstance.largestClusterExhaustive()
                     println("Optimal: ${optimal.weight} $optimal")
-                    heuristic = problemInstance.largestCluster()
+                    heuristic = partitionInstance.largestIsland()
                     println("Heuristic: ${heuristic.weight} $heuristic")
                 }
             }.join()
@@ -98,9 +98,9 @@ fun main() = application {
                 stroke = ColorRGBa.BLACK
 
                 fill = ColorRGBa.BLUE.opacify(0.25)
-                circles(bluePoints, problemInstance.clusterRadius)
+                circles(bluePoints, partitionInstance.density)
                 fill = ColorRGBa.RED.opacify(0.25)
-                circles(redPoints, problemInstance.clusterRadius)
+                circles(redPoints, partitionInstance.density)
                 fill = ColorRGBa.BLUE
                 circles(bluePoints, 5.0)
                 fill = ColorRGBa.RED

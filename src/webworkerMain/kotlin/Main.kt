@@ -14,17 +14,18 @@ fun main() {
         val assignment: Assignment = Json.decodeFromString(m.data as String)
         val svg = when (assignment) {
             is Compute -> {
-                val solution = Solution.compute(ProblemInstance(assignment.points, assignment.computeSettings), assignment.computeSettings)
+                val solution = Solution.compute(assignment.points, assignment.computePartitionSettings,
+                    assignment.computeDrawingSettings, assignment.computeBridgesSettings)
                 lastSolution = solution
                 lastComputeAssignment = assignment
-                createSvg(assignment.points, assignment.computeSettings, assignment.drawSettings, solution)
+                createSvg(assignment.points, assignment.computePartitionSettings, assignment.drawSettings, solution)
             }
 
             is DrawSvg -> {
                 if (lastSolution == null || lastComputeAssignment == null) {
                     ""
                 } else {
-                    createSvg(lastComputeAssignment!!.points, lastComputeAssignment!!.computeSettings, assignment.drawSettings, lastSolution!!)
+                    createSvg(lastComputeAssignment!!.points, lastComputeAssignment!!.computePartitionSettings, assignment.drawSettings, lastSolution!!)
                 }
             }
         }

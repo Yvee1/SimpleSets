@@ -7,7 +7,11 @@ import patterns.Point
 sealed class Assignment
 
 @Serializable
-data class Compute(val computeSettings: ComputeSettings, val points: List<Point>, val drawSettings: DrawSettings) :
+data class Compute(val points: List<Point>,
+                   val computePartitionSettings: ComputePartitionSettings,
+                   val computeDrawingSettings: ComputeDrawingSettings,
+                   val computeBridgesSettings: ComputeBridgesSettings,
+                   val drawSettings: DrawSettings) :
     Assignment()
 
 @Serializable

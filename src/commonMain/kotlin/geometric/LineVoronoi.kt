@@ -12,7 +12,7 @@ import kopenvoronoi.geometry.Face
 import kopenvoronoi.geometry.Point
 import kopenvoronoi.vertex.Vertex
 import org.openrndr.math.Vector2
-import patterns.Cluster
+import patterns.Island
 
 val Point.v get() = Vector2(x, y)
 val Vertex.v get() = position.v
@@ -92,7 +92,7 @@ fun voronoiDiagram(patterns: List<Pattern>, expandRadius: Double): List<ShapeCon
             for (j in 0 until verts.size - 1) {
                 add(voronoi.insert_line_site(verts[j], verts[j + 1]))
             }
-            if (verts.size > 2 && patterns[i] is Cluster) {
+            if (verts.size > 2 && patterns[i] is Island) {
                 add(voronoi.insert_line_site(verts.last(), verts.first()))
             }
         }

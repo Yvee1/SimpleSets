@@ -1,11 +1,12 @@
 package sideWindow
 
 import emotion.react.css
-import react.VFC
+import react.FC
+import react.Props
 import react.dom.html.ReactHTML.div
 import web.cssom.*
 
-val Divider = VFC {
+val Divider = FC<Props> {
     div {
         css {
             border = Border(1.px, LineStyle.solid, rgb(200, 200, 200))

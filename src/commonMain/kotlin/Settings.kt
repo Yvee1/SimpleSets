@@ -1,19 +1,78 @@
+@file:Suppress("RUNTIME_ANNOTATION_NOT_SUPPORTED")
+
 import kotlinx.serialization.Serializable
 import org.openrndr.color.ColorRGBa
 import org.openrndr.color.rgb
 import org.openrndr.extra.color.spaces.toOKHSLa
+import org.openrndr.extra.parameters.BooleanParameter
+import org.openrndr.extra.parameters.DoubleParameter
+import org.openrndr.extra.parameters.OptionParameter
+
+// TODO: Settings
+// 1. High level: What to compute? Bridges? Voronoi? Overlap resolution? etc.
+// 2. Settings for computing the partition.
+// 3. Settings for computing the partition drawing.
+// 4. Settings for computing the bridges.
+// 5. Draw settings: colors, stroke weights, etc.
 
 @Serializable
-data class ComputeSettings(
-    val expandRadius: Double = 30.0, // pSize * 3
-    val disjoint: Boolean = true,
-    val bendDistance: Double = 20.0,
-    val bendInflection: Boolean = true,
-    val maxBendAngle: Double = 180.0,
-    val maxTurningAngle: Double = 180.0,
-    val clusterRadius: Double = 50.0,
-    val clearance: Double = 5.0,
+data class ComputePartitionSettings(
+    @DoubleParameter("Bend distance", 1.0, 500.0, order=1000)
+    var bendDistance: Double = 20.0,
+
+    @BooleanParameter("Inflection", order=2000)
+    var bendInflection: Boolean = true,
+
+    @DoubleParameter("Max bend angle", 0.0, 180.0, order=3000)
+    var maxBendAngle: Double = 180.0,
+
+    @DoubleParameter("Max turning angle", 0.0, 180.0, order=4000)
+    var maxTurningAngle: Double = 180.0,
+
+    @DoubleParameter("Cluster radius", 0.0, 100.0, order=5000)
+    var clusterRadius: Double = 50.0,
+
+    @DoubleParameter("Partition clearance", 0.0, 10.0, order=6000)
+    var partitionClearance: Double = 1.0,
+) {
+    fun alignPartitionClearance(avoidOverlap: Double, pointSize: Double) {
+        partitionClearance = avoidOverlap * pointSize
+    }
+}
+
+enum class IntersectionResolution {
+    None,
+    Voronoi,
+    Overlap,
+}
+
+@Serializable
+data class ComputeDrawingSettings(
+    @DoubleParameter("Expand radius", 0.1, 100.0, order = 3)
+    var expandRadius: Double = 30.0,
+
+    @OptionParameter("Overlap resolution", order = 1)
+    var intersectionResolution: IntersectionResolution = IntersectionResolution.Overlap,
+) {
+    fun alignExpandRadius(pointSize: Double) {
+        expandRadius = if (intersectionResolution != IntersectionResolution.None) pointSize * 3 else 0.0001
+    }
+}
+
+@Serializable
+data class ComputeBridgesSettings(
+    @DoubleParameter("Clearance", 2.0, 20.0, order = 7000)
+    var clearance: Double = 5.0,
+
+    @BooleanParameter("Smooth bridges", order = 9015)
+    var smoothBridges: Boolean = true,
 )
+
+//    @DoubleParameter("Avoid overlap", 0.0, 1.0, order = 8000)
+//    var avoidOverlap: Double = 0.25,
+
+//@BooleanParameter("Disjoint", order = 5)
+//var disjoint: Boolean = true,
 
 val blue = rgb(0.651, 0.807, 0.89) to rgb(0.121, 0.47, 0.705)
 val red = rgb(0.984, 0.603, 0.6) to rgb(0.89, 0.102, 0.109)
@@ -27,20 +86,46 @@ val darkColors = colorPairs.map { it.second }
 
 @Serializable
 data class DrawSettings(
-    val pointSize: Double = 10.0,
-    val pointStrokeWeight: Double = pointSize / 3,
-    val contourStrokeWeight: Double = pointSize / 3.5,
-    val showVisibilityContours: Boolean = true,
-    val showBridges: Boolean = true,
-    val showClusterCircles: Boolean = false,
-    val showBendDistance: Boolean = false,
-    val showVisibilityGraph: Boolean = false,
-    val showVoronoi: Boolean = false,
-    val subset: Double = 1.0,
-    val colorSettings: ColorSettings = ColorSettings(lightColors.map { it.toColorRGB() }, darkColors.map { it.toColorRGB() })
+    @DoubleParameter("Point size", 0.1, 10.0, order = 0)
+    var pSize: Double = 10.0,
+
+    @BooleanParameter("Show points", order = 8980)
+    var showPoints: Boolean = true,
+
+    @BooleanParameter("Show islands", order = 8990)
+    var showIslands: Boolean = true,
+
+    @BooleanParameter("Show visibility contours", order = 9000)
+    var showVisibilityContours: Boolean = true,
+
+    @BooleanParameter("Show bridges", order = 9010)
+    var showBridges: Boolean = true,
+
+    @BooleanParameter("Show cluster circles", order = 10000)
+    var showClusterCircles: Boolean = false,
+
+    @BooleanParameter("Show bend distance", order = 10005)
+    var showBendDistance: Boolean = false,
+
+    @BooleanParameter("Show visibility graph", order=10010)
+    var showVisibilityGraph: Boolean = false,
+
+    @BooleanParameter("Show voronoi", order=10020)
+    var showVoronoi: Boolean = false,
+
+    @DoubleParameter("Show subset based on computation", 0.0, 1.0, order=10000000)
+    var subset: Double = 1.0,
+
+    @BooleanParameter("Shadows", order = 1)
+    var shadows: Boolean = true,
+
+    var colorSettings: ColorSettings = ColorSettings(lightColors.map { it.toColorRGB() }, darkColors.map { it.toColorRGB() })
 //    var useGrid: Boolean = true,
 //    var gridSize: Double = 40.0,
-)
+) {
+    val pointStrokeWeight: Double get() = pSize / 3
+    val contourStrokeWeight: Double get() = pSize / 3.5
+}
 
 @Serializable
 data class ColorSettings(val lightColors: List<ColorRGB>, val darkColors: List<ColorRGB>) {

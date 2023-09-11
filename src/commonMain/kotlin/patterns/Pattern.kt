@@ -1,7 +1,7 @@
 package patterns
 
 import geometric.Orientation
-import ProblemInstance
+import PartitionInstance
 import org.openrndr.math.Vector2
 import org.openrndr.shape.ShapeContour
 
@@ -15,18 +15,18 @@ sealed class Pattern {
     abstract operator fun contains(v: Vector2): Boolean
 }
 
-fun ProblemInstance.computePattern(uncovered: List<Point>, obstacles: List<Pattern>): Pattern {
+fun PartitionInstance.computePattern(uncovered: List<Point>, obstacles: List<Pattern>): Pattern {
     val lonelyPoint = SinglePoint(uncovered.first())
-    val cluster = largestCluster(uncovered, obstacles)
+    val cluster = largestIsland(uncovered, obstacles)
     if (cluster.weight > 2 && !clusterIsMonotoneBend(cluster)) return cluster
-    val bend = if (bendInflection) largestInflectionBend(uncovered, obstacles)
-               else largestMonotoneBend(Orientation.RIGHT, uncovered, obstacles)
+    val bend = if (bendInflection) largestInflectionReef(uncovered, obstacles)
+               else largestMonotoneReef(Orientation.RIGHT, uncovered, obstacles)
     if (bend.weight == 0 && cluster.weight == 0) return lonelyPoint
     if (bend.weight >= cluster.weight) return bend
     return cluster
 }
 
-fun ProblemInstance.computePartition(disjoint: Boolean = true): List<Pattern> {
+fun PartitionInstance.computePartition(disjoint: Boolean = true): List<Pattern> {
     return buildList {
         val patterns = this@buildList
         var uncovered = points

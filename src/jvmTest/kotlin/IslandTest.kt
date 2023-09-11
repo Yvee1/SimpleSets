@@ -11,7 +11,7 @@ import kotlin.math.abs
 import kotlin.test.assertTrue
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-internal class ClusterTest {
+internal class IslandTest {
     @ParameterizedTest
     @MethodSource("triangles")
     fun coverRadiusTriangle(p: Vector2, q: Vector2, r: Vector2) {

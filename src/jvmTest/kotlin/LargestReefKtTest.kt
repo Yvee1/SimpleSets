@@ -10,11 +10,11 @@ import java.util.stream.Stream
 import kotlin.test.Test
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-internal class LargestBendKtTest {
+internal class LargestReefKtTest {
     @ParameterizedTest
     @MethodSource("monotoneBendInstances")
-    fun testLargestMonotoneBend(instance: ProblemInstance, dir: Orientation, expected: Bend) {
-        assertEquals(expected, instance.largestMonotoneBendFrom(instance.points[0], instance.points[1], dir).original())
+    fun testLargestMonotoneBend(instance: PartitionInstance, dir: Orientation, expected: Reef) {
+        assertEquals(expected, instance.largestMonotoneReefFrom(instance.points[0], instance.points[1], dir).original())
     }
 
     private fun monotoneBendInstances(): Stream<Arguments> {
@@ -70,9 +70,9 @@ internal class LargestBendKtTest {
         return listOf(Orientation.LEFT, Orientation.RIGHT).flatMap { dir ->
             inputs.map { input ->
                 Arguments.of(
-                    ProblemInstance(if (dir == Orientation.RIGHT) input.points else input.points.flip()),
+                    PartitionInstance(if (dir == Orientation.RIGHT) input.points else input.points.flip()),
                     dir,
-                    Bend(if (dir == Orientation.RIGHT) input.expected else input.expected.flip(), input.expected.size)
+                    Reef(if (dir == Orientation.RIGHT) input.expected else input.expected.flip(), input.expected.size)
                 )
             }
         }.stream()
@@ -80,8 +80,8 @@ internal class LargestBendKtTest {
 
     @ParameterizedTest
     @MethodSource("inflectionBendInstances")
-    fun testLargestInflectionBend(instance: ProblemInstance, expected: Bend) {
-        assertEquals(expected, instance.largestInflectionBend(Orientation.RIGHT).original())
+    fun testLargestInflectionBend(instance: PartitionInstance, expected: Reef) {
+        assertEquals(expected, instance.largestInflectionReef(Orientation.RIGHT).original())
     }
 
     private fun inflectionBendInstances(): Stream<Arguments> {
@@ -97,8 +97,8 @@ internal class LargestBendKtTest {
 
         return Stream.of(
             Arguments.of(
-                ProblemInstance(pts1),
-                Bend(pts1, pts1.size)
+                PartitionInstance(pts1),
+                Reef(pts1, pts1.size)
             ),
         )
     }
@@ -202,22 +202,22 @@ internal class LargestBendKtTest {
     @Test
     fun constrainedBendRightAngleAllowed() {
         val pts = listOf(0 p0 0, 0 p0 1, 1 p0 1)
-        val instance = ProblemInstance(pts, maxTurningAngle = 100.0)
-        assertEquals(Bend(instance.points, 3), instance.largestMonotoneBendFrom(instance.points[0], instance.points[1], Orientation.RIGHT))
+        val instance = PartitionInstance(pts, maxTurningAngle = 100.0)
+        assertEquals(Reef(instance.points, 3), instance.largestMonotoneReefFrom(instance.points[0], instance.points[1], Orientation.RIGHT))
     }
 
     @Test
     fun constrainedBendRightAngleRestricted() {
         val pts = listOf(0 p0 0, 0 p0 1, 1 p0 1)
-        val instance = ProblemInstance(pts, maxTurningAngle = 50.0)
-        assertEquals(Bend(instance.points.subList(0, 2), 2), instance.largestMonotoneBendFrom(instance.points[0], instance.points[1], Orientation.RIGHT))
+        val instance = PartitionInstance(pts, maxTurningAngle = 50.0)
+        assertEquals(Reef(instance.points.subList(0, 2), 2), instance.largestMonotoneReefFrom(instance.points[0], instance.points[1], Orientation.RIGHT))
     }
 
     @Test
     fun constrainedBendInflection() {
         val pts = listOf(291.2 p0 67.3, 305.6 p0 74.1, 322.6 p0 73.2, 335.3 p0 67.2,
             348.5 p0 63.1, 363.4 p0 60.2, 378.2 p0 61.7, 393.2 p0 65.9)
-        val instance = ProblemInstance(pts, maxTurningAngle = 150.0)
-        assertEquals(Bend(instance.points, instance.points.size), instance.largestInflectionBend(Orientation.RIGHT))
+        val instance = PartitionInstance(pts, maxTurningAngle = 150.0)
+        assertEquals(Reef(instance.points, instance.points.size), instance.largestInflectionReef(Orientation.RIGHT))
     }
 }

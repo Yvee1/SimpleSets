@@ -2,7 +2,7 @@ package patterns
 
 import geometric.Orientation
 import geometric.PRECISION
-import ProblemInstance
+import PartitionInstance
 import org.openrndr.math.asDegrees
 import org.openrndr.shape.LineSegment
 import org.openrndr.shape.intersections
@@ -12,8 +12,8 @@ import kotlin.math.atan2
 sealed interface PointProvider {
     val point: Point
 }
-data class BendPoint(override val point: Point, val index: Int): PointProvider
-infix fun Point.bp(index: Int) = BendPoint(this, index)
+data class ReefPoint(override val point: Point, val index: Int): PointProvider
+infix fun Point.bp(index: Int) = ReefPoint(this, index)
 data class TableEntry<T: PointProvider>(val weight: Int, val next: T?, val rest: List<Point>? = null)
 infix fun <T: PointProvider> Int.te(next: T?) = TableEntry(this, next)
 typealias Table<T> = Map<T, TableEntry<T>>
@@ -21,39 +21,39 @@ typealias Table<T> = Map<T, TableEntry<T>>
 data class ConstrainedPoint(override val point: Point, val startIndex: Int, val endIndex: Int): PointProvider
 fun cp(p: Point, iStart: Int, iEnd: Int) = ConstrainedPoint(p, iStart, iEnd)
 
-fun ProblemInstance.largestMonotoneBend(dir: Orientation, uncovered: List<Point> = points, obstacles: List<Pattern> = emptyList()): Bend =
+fun PartitionInstance.largestMonotoneReef(dir: Orientation, uncovered: List<Point> = points, obstacles: List<Pattern> = emptyList()): Reef =
     uncovered.asSequence().flatMap { a ->
         uncovered.asSequence().map { b ->
-            largestMonotoneBendFrom(a, b, dir, uncovered, obstacles)
+            largestMonotoneReefFrom(a, b, dir, uncovered, obstacles)
         }
-    }.maxWithOrNull(compareBy { b: Bend -> b.weight }.thenBy { -it.contour.length }) ?: Bend.EMPTY
+    }.maxWithOrNull(compareBy { b: Reef -> b.weight }.thenBy { -it.contour.length }) ?: Reef.EMPTY
 
-fun ProblemInstance.largestMonotoneBendFrom(a: Point, b: Point, dir: Orientation, uncovered: List<Point> = points, obstacles: List<Pattern> = emptyList()): Bend {
-    if (b.type != a.type || a == b || !valid(a, b, obstacles) || !stripeData.segment.getE(a to b).hasType(a.type)) return Bend.EMPTY
+fun PartitionInstance.largestMonotoneReefFrom(a: Point, b: Point, dir: Orientation, uncovered: List<Point> = points, obstacles: List<Pattern> = emptyList()): Reef {
+    if (b.type != a.type || a == b || !valid(a, b, obstacles) || !stripeData.segment.getE(a to b).hasType(a.type)) return Reef.EMPTY
     val (T, maxT) =
         if (maxTurningAngle >= maxBendAngle)
-            tableLargestMonotoneBendFrom(a, b, dir, uncovered, obstacles)
+            tableLargestMonotoneReefFrom(a, b, dir, uncovered, obstacles)
         else
-            tableLargestConstrainedMonotoneBendFrom(a, b, dir, uncovered, obstacles)
-    return Bend(listOf(a) + trace(T, b to maxT), maxT.weight + 1)
+            tableLargestConstrainedMonotoneReefFrom(a, b, dir, uncovered, obstacles)
+    return Reef(listOf(a) + trace(T, b to maxT), maxT.weight + 1)
 }
 
-fun ProblemInstance.tableLargestMonotoneBendFrom(a: Point, b: Point, dir: Orientation, uncovered: List<Point> = points,
-                                                 obstacles: List<Pattern> = emptyList()): Pair<Table<BendPoint>, TableEntry<BendPoint>> =
-    tableLargestBendFrom(a, b, dir, uncovered, obstacles) { _, _ -> emptyList() }
+fun PartitionInstance.tableLargestMonotoneReefFrom(a: Point, b: Point, dir: Orientation, uncovered: List<Point> = points,
+                                                   obstacles: List<Pattern> = emptyList()): Pair<Table<ReefPoint>, TableEntry<ReefPoint>> =
+    tableLargestReefFrom(a, b, dir, uncovered, obstacles) { _, _ -> emptyList() }
 
-fun ProblemInstance.tableLargestConstrainedMonotoneBendFrom(a: Point, b: Point, dir: Orientation, uncovered: List<Point> = points,
-                                                            obstacles: List<Pattern> = emptyList()): Pair<Table<ConstrainedPoint>, TableEntry<ConstrainedPoint>> =
-    tableLargestConstrainedBendFrom(a, b, dir, uncovered, obstacles) { _, _ -> emptyList() }
+fun PartitionInstance.tableLargestConstrainedMonotoneReefFrom(a: Point, b: Point, dir: Orientation, uncovered: List<Point> = points,
+                                                              obstacles: List<Pattern> = emptyList()): Pair<Table<ConstrainedPoint>, TableEntry<ConstrainedPoint>> =
+    tableLargestConstrainedReefFrom(a, b, dir, uncovered, obstacles) { _, _ -> emptyList() }
 
-fun ProblemInstance.largestInflectionBend(uncovered: List<Point> = points, obstacles: List<Pattern> = emptyList()) =
+fun PartitionInstance.largestInflectionReef(uncovered: List<Point> = points, obstacles: List<Pattern> = emptyList()) =
     listOf(
-        largestInflectionBend(Orientation.LEFT, uncovered, obstacles),
-        largestInflectionBend(Orientation.RIGHT, uncovered, obstacles)
+        largestInflectionReef(Orientation.LEFT, uncovered, obstacles),
+        largestInflectionReef(Orientation.RIGHT, uncovered, obstacles)
     ).maxBy { it.weight }
 
-fun ProblemInstance.largestInflectionBend(dir: Orientation = Orientation.RIGHT, uncovered: List<Point> = points,
-                                          obstacles: List<Pattern> = emptyList()): Bend {
+fun PartitionInstance.largestInflectionReef(dir: Orientation = Orientation.RIGHT, uncovered: List<Point> = points,
+                                            obstacles: List<Pattern> = emptyList()): Reef {
     if (maxTurningAngle >= maxBendAngle) {
         val mapT = uncovered.asSequence().flatMap { a ->
             uncovered
@@ -62,18 +62,18 @@ fun ProblemInstance.largestInflectionBend(dir: Orientation = Orientation.RIGHT, 
                     a != b && valid(a, b, obstacles)
                 }
                 .map { b ->
-                    val (T, maxT) = tableLargestMonotoneBendFrom(a, b, dir.opposite(), uncovered, obstacles)
+                    val (T, maxT) = tableLargestMonotoneReefFrom(a, b, dir.opposite(), uncovered, obstacles)
                     val key = a to b
-                    val value = TableEntry<BendPoint>(maxT.weight, null, trace(T, b to maxT))
+                    val value = TableEntry<ReefPoint>(maxT.weight, null, trace(T, b to maxT))
                     key to value
                 }
         }.toMap()
 
         return uncovered.asSequence().flatMap { a ->
             uncovered.asSequence().map { b ->
-                largestInflectionBendFrom(a, b, mapT, dir, uncovered, obstacles)
+                largestInflectionReefFrom(a, b, mapT, dir, uncovered, obstacles)
             }
-        }.maxWithOrNull(compareBy { b: Bend -> b.weight }.thenBy { -it.contour.length }) ?: Bend.EMPTY
+        }.maxWithOrNull(compareBy { b: Reef -> b.weight }.thenBy { -it.contour.length }) ?: Reef.EMPTY
     } else {
         val mapT = uncovered.asSequence().flatMap { a ->
             uncovered
@@ -82,7 +82,7 @@ fun ProblemInstance.largestInflectionBend(dir: Orientation = Orientation.RIGHT, 
                     a != b && valid(a, b, obstacles)
                 }
                 .map { b ->
-                    val (T, maxT) = tableLargestConstrainedMonotoneBendFrom(a, b, dir.opposite(), uncovered, obstacles)
+                    val (T, maxT) = tableLargestConstrainedMonotoneReefFrom(a, b, dir.opposite(), uncovered, obstacles)
                     val key = a to b
                     val value = TableEntry<ConstrainedPoint>(maxT.weight, null, trace(T, b to maxT))
                     key to value
@@ -90,56 +90,56 @@ fun ProblemInstance.largestInflectionBend(dir: Orientation = Orientation.RIGHT, 
         }.toMap()
         return uncovered.asSequence().flatMap { a ->
             uncovered.asSequence().map { b ->
-                largestConstrainedInflectionBendFrom(a, b, mapT, dir, uncovered, obstacles)
+                largestConstrainedInflectionReefFrom(a, b, mapT, dir, uncovered, obstacles)
             }
-        }.maxWithOrNull(compareBy { b: Bend -> b.weight }.thenBy { -it.contour.length }) ?: Bend.EMPTY
+        }.maxWithOrNull(compareBy { b: Reef -> b.weight }.thenBy { -it.contour.length }) ?: Reef.EMPTY
     }
 }
 
-fun ProblemInstance.largestInflectionBendFrom(a: Point, b: Point, mapT: Map<Pair<Point, Point>, TableEntry<BendPoint>>,
-                                              dir: Orientation = Orientation.RIGHT, uncovered: List<Point> = points,
-                                              obstacles: List<Pattern> = emptyList()): Bend {
-    if (b.type != a.type || a == b || !valid(a, b, obstacles) || !stripeData.segment.getE(a to b).hasType(a.type)) return Bend.EMPTY
-    val (T, maxT) = tableLargestInflectionBendFrom(a, b, mapT, dir, uncovered, obstacles)
-    return Bend(listOf(a) + trace(T, b to maxT), maxT.weight + 1)
+fun PartitionInstance.largestInflectionReefFrom(a: Point, b: Point, mapT: Map<Pair<Point, Point>, TableEntry<ReefPoint>>,
+                                                dir: Orientation = Orientation.RIGHT, uncovered: List<Point> = points,
+                                                obstacles: List<Pattern> = emptyList()): Reef {
+    if (b.type != a.type || a == b || !valid(a, b, obstacles) || !stripeData.segment.getE(a to b).hasType(a.type)) return Reef.EMPTY
+    val (T, maxT) = tableLargestInflectionReefFrom(a, b, mapT, dir, uncovered, obstacles)
+    return Reef(listOf(a) + trace(T, b to maxT), maxT.weight + 1)
 }
 
-fun ProblemInstance.largestConstrainedInflectionBendFrom(a: Point, b: Point, mapT: Map<Pair<Point, Point>, TableEntry<ConstrainedPoint>>,
-                                                         dir: Orientation = Orientation.RIGHT, uncovered: List<Point> = points,
-                                                         obstacles: List<Pattern> = emptyList()): Bend {
-    if (b.type != a.type || a == b || !valid(a, b, obstacles) || !stripeData.segment.getE(a to b).hasType(a.type)) return Bend.EMPTY
+fun PartitionInstance.largestConstrainedInflectionReefFrom(a: Point, b: Point, mapT: Map<Pair<Point, Point>, TableEntry<ConstrainedPoint>>,
+                                                           dir: Orientation = Orientation.RIGHT, uncovered: List<Point> = points,
+                                                           obstacles: List<Pattern> = emptyList()): Reef {
+    if (b.type != a.type || a == b || !valid(a, b, obstacles) || !stripeData.segment.getE(a to b).hasType(a.type)) return Reef.EMPTY
 
-    val (T, maxT) = tableLargestConstrainedInflectionBendFrom(a, b, mapT, dir, uncovered, obstacles)
-    return Bend(listOf(a) + trace(T, b to maxT), maxT.weight + 1)
+    val (T, maxT) = tableLargestConstrainedInflectionReefFrom(a, b, mapT, dir, uncovered, obstacles)
+    return Reef(listOf(a) + trace(T, b to maxT), maxT.weight + 1)
 }
 
-fun ProblemInstance.tableLargestInflectionBendFrom(a: Point, b: Point, mapT: Map<Pair<Point, Point>, TableEntry<BendPoint>>,
-                                                   dir: Orientation = Orientation.RIGHT, uncovered: List<Point> = points,
-                                                   obstacles: List<Pattern> = emptyList())
-        : Pair<Table<BendPoint>, TableEntry<BendPoint>>
-    = tableLargestBendFrom(a, b, dir, uncovered, obstacles) { Pipi: Point, p: Point ->
+fun PartitionInstance.tableLargestInflectionReefFrom(a: Point, b: Point, mapT: Map<Pair<Point, Point>, TableEntry<ReefPoint>>,
+                                                     dir: Orientation = Orientation.RIGHT, uncovered: List<Point> = points,
+                                                     obstacles: List<Pattern> = emptyList())
+        : Pair<Table<ReefPoint>, TableEntry<ReefPoint>>
+    = tableLargestReefFrom(a, b, dir, uncovered, obstacles) { Pipi: Point, p: Point ->
         listOf(mapT[p to Pipi]!!.let { it.copy(weight = it.weight + 1) })
     }
 
-fun ProblemInstance.tableLargestConstrainedInflectionBendFrom(a: Point, b: Point,
-                                                              mapT: Map<Pair<Point, Point>, TableEntry<ConstrainedPoint>>,
-                                                              dir: Orientation = Orientation.RIGHT,
-                                                              uncovered: List<Point> = points,
-                                                              obstacles: List<Pattern> = emptyList())
+fun PartitionInstance.tableLargestConstrainedInflectionReefFrom(a: Point, b: Point,
+                                                                mapT: Map<Pair<Point, Point>, TableEntry<ConstrainedPoint>>,
+                                                                dir: Orientation = Orientation.RIGHT,
+                                                                uncovered: List<Point> = points,
+                                                                obstacles: List<Pattern> = emptyList())
         : Pair<Table<ConstrainedPoint>, TableEntry<ConstrainedPoint>>
-        = tableLargestConstrainedBendFrom(a, b, dir, uncovered, obstacles) { Pipi: Point, p: Point ->
+        = tableLargestConstrainedReefFrom(a, b, dir, uncovered, obstacles) { Pipi: Point, p: Point ->
             listOf(mapT[p to Pipi]!!.let { it.copy(weight = it.weight + 1) })
         }
 
-fun ProblemInstance.tableLargestBendFrom(a: Point, b: Point, dir: Orientation,
-                                         uncovered: List<Point> = points, obstacles: List<Pattern> = emptyList(),
-                                         f: (Point, Point) -> List<TableEntry<BendPoint>>)
-        : Pair<Table<BendPoint>, TableEntry<BendPoint>> {
+fun PartitionInstance.tableLargestReefFrom(a: Point, b: Point, dir: Orientation,
+                                           uncovered: List<Point> = points, obstacles: List<Pattern> = emptyList(),
+                                           f: (Point, Point) -> List<TableEntry<ReefPoint>>)
+        : Pair<Table<ReefPoint>, TableEntry<ReefPoint>> {
     val (P, Pi) = tablePointSets(a, b, dir, uncovered, obstacles)
 
     fun fh(p: Point, q: Point) = firstHit(Pi[q]!!.asReversed(), p, q, q, dir)?.let { Pi[q]!!.size - 1 - it } ?: -1
 
-    val T = mutableMapOf<BendPoint, TableEntry<BendPoint>>()
+    val T = mutableMapOf<ReefPoint, TableEntry<ReefPoint>>()
     for (p in P) {
         T[p bp -1] = 1 te null
         val Pip = Pi[p]!!
@@ -150,7 +150,7 @@ fun ProblemInstance.tableLargestBendFrom(a: Point, b: Point, dir: Orientation,
                 T[p bp i - 1]!!,
                 T[Pipi bp j]!!.let { it.weight + 1 te (Pipi bp j) }
             ) + f(Pipi, p)
-            T[p bp i] = tes.maxWith(compareBy { te: TableEntry<BendPoint> -> te.weight }.thenBy {
+            T[p bp i] = tes.maxWith(compareBy { te: TableEntry<ReefPoint> -> te.weight }.thenBy {
                 val nextPoint = it.next?.point ?: it.rest?.first()
                 -(nextPoint?.pos?.squaredDistanceTo(p.pos) ?: 0.0)
             })
@@ -162,10 +162,10 @@ fun ProblemInstance.tableLargestBendFrom(a: Point, b: Point, dir: Orientation,
     return T to maxT
 }
 
-fun ProblemInstance.tableLargestConstrainedBendFrom(a: Point, b: Point, dir: Orientation,
-                                                    uncovered: List<Point> = points,
-                                                    obstacles: List<Pattern> = emptyList(),
-                                                    f: (Point, Point) -> List<TableEntry<ConstrainedPoint>>)
+fun PartitionInstance.tableLargestConstrainedReefFrom(a: Point, b: Point, dir: Orientation,
+                                                      uncovered: List<Point> = points,
+                                                      obstacles: List<Pattern> = emptyList(),
+                                                      f: (Point, Point) -> List<TableEntry<ConstrainedPoint>>)
         : Pair<Table<ConstrainedPoint>, TableEntry<ConstrainedPoint>> {
     val (P, Pi) = tablePointSets(a, b, dir, uncovered, obstacles)
 
@@ -204,8 +204,8 @@ fun ProblemInstance.tableLargestConstrainedBendFrom(a: Point, b: Point, dir: Ori
     return T to maxT
 }
 
-fun ProblemInstance.tablePointSets(a: Point, b: Point, dir: Orientation, uncovered: List<Point> = points,
-                                   obstacles: List<Pattern> = emptyList())
+fun PartitionInstance.tablePointSets(a: Point, b: Point, dir: Orientation, uncovered: List<Point> = points,
+                                     obstacles: List<Pattern> = emptyList())
     : Pair<List<Point>, Map<Point, List<Point>>> {
     val t = a.type
     val ab = b.pos - a.pos
@@ -287,7 +287,7 @@ fun firstHit(points: List<Point>, e1: Point, e2: Point, v: Point, dir: Orientati
         else null
 }
 
-fun ProblemInstance.valid(p: Point, q: Point, obstacles: List<Pattern>): Boolean {
+fun PartitionInstance.valid(p: Point, q: Point, obstacles: List<Pattern>): Boolean {
     val seg = stripeData.segment.getE(p to q)
     val segContour = LineSegment(p.pos, q.pos).contour
     val intersects = obstacles.any { segContour.intersections(it.contour).isNotEmpty() }

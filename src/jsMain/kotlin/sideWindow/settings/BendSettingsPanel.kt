@@ -5,7 +5,7 @@ import components.Slider
 import contexts.BendSettingsContext
 import drawComposition
 import emotion.react.css
-import islands.toIsland
+import highlights.toHighlight
 import js.core.jso
 import org.openrndr.color.ColorRGBa
 import org.openrndr.color.rgb
@@ -14,7 +14,7 @@ import org.openrndr.shape.LineSegment
 import org.openrndr.shape.Rectangle
 import org.openrndr.shape.bounds
 import org.openrndr.shape.intersections
-import patterns.Bend
+import patterns.Reef
 import patterns.Point
 import react.FC
 import react.Props
@@ -172,7 +172,7 @@ fun bendPreview(maxDistance: Double, maxTurningAngle: Double, maxTotalAngle: Dou
         fill = rgb(color).opacify(0.3)
         if (!pts.zipWithNext().all { (a, b) -> a.distanceTo(b) < expandRadius }
             && pts.first().distanceTo(pts.last()) > 2 * expandRadius) {
-            val c = Bend(pts.map { Point(it, 0) }, pts.size).toIsland(expandRadius).contour
+            val c = Reef(pts.map { Point(it, 0) }, pts.size).toHighlight(expandRadius).contour
             contour(c)
         }
         strokeWeight = pointStrokeWeight

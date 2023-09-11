@@ -85,13 +85,22 @@ val App = FC<Props> {
             set(v) = clusterRadiusSetter(v)
     }
 
-    val computeSettings = ComputeSettings(
-        expandRadius = 3 * pointSize,
+    val computePartitionSettings = ComputePartitionSettings(
         bendDistance = bendDistance,
         bendInflection = bendInflection,
         maxBendAngle = maxBendAngle,
         maxTurningAngle = maxTurningAngle,
         clusterRadius = clusterRadius,
+        partitionClearance = 0.0, // TODO: Add UI setting for this?
+    )
+
+    val computeDrawingSettings = ComputeDrawingSettings(
+        expandRadius = 3 * pointSize,
+        intersectionResolution = IntersectionResolution.Overlap // TODO: Add UI setting for this?
+    )
+
+    val computeBridgesSettings = ComputeBridgesSettings(
+
     )
 
     val blue = ColorRGB(0.651, 0.807, 0.89)// to ColorRGB(0.121, 0.47, 0.705)
@@ -111,7 +120,7 @@ val App = FC<Props> {
 
     }
     val colorSettings = ColorSettings(colors)
-    val drawSettings = DrawSettings(pointSize = pointSize, colorSettings = colorSettings)
+    val drawSettings = DrawSettings(pSize = pointSize, colorSettings = colorSettings)
 
     var viewMatrix: Matrix44 by useState(Matrix44.IDENTITY)
     val svgContainerRef: MutableRefObject<HTMLDivElement> = useRef(null)
@@ -129,10 +138,17 @@ val App = FC<Props> {
     var computing: Boolean by useState(false)
 
     var lastPoints: List<Point> by useState(emptyList())
-    var lastComputeSettings: ComputeSettings by useState(computeSettings)
+    var lastComputePartitionSettings: ComputePartitionSettings by useState(computePartitionSettings)
+    var lastComputeDrawingSettings: ComputeDrawingSettings by useState(computeDrawingSettings)
+    var lastComputeBridgesSettings: ComputeBridgesSettings by useState(computeBridgesSettings)
     var lastSentPoints: List<Point> by useState(emptyList())
-    var lastSentSettings: ComputeSettings by useState(computeSettings)
-    val changedProblem = points != lastPoints || computeSettings != lastComputeSettings
+    var lastSentPartitionSettings: ComputePartitionSettings by useState(computePartitionSettings)
+    var lastSentDrawingSettings: ComputeDrawingSettings by useState(computeDrawingSettings)
+    var lastSentBridgesSettings: ComputeBridgesSettings by useState(computeBridgesSettings)
+    val changedProblem = points != lastPoints
+            || computePartitionSettings != lastComputePartitionSettings
+            || computeDrawingSettings != lastComputeDrawingSettings
+            || computeBridgesSettings != lastComputeBridgesSettings
 
     var currentType: Int by useState(0)
 
@@ -156,7 +172,9 @@ val App = FC<Props> {
         svg = completedWork.svg
         computing = false
         lastPoints = lastSentPoints
-        lastComputeSettings = lastSentSettings
+        lastComputePartitionSettings = lastSentPartitionSettings
+        lastComputeDrawingSettings = lastSentDrawingSettings
+        lastComputeBridgesSettings = lastSentBridgesSettings
         Unit
     }
 
@@ -198,7 +216,7 @@ val App = FC<Props> {
                         ptSize = pointSize
                         ptStrokeWeight = drawSettings.pointStrokeWeight
                         lineStrokeWeight = drawSettings.contourStrokeWeight
-                        expandRadius = computeSettings.expandRadius
+                        expandRadius = computeDrawingSettings.expandRadius
                         color = colors[currentType].toHex()
                     }
                 }
@@ -318,7 +336,8 @@ val App = FC<Props> {
                                     points = emptyList()
                                 }
                             }
-                            Clear()
+//                            Clear()
+                            +"C"
                         }
 
                         IconButton {
@@ -326,15 +345,19 @@ val App = FC<Props> {
                                 title = "Run computations"
                                 onClick = {
                                     if (changedProblem) {
-                                        val assignment: Assignment = Compute(computeSettings, points, drawSettings)
+                                        val assignment: Assignment = Compute(points, computePartitionSettings,
+                                            computeDrawingSettings, computeBridgesSettings, drawSettings)
                                         worker.postMessage(Json.encodeToString(assignment))
                                         computing = true
                                         lastSentPoints = points
-                                        lastSentSettings = computeSettings
+                                        lastSentPartitionSettings = computePartitionSettings
+                                        lastSentDrawingSettings = computeDrawingSettings
+                                        lastSentBridgesSettings = computeBridgesSettings
                                     }
                                 }
                             }
-                            Run()
+//                            Run()
+                            +"R"
                         }
 
                         +whiteSpace
@@ -378,7 +401,8 @@ val App = FC<Props> {
                                     document.body.removeChild(downloadLink)
                                 }
                             }
-                            DownloadSvg()
+//                            DownloadSvg()
+                            +"D"
                         }
 
                         div {

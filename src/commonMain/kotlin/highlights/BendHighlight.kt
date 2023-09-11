@@ -1,7 +1,8 @@
-package islands
+package highlights
 
+import geometric.Arc
 import geometric.Orientation
-import patterns.Bend
+import patterns.Reef
 import patterns.Point
 import org.openrndr.math.Vector2
 import org.openrndr.math.YPolarity
@@ -14,7 +15,7 @@ fun ccwCircularArc(circle: Circle, cp1: Vector2, cp2: Vector2) = contour {
     arcTo(circle.radius, circle.radius, 90.0, largeArcFlag=largeArcFlag, sweepFlag=false, cp2)
 }
 
-class BendIsland(override val points: List<Point>, expandRadius: Double): Island() {
+class BendHighlight(override val points: List<Point>, expandRadius: Double): Highlight() {
     override val allPoints = points
     override val type = points.firstOrNull()?.type ?: -1
     override val circles: List<Circle> by lazy { points.map { Circle(it.pos, expandRadius) } }
@@ -48,7 +49,7 @@ class BendIsland(override val points: List<Point>, expandRadius: Double): Island
 
     override val segments: List<LineSegment> by lazy { pairedSegs.flatMap { it.toList() } }
 
-    val circularArcs: List<ShapeContour> by lazy {
+    override val arcs: List<Arc> by lazy {
         if (points.size == 1) return@lazy emptyList()
 
         val cf = circles.first()
@@ -56,9 +57,9 @@ class BendIsland(override val points: List<Point>, expandRadius: Double): Island
         val cl = circles.last()
         val clp = circles[circles.lastIndex-1]
         val nf = (cfn.center - cf.center).perpendicular().normalized * expandRadius
-        val firstArc = ccwCircularArc(cf, cf.center + nf, cf.center - nf)
+        val firstArc = Arc(cf, cf.center + nf, cf.center - nf)
         val nl = (cl.center - clp.center).perpendicular().normalized * expandRadius
-        val lastArc = ccwCircularArc(cl, cl.center - nl, cl.center + nl)
+        val lastArc = Arc(cl, cl.center - nl, cl.center + nl)
 
         val middleArcs = circles.windowed(3) { (prev, curr, next) ->
             val d1 = curr.center - prev.center
@@ -67,17 +68,17 @@ class BendIsland(override val points: List<Point>, expandRadius: Double): Island
             val pol = when(or) {
                 Orientation.RIGHT -> YPolarity.CCW_POSITIVE_Y
                 Orientation.LEFT -> YPolarity.CW_NEGATIVE_Y
-                else -> return@windowed ShapeContour.EMPTY
+                else -> return@windowed null
             }
             val n1 = d1.perpendicular(pol).normalized * expandRadius
             val n2 = d2.perpendicular(pol).normalized * expandRadius
             val cp1 = curr.center + if (or == Orientation.RIGHT) n1 else n2
             val cp2 = curr.center + if (or == Orientation.RIGHT) n2 else n1
 
-            ccwCircularArc(curr, cp1, cp2)
+            Arc(curr, cp1, cp2)
         }
 
-        (listOf(firstArc) + middleArcs + lastArc).filter { it != ShapeContour.EMPTY }
+        listOf(firstArc) + middleArcs.filterNotNull() + lastArc
     }
 
     override val contour: ShapeContour by lazy {
@@ -85,7 +86,7 @@ class BendIsland(override val points: List<Point>, expandRadius: Double): Island
             return@lazy circles.first().contour
         }
 
-        val contours = (segments.map { it.contour } + circularArcs).toMutableList()
+        val contours = (segments.map { it.contour } + arcs.map { it.contour }).toMutableList()
         var c = contours.removeFirst()
 
         while(contours.isNotEmpty()) {
@@ -96,7 +97,7 @@ class BendIsland(override val points: List<Point>, expandRadius: Double): Island
         c.close().reversed
     }
 
-    override fun scale(s: Double) = BendIsland(points, circles.first().radius * s)
+    override fun scale(s: Double) = BendHighlight(points, circles.first().radius * s)
 }
 
-fun Bend.toIsland(expandRadius: Double) = BendIsland(original().boundaryPoints, expandRadius)
+fun Reef.toHighlight(expandRadius: Double) = BendHighlight(original().boundaryPoints, expandRadius)

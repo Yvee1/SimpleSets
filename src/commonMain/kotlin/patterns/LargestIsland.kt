@@ -1,7 +1,7 @@
 package patterns
 
 import geometric.Orientation
-import ProblemInstance
+import PartitionInstance
 import org.openrndr.shape.*
 import geometric.orientation
 import geometric.overlaps
@@ -17,40 +17,40 @@ import geometric.overlaps
  * @param uncovered a list of `points` with distinct x-coordinates
  * @throws error if `points` do not have distinct x-coordinates
  */
-fun ProblemInstance.largestCluster(uncovered: List<Point> = points, obstacles: List<Pattern> = emptyList()): Cluster {
-    if (clusterRadius <= 0) return Cluster.EMPTY
+fun PartitionInstance.largestIsland(uncovered: List<Point> = points, obstacles: List<Pattern> = emptyList()): Island {
+    if (density <= 0) return Island.EMPTY
     val uncoveredStripeData = StripeData(uncovered)
     val colored = uncovered.groupBy {
         it.type
     }
     return colored.toList().asSequence().map { (_, pts) ->
         val freeSpace: Shape? =
-            if (clusterRadius < Double.MAX_VALUE)
-                pts.fold(Shape.EMPTY) { acc, x -> Circle(x.pos, clusterRadius).shape.union(acc) }
+            if (density < Double.MAX_VALUE)
+                pts.fold(Shape.EMPTY) { acc, x -> Circle(x.pos, density).shape.union(acc) }
             else null
         pts.asSequence()
-            .map { largestClusterAt(it, uncovered, uncoveredStripeData, obstacles, freeSpace) }
-            .maxWithOrNull(compareBy({ it.weight }, { -it.contour.shape.area })) ?: Cluster.EMPTY
-    }.maxWithOrNull(compareBy({ it.weight }, { -it.contour.shape.area })) ?: Cluster.EMPTY
+            .map { largestIslandAt(it, uncovered, uncoveredStripeData, obstacles, freeSpace) }
+            .maxWithOrNull(compareBy({ it.weight }, { -it.contour.shape.area })) ?: Island.EMPTY
+    }.maxWithOrNull(compareBy({ it.weight }, { -it.contour.shape.area })) ?: Island.EMPTY
 }
 
 private fun compatible(q: Point, r: Point, s: Point) = orientation(q.pos, r.pos, s.pos) != Orientation.LEFT
 
 private data class Edge(val u: Point, val v: Point, var weight: Int? = null, var prev: Edge? = null)
 
-fun ProblemInstance.largestClusterAt(p: Point,
-                                     uncovered: List<Point> = points,
-                                     uncoveredStripeData: StripeData = stripeData,
-                                     obstacles: List<Pattern> = emptyList(),
-                                     providedFreeSpace: Shape? = null,
-                                     recLevel: Int = 0): Cluster {
+fun PartitionInstance.largestIslandAt(p: Point,
+                                      uncovered: List<Point> = points,
+                                      uncoveredStripeData: StripeData = stripeData,
+                                      obstacles: List<Pattern> = emptyList(),
+                                      providedFreeSpace: Shape? = null,
+                                      recLevel: Int = 0): Island {
     val t = p.type
 
     val P = uncovered
         .filter { it.pos.x <= p.pos.x && it != p && it.type == t }
         .sortedWith(compareAround(p, 90.0, Orientation.RIGHT).reversed().then(awayFrom(p)))
 
-    if (P.isEmpty()) return Cluster(listOf(p), 1)
+    if (P.isEmpty()) return Island(listOf(p), 1)
 
     val groupedP = buildList(P.size) {
         var currentGroup: MutableList<Point> = mutableListOf(P[0])
@@ -67,8 +67,8 @@ fun ProblemInstance.largestClusterAt(p: Point,
     }
 
     val freeSpace: Shape? = providedFreeSpace
-        ?: if (clusterRadius < Double.MAX_VALUE)
-            (P + p).fold(Shape.EMPTY) { acc, x -> Circle(x.pos, clusterRadius).shape.union(acc) }
+        ?: if (density < Double.MAX_VALUE)
+            (P + p).fold(Shape.EMPTY) { acc, x -> Circle(x.pos, density).shape.union(acc) }
         else null
 
     val Ai = P.associateWith { mutableListOf<Point>() }
@@ -88,7 +88,7 @@ fun ProblemInstance.largestClusterAt(p: Point,
                     || capsuleData.capsule.getF(p to P[j])
             if (pointNearby) continue
             val inFreeSpace = freeSpace == null ||
-                    coverRadiusTriangle(p.pos, P[i].pos, P[j].pos) <= clusterRadius ||
+                    coverRadiusTriangle(p.pos, P[i].pos, P[j].pos) <= density ||
                     triContour in freeSpace
             if (!inFreeSpace) continue
 
@@ -114,13 +114,13 @@ fun ProblemInstance.largestClusterAt(p: Point,
             val segContour = LineSegment(p.pos, q.pos).contour
             val intersects = obstacles.any { segContour.intersections(it.contour).isNotEmpty() }
             val pointNearby = capsuleData.capsule.getF(p to q)
-            val inFreeSpace = freeSpace == null || segContour.length <= 2 * clusterRadius
+            val inFreeSpace = freeSpace == null || segContour.length <= 2 * density
                     || segContour in freeSpace
             if (segAll.hasType(t) && !intersects && inFreeSpace && !pointNearby){
-                return Cluster(listOf(q, p), 2 + segUncov.get0(t))
+                return Island(listOf(q, p), 2 + segUncov.get0(t))
             }
         }
-        return Cluster(listOf(p), 1)
+        return Island(listOf(p), 1)
     }
 
     for ((pi, l) in Ai) {
@@ -217,10 +217,10 @@ fun ProblemInstance.largestClusterAt(p: Point,
         }
     }
 
-    val largest = Cluster(trace(maxEdge), maxEdge.weight!!)
+    val largest = Island(trace(maxEdge), maxEdge.weight!!)
     val pointsInLargest = (P + p).filter { it in largest }
-    if (recLevel < 2 && coverRadius(pointsInLargest.map { it.pos }) > clusterRadius + 0.1) {
-        return largestClusterAt(p, pointsInLargest, StripeData(pointsInLargest), obstacles, recLevel = recLevel + 1)
+    if (recLevel < 2 && coverRadius(pointsInLargest.map { it.pos }) > density + 0.1) {
+        return largestIslandAt(p, pointsInLargest, StripeData(pointsInLargest), obstacles, recLevel = recLevel + 1)
     }
     return largest
 }

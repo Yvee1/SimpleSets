@@ -1,4 +1,4 @@
-package islands
+package highlights
 
 import geometric.*
 import patterns.compareAround
@@ -13,7 +13,7 @@ data class BoundaryTangent(val start: ContourPoint, val end: ContourPoint?)
 
 data class VisibilityInterval(val start: BoundaryTangent, val end: BoundaryTangent, val contour: ShapeContour)
 
-fun Island.tangents(v: Vector2): Pair<ContourPoint, ContourPoint> {
+fun Highlight.tangents(v: Vector2): Pair<ContourPoint, ContourPoint> {
     val tangentPoints = circles.flatMap { it.tangents(v).toList() }
     val dirR = (v - circles.first().center)
     val angle = atan2(dirR.y, dirR.x).asDegrees
@@ -22,8 +22,8 @@ fun Island.tangents(v: Vector2): Pair<ContourPoint, ContourPoint> {
     return contour.nearest(t1) to contour.nearest(t2)
 }
 
-fun Circle.visibilityInterval(island: Island): VisibilityInterval? {
-    val (tp1, tp2) = island.tangents(center)
+fun Circle.visibilityInterval(highlight: Highlight): VisibilityInterval? {
+    val (tp1, tp2) = highlight.tangents(center)
     val ls1 = LineSegment(center, tp1.position)
     val ls2 = LineSegment(center, tp2.position)
     val ip1 = contour.intersections(ls1.contour).firstOrNull()
@@ -35,9 +35,9 @@ fun Circle.visibilityInterval(island: Island): VisibilityInterval? {
     return VisibilityInterval(BoundaryTangent(ip1.a, tp1), BoundaryTangent(ip2.a, tp2), piece)
 }
 
-fun Pair<Circle, ShapeContour>.visibilityInterval(island: Island): VisibilityInterval? {
+fun Pair<Circle, ShapeContour>.visibilityInterval(highlight: Highlight): VisibilityInterval? {
     val (c, ca) = this
-    val (ct1, ct2) = c.visibilityInterval(island) ?: return null
+    val (ct1, ct2) = c.visibilityInterval(highlight) ?: return null
 
     val t1 = ca.nearest(ct2.start.position)
     val t2 = ca.nearest(ct1.start.position)
@@ -47,30 +47,30 @@ fun Pair<Circle, ShapeContour>.visibilityInterval(island: Island): VisibilityInt
     return VisibilityInterval(bt1, bt2, ca.sub(t1.contourT, t2.contourT))
 }
 
-fun LineSegment.visibilityInterval(island: Island): VisibilityInterval? {
+fun LineSegment.visibilityInterval(highlight: Highlight): VisibilityInterval? {
     val dir = direction.normalized
-    val v1 = island.circles.map { c ->
+    val v1 = highlight.circles.map { c ->
         val extremePoint = c.center - dir * c.radius
         if (orientation(start, end, extremePoint) == Orientation.RIGHT) {
             end to null
         } else {
             val np = nearest(extremePoint)
             if (abs(angleBetween(np - extremePoint, dir).asDegrees - 90.0) < PRECISION) {
-                np to island.contour.nearest(extremePoint)
+                np to highlight.contour.nearest(extremePoint)
             } else {
                 np to null
             }
         }
     }.minBy { (it.first - start).squaredLength }
 
-    val v2 = island.circles.map { c ->
+    val v2 = highlight.circles.map { c ->
         val extremePoint = c.center + dir * c.radius
         if (orientation(start, end, extremePoint) == Orientation.RIGHT) {
             start to null
         } else {
             val np = nearest(extremePoint)
             if (abs(angleBetween(np - extremePoint, dir).asDegrees - 90.0) < PRECISION) {
-                np to island.contour.nearest(extremePoint)
+                np to highlight.contour.nearest(extremePoint)
             } else {
                 np to null
             }
@@ -85,16 +85,17 @@ fun LineSegment.visibilityInterval(island: Island): VisibilityInterval? {
             contour.sub(t1.contourT, t2.contourT))
 }
 
-fun Island.visibilityIntervals(other: Island): List<VisibilityInterval> {
+fun Highlight.visibilityIntervals(other: Highlight): List<VisibilityInterval> {
     if (this == other) return emptyList()
     return (when(this) {
-        is PointIsland -> circles.mapNotNull { it.visibilityInterval(other) }
-        is ConvexIsland -> circles.zip(circularArcs).mapNotNull { it.visibilityInterval(other) } + segments.mapNotNull { it.visibilityInterval(other) }
-        is BendIsland -> circles.zip(circularArcs).mapNotNull { it.visibilityInterval(other) } + segments.mapNotNull { it.visibilityInterval(other) }
+        is PointHighlight -> circles.mapNotNull { it.visibilityInterval(other) }
+        // TODO: Check below
+        is ConvexHighlight -> circles.zip(arcs.map { it.contour }).mapNotNull { it.visibilityInterval(other) } + segments.mapNotNull { it.visibilityInterval(other) }
+        is BendHighlight -> circles.zip(arcs.map { it.contour }).mapNotNull { it.visibilityInterval(other) } + segments.mapNotNull { it.visibilityInterval(other) }
     }).mergeIntervals()
 }
 
-fun Island.visibilityContours(other: Island) = visibilityIntervals(other).map { it.contour }
+fun Highlight.visibilityContours(other: Highlight) = visibilityIntervals(other).map { it.contour }
 
 fun List<VisibilityInterval>.mergeIntervals(): List<VisibilityInterval> {
     val sorted = sortedBy { (a, _) -> a.start.contourT }

@@ -1,5 +1,5 @@
-import patterns.Cluster
-import patterns.largestClusterAt
+import patterns.Island
+import patterns.largestIslandAt
 import patterns.p0
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.TestInstance
@@ -9,14 +9,14 @@ import org.junit.jupiter.params.provider.MethodSource
 import java.util.stream.Stream
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-internal class LargestClusterKtTest {
+internal class LargestIslandKtTest {
     @ParameterizedTest
     @MethodSource("convexIslandInstances")
-    fun testLargestConvexIslandAt(instance: ProblemInstance, expected: Cluster) {
-        assertIslands(expected, instance.largestClusterAt(instance.points.maxBy { it.pos.x }, instance.points).original())
+    fun testLargestConvexIslandAt(instance: PartitionInstance, expected: Island) {
+        assertIslands(expected, instance.largestIslandAt(instance.points.maxBy { it.pos.x }, instance.points).original())
     }
 
-    private fun assertIslands(expected: Cluster, actual: Cluster){
+    private fun assertIslands(expected: Island, actual: Island){
         assertEquals(expected.points.toSet(), actual.points.toSet())
         assertEquals(expected.weight, actual.weight)
     }
@@ -54,20 +54,20 @@ internal class LargestClusterKtTest {
 
         return Stream.of(
             Arguments.of(
-                ProblemInstance(pts0),
-                Cluster(pts0, pts0.size)
+                PartitionInstance(pts0),
+                Island(pts0, pts0.size)
             ),
             Arguments.of(
-                ProblemInstance(pts1),
-                Cluster(pts1, pts1.size)
+                PartitionInstance(pts1),
+                Island(pts1, pts1.size)
             ),
             Arguments.of(
-                ProblemInstance(pts2),
-                Cluster(pts2, pts2.size)
+                PartitionInstance(pts2),
+                Island(pts2, pts2.size)
             ),
             Arguments.of(
-                ProblemInstance(pts3),
-                Cluster(pts3, pts3.size)
+                PartitionInstance(pts3),
+                Island(pts3, pts3.size)
             ),
         )
     }

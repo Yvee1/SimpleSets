@@ -1,6 +1,6 @@
 import geometric.*
-import islands.Island
-import islands.toIsland
+import highlights.Highlight
+import highlights.toHighlight
 import org.openrndr.MouseButton
 import org.openrndr.MouseEvent
 import org.openrndr.application
@@ -22,8 +22,8 @@ fun main() = application {
     }
 
     program {
-        val drawSettings = DrawSettings(pointSize = 5.0)
-        val computeSettings = ComputeSettings(expandRadius = drawSettings.pointSize * 3)
+        val drawSettings = DrawSettings(pSize = 5.0)
+        val computeDrawingSettings = ComputeDrawingSettings(expandRadius = drawSettings.pSize * 3)
 
         val s = 2.5
         val mat = transform {
@@ -92,24 +92,24 @@ fun main() = application {
 
         extend {
             val pts1 = points.filter { it.type == 0 }
-            val pattern1 = Cluster(pts1, pts1.size)
-            val island1 = pattern1.toIsland(computeSettings.expandRadius)
+            val pattern1 = Island(pts1, pts1.size)
+            val island1 = pattern1.toHighlight(computeDrawingSettings.expandRadius)
 
             val pts2 = points.filter { it.type == 1 }
-            val pattern2 = Cluster(pts2, pts2.size)
-            val island2 = pattern2.toIsland(computeSettings.expandRadius)
+            val pattern2 = Island(pts2, pts2.size)
+            val island2 = pattern2.toHighlight(computeDrawingSettings.expandRadius)
 
             val pts3 = points.filter { it.type == 2 }
 //            print("$pts3\r")
-            val pattern3 = Cluster(pts3, pts3.size)
-            val island3 = pattern3.toIsland(computeSettings.expandRadius)
+            val pattern3 = Island(pts3, pts3.size)
+            val island3 = pattern3.toHighlight(computeDrawingSettings.expandRadius)
 
             val pts4 = points.filter { it.type == 3 }
             val ch4 = convexHull(pts4)
             val bigGap = (ch4 + ch4.first()).zipWithNext { a, b -> a.pos.squaredDistanceTo(b.pos) }.withIndex().maxBy { it.value }.index
             val bendPts = ch4.subList((bigGap + 1) % ch4.size, ch4.size) + ch4.subList(0, (bigGap + 1) % ch4.size)
-            val pattern4 = Bend(bendPts, bendPts.size)
-            val island4 = pattern4.toIsland(computeSettings.expandRadius)
+            val pattern4 = Reef(bendPts, bendPts.size)
+            val island4 = pattern4.toHighlight(computeDrawingSettings.expandRadius)
 
             val c = drawComposition {
 //                model *= mat
@@ -173,19 +173,19 @@ fun main() = application {
 //                lineLoop(island2.points.map { it.pos })
                 strokeWeight = drawSettings.pointStrokeWeight// * s
                 fill = drawSettings.colorSettings.lightColors[0].toColorRGBa()
-                circles(pts1.map { it.pos }, drawSettings.pointSize)
+                circles(pts1.map { it.pos }, drawSettings.pSize)
                 fill = drawSettings.colorSettings.lightColors[1].toColorRGBa()
-                circles(pts2.map { it.pos }, drawSettings.pointSize)
+                circles(pts2.map { it.pos }, drawSettings.pSize)
                 fill = drawSettings.colorSettings.lightColors[2].toColorRGBa()
-                circles(pts3.map { it.pos }, drawSettings.pointSize)
+                circles(pts3.map { it.pos }, drawSettings.pSize)
                 fill = drawSettings.colorSettings.lightColors[3].toColorRGBa()
-                circles(pts4.map { it.pos }, drawSettings.pointSize)
+                circles(pts4.map { it.pos }, drawSettings.pSize)
 
 
 //                fill = ColorRGBa.WHITE.opacify(0.9)
 //                stroke = null
 //                rectangle(drawer.bounds)
-//                morphIsland(this, island1, listOf(island2, island4))
+//                morphIsland(this, island1, listOf(island2, island3, island4))
 
 
 //                morphIsland(this, island1, listOf(IslandOverlap(island1, island2, 1.0), IslandOverlap(island1, island3, 1.0)))
@@ -218,7 +218,7 @@ fun contourShadows(c: ShapeContour, startGrad: Double, steps: Int, stepSize: Dou
 //    return IslandOverlap(island1, island2, 5.0)
 //}
 
-data class IslandOverlap(val overlapper: Island, val overlapee: Island, val weight: Double) {
+data class IslandOverlap(val overlapper: Highlight, val overlapee: Highlight, val weight: Double) {
 //    fun theOther(island: Island): Island = when {
 //        island1 == island -> island2
 //        island2 == island -> island1
@@ -226,7 +226,7 @@ data class IslandOverlap(val overlapper: Island, val overlapee: Island, val weig
 //    }
 }
 
-data class OverlapVertex(val island: Island, val outEdges: List<OverlapEdge>)
+data class OverlapVertex(val highlight: Highlight, val outEdges: List<OverlapEdge>)
 
 typealias OverlapEdge = IslandOverlap
 
@@ -334,7 +334,7 @@ fun circleCircleTangent(c1: Circle, b1: Boolean, c2: Circle, b2: Boolean, orient
     }
 }
 
-data class IslandOverlaps(val overlapper: Island, val overlapees: List<Island>, )
+data class IslandOverlaps(val overlapper: Highlight, val overlapees: List<Highlight>, )
 
 fun separatingCurve(drawer: CompositionDrawer?, interC: ShapeContour, gCircles: List<Circle>, bCircles: List<Circle>): ShapeContour {
     val gClosest = interC.nearest(gCircles[0].center)
@@ -741,28 +741,34 @@ fun separatingCurve(drawer: CompositionDrawer?, interC: ShapeContour, gCircles: 
     return final
 }
 
-fun morphIsland(drawer: CompositionDrawer?, island: Island, overlapees: List<Island>): ShapeContour {
+fun morphIsland(drawer: CompositionDrawer?, highlight: Highlight, overlapees: List<Highlight>): ShapeContour {
 //    require(overlaps.all { it.overlapper == island }) {
 //        "Provided island in function ${::morphIsland.name} is not the overlapper for all provided overlaps."
 //    }
-    if (overlapees.isEmpty()) return island.contour
+    if (overlapees.isEmpty()) return highlight.contour
 
-    var piece = Shape(listOf(island.contour.open))
+    var piece = Shape(listOf(highlight.contour.open))
     for (overlapee in overlapees) {
-        piece = difference(piece, overlapee.contour)
+//        piece = difference(piece, overlapee.contour)
+//        for (circle in overlapee.circles) {
+//            piece = difference(piece, circle.contour)
+//        }
+        for (pt in overlapee.allPoints) {
+            piece = difference(piece, Circle(pt.pos, overlapee.circles[0].radius).contour)
+        }
     }
     val pieces = piece.contours.filter { it.length > 1.0 }.mergeAdjacent()
-    if (pieces.isEmpty()) return island.contour
+    if (pieces.isEmpty()) return highlight.contour
 
     if (pieces.size == 1 && pieces[0].start.squaredDistanceTo(pieces[0].end) < 1E-6) {
-        return island.contour
+        return highlight.contour
     }
 
     val broken = (pieces + pieces[0]).zipWithNext { c1, c2 ->
-        island.contour.subVC(c1.end, c2.start)
+        highlight.contour.subVC(c1.end, c2.start)
     }
 
-    drawer?.apply {
+//    drawer?.apply {
 //        for (c in pieces) {
 //            stroke = ColorRGBa.ORANGE.opacify(0.5)
 //            fill = null
@@ -772,19 +778,20 @@ fun morphIsland(drawer: CompositionDrawer?, island: Island, overlapees: List<Isl
 //            stroke = ColorRGBa.BLUE.opacify(0.5)
 //            contour(c)
 //        }
-    }
+//    }
 
-    val expandRadius = island.circles[0].radius
+    val expandRadius = highlight.circles[0].radius
 
-    val gCircles = island.allPoints.map {
+    val gCircles = highlight.allPoints.map {
         Circle(it.pos, expandRadius)
     }
     val bCircles = overlapees.flatMap {
         it.allPoints.map { Circle(it.pos, expandRadius) }
     }
     val circles = gCircles + bCircles
+    val r = circles[0].radius
     val (gSmallerCircles, bSmallerCircles) = growCircles(gCircles.map { it.center }, bCircles.map { it.center },
-        circles[0].radius, circles[0].radius * 0.625)
+        r, r * 0.625)
 
 //    drawer?.apply {
 //        fill = ColorRGBa.RED
@@ -796,7 +803,8 @@ fun morphIsland(drawer: CompositionDrawer?, island: Island, overlapees: List<Isl
     val mends = broken.map { interC ->
         if (interC.segments.isEmpty()) ShapeContour.EMPTY else {
             val interCE = interC.extend(0.1)
-            val relevantBCircles = bSmallerCircles.filter { intersections(it.contour, interCE).isNotEmpty() }
+            val relevantBCircles = bSmallerCircles.zip(bCircles).filter { (_, circle) -> intersections(circle.contour, interCE).isNotEmpty() }.map { it.first }
+//            val relevantBCircles = bSmallerCircles
             separatingCurve(drawer, interC, gSmallerCircles, relevantBCircles)
         }
     }

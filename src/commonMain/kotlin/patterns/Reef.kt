@@ -1,19 +1,19 @@
 package patterns
 
-import ProblemInstance
+import PartitionInstance
 import geometric.orientation
 import org.openrndr.math.Vector2
 import org.openrndr.math.asDegrees
 import org.openrndr.shape.ShapeContour
 
-data class Bend(override val boundaryPoints: List<Point>, val weightB: Int): Pattern() {
+data class Reef(override val boundaryPoints: List<Point>, val weightB: Int): Pattern() {
     override val type = boundaryPoints.firstOrNull()?.type ?: -1
     override val weight = weightB
     override val contour by lazy {
         ShapeContour.fromPoints(boundaryPoints.map { it.pos }, false)
     }
     companion object {
-        val EMPTY = Bend(listOf(), 0)
+        val EMPTY = Reef(listOf(), 0)
     }
     private val vecs by lazy {
         boundaryPoints.map { it.pos }
@@ -23,19 +23,19 @@ data class Bend(override val boundaryPoints: List<Point>, val weightB: Int): Pat
     override fun isEmpty() = boundaryPoints.isEmpty()
 }
 
-fun ProblemInstance.clusterIsMonotoneBend(cluster: Cluster): Boolean {
-    if (cluster.weight != cluster.points.size) return false
-    return (0 until cluster.points.size).any {
-        val pts = cluster.points.subList(it, cluster.points.size) + cluster.points.subList(0, it)
+fun PartitionInstance.clusterIsMonotoneBend(island: Island): Boolean {
+    if (island.weight != island.points.size) return false
+    return (0 until island.points.size).any {
+        val pts = island.points.subList(it, island.points.size) + island.points.subList(0, it)
         isMonotoneBend(pts)
     }
 }
 
 /**
-    Returns whether [points] forms a monotone bend satisfying the restrictions in the [ProblemInstance].
+    Returns whether [points] forms a monotone bend satisfying the restrictions in the [PartitionInstance].
     It is not checked whether any points lie close to the bend.
  */
-fun ProblemInstance.isMonotoneBend(points: List<Point>): Boolean {
+fun PartitionInstance.isMonotoneBend(points: List<Point>): Boolean {
     if (points.size <= 1) return true
     if (!points.all { it.type == points.first().type }) return false
     if (!points.zipWithNext().all { (p, q) -> p.pos.squaredDistanceTo(q.pos) <= bendDistance * bendDistance }) return false

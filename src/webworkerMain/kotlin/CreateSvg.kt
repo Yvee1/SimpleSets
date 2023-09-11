@@ -4,7 +4,7 @@ import org.openrndr.draw.LineJoin
 import org.openrndr.shape.*
 import kotlin.math.roundToInt
 
-fun createSvg(points: List<Point>, compSet: ComputeSettings, drawSet: DrawSettings, sol: Solution): String =
+fun createSvg(points: List<Point>, cps: ComputePartitionSettings, drawSet: DrawSettings, sol: Solution): String =
     drawComposition(CompositionDimensions(0.0.pixels, 0.0.pixels, 800.0.pixels, 800.0.pixels)) {
 //        if (drawSet.showVoronoi) {
             isolated {
@@ -15,16 +15,16 @@ fun createSvg(points: List<Point>, compSet: ComputeSettings, drawSet: DrawSettin
             }
 //        }
 
-        if (drawSet.showClusterCircles && compSet.clusterRadius > 0) {
+        if (drawSet.showClusterCircles && cps.clusterRadius > 0) {
             fill = ColorRGBa.GRAY.opacify(0.3)
             stroke = null
-            circles(points.map { it.pos }, compSet.clusterRadius)
+            circles(points.map { it.pos }, cps.clusterRadius)
         }
 
         if (drawSet.showBendDistance) {
             fill = ColorRGBa.GRAY.opacify(0.3)
             stroke = null
-            circles(points.map { it.pos }, compSet.bendDistance)
+            circles(points.map { it.pos }, cps.bendDistance)
         }
 
         if (sol.obstacles.size > 1) {
@@ -38,17 +38,17 @@ fun createSvg(points: List<Point>, compSet: ComputeSettings, drawSet: DrawSettin
                         contour(bridge.contour)
 
                         strokeWeight = drawSet.contourStrokeWeight * 1.5
-                        stroke = drawSet.colorSettings.lightColors[sol.islands[bridge.island1].type].toColorRGBa()
+                        stroke = drawSet.colorSettings.lightColors[sol.highlights[bridge.island1].type].toColorRGBa()
                         contour(bridge.contour)
                     }
                 }
             }
         }
 
-        val end = (drawSet.subset * sol.islands.size).roundToInt()
+        val end = (drawSet.subset * sol.highlights.size).roundToInt()
 
         for (i in 0 until end) {
-            val island = sol.islands[i]
+            val island = sol.highlights[i]
             strokeWeight = drawSet.contourStrokeWeight
             stroke = ColorRGBa.BLACK
             fill = drawSet.colorSettings.lightColors[island.type].toColorRGBa().opacify(0.3)
@@ -86,7 +86,7 @@ fun createSvg(points: List<Point>, compSet: ComputeSettings, drawSet: DrawSettin
                 fill = ColorRGBa.BLACK
                 circles(
                     sol.visibilityGraph.vertices.filterIsInstance<PointVertex>().map { it.pos },
-                    drawSet.pointSize / 5.0
+                    drawSet.pSize / 5.0
                 )
             }
 
@@ -103,7 +103,7 @@ fun createSvg(points: List<Point>, compSet: ComputeSettings, drawSet: DrawSettin
             strokeWeight = drawSet.pointStrokeWeight
             for (p in points) {
                 fill = drawSet.colorSettings.lightColors[p.type].toColorRGBa()
-                circle(p.pos, drawSet.pointSize)
+                circle(p.pos, drawSet.pSize)
             }
         }
     }.toSVG()
