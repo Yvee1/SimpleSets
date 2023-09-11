@@ -1,14 +1,16 @@
 package patterns
 
+import ComputePartitionSettings
 import PartitionInstance
 import geometric.orientation
 import org.openrndr.math.Vector2
 import org.openrndr.math.asDegrees
 import org.openrndr.shape.ShapeContour
+import kotlin.math.pow
 
-data class Reef(override val boundaryPoints: List<Point>, val weightB: Int): Pattern() {
+data class Reef(override val points: List<Point>, override val weight: Int): Pattern() {
+    override val boundaryPoints = points
     override val type = boundaryPoints.firstOrNull()?.type ?: -1
-    override val weight = weightB
     override val contour by lazy {
         ShapeContour.fromPoints(boundaryPoints.map { it.pos }, false)
     }
@@ -19,8 +21,15 @@ data class Reef(override val boundaryPoints: List<Point>, val weightB: Int): Pat
         boundaryPoints.map { it.pos }
     }
     override operator fun contains(v: Vector2) = v in vecs
-    override fun original() = copy(boundaryPoints=boundaryPoints.map { it.originalPoint ?: it })
+    override fun isValid(cps: ComputePartitionSettings): Boolean {
+        return boundaryPoints.zipWithNext { a, b -> a.pos.squaredDistanceTo(b.pos) }.max() < cps.bendDistance.pow(2)
+    }
+
+    override fun original() = copy(points=boundaryPoints.map { it.originalPoint ?: it })
     override fun isEmpty() = boundaryPoints.isEmpty()
+
+    val start get() = points.first()
+    val end get() = points.last()
 }
 
 fun PartitionInstance.clusterIsMonotoneBend(island: Island): Boolean {

@@ -1,5 +1,6 @@
 package patterns
 
+import ComputePartitionSettings
 import geometric.convexHull
 import org.openrndr.extra.triangulation.delaunayTriangulation
 import org.openrndr.math.Vector2
@@ -12,20 +13,21 @@ import kotlin.math.acos
 import kotlin.math.cos
 import kotlin.math.sqrt
 
-data class Island(val points: List<Point>, val weightI: Int): Pattern() {
+data class Island(override val points: List<Point>, override val weight: Int): Pattern() {
     override val type = points.firstOrNull()?.type ?: -1
-    override val weight = weightI
+    override val boundaryPoints: List<Point> = convexHull(points)
     override val contour by lazy {
-        ShapeContour.fromPoints(points.map { it.pos }, true)
+        ShapeContour.fromPoints(boundaryPoints.map { it.pos }, true)
     }
     private val vecs by lazy {
         points.map { it.pos }
     }
-    override val boundaryPoints: List<Point> = convexHull(points)
 
-    override operator fun contains(v: Vector2) = v in vecs || (weight > vecs.size && v in contour)
+    override operator fun contains(v: Vector2) = v in contour
 
-    operator fun contains(p: Point) = p in points || (weight > points.size && p.pos in contour)
+    override fun isValid(cps: ComputePartitionSettings): Boolean {
+        return coverRadius(vecs) <= cps.clusterRadius
+    }
 
     companion object {
         val EMPTY = Island(listOf(), 0)

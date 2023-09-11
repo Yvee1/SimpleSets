@@ -1,5 +1,6 @@
 package patterns
 
+import ComputePartitionSettings
 import geometric.Orientation
 import PartitionInstance
 import org.openrndr.math.Vector2
@@ -9,10 +10,12 @@ sealed class Pattern {
     abstract val weight: Int
     abstract val contour: ShapeContour
     abstract val type: Int
+    abstract val points: List<Point>
     abstract val boundaryPoints: List<Point>
     abstract fun original(): Pattern
     abstract fun isEmpty(): Boolean
     abstract operator fun contains(v: Vector2): Boolean
+    abstract fun isValid(cps: ComputePartitionSettings): Boolean
 }
 
 fun PartitionInstance.computePattern(uncovered: List<Point>, obstacles: List<Pattern>): Pattern {

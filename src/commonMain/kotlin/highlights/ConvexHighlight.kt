@@ -7,6 +7,7 @@ import patterns.Point
 import patterns.SinglePoint
 import org.openrndr.math.YPolarity
 import org.openrndr.shape.*
+import patterns.Matching
 
 class ConvexHighlight(override val allPoints: List<Point>, expandRadius: Double): Highlight() {
     override val type = allPoints.firstOrNull()?.type ?: -1
@@ -61,6 +62,7 @@ class ConvexHighlight(override val allPoints: List<Point>, expandRadius: Double)
 }
 
 fun Island.toHighlight(expandRadius: Double) = ConvexHighlight(original().points, expandRadius)
+fun Matching.toHighlight(expandRadius: Double) = ConvexHighlight(original().points, expandRadius)
 
 fun SinglePoint.toHighlight(expandRadius: Double) =
     PointHighlight(original().point, expandRadius)

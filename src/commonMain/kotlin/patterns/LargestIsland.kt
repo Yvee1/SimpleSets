@@ -217,8 +217,13 @@ fun PartitionInstance.largestIslandAt(p: Point,
         }
     }
 
-    val largest = Island(trace(maxEdge), maxEdge.weight!!)
-    val pointsInLargest = (P + p).filter { it in largest }
+    val boundaryPoints = trace(maxEdge)
+    val contour = ShapeContour.fromPoints(boundaryPoints.map { it.pos }, true)
+    val pointsInLargest = (P + p).filter { it in boundaryPoints || (maxEdge.weight!! > boundaryPoints.size && it.pos in contour) }
+    if (pointsInLargest.size != maxEdge.weight!!) {
+        println("Island size does not match the calculated weight: ${pointsInLargest.size} != ${maxEdge.weight!!}")
+    }
+    val largest = Island(pointsInLargest, maxEdge.weight!!)
     if (recLevel < 2 && coverRadius(pointsInLargest.map { it.pos }) > density + 0.1) {
         return largestIslandAt(p, pointsInLargest, StripeData(pointsInLargest), obstacles, recLevel = recLevel + 1)
     }
