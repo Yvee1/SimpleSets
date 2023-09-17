@@ -18,9 +18,7 @@ import org.openrndr.extra.parameters.*
 import org.openrndr.math.*
 import org.openrndr.shape.*
 import org.openrndr.svg.toSVG
-import patterns.Point
-import patterns.SinglePoint
-import patterns.computePartition
+import patterns.*
 import java.io.File
 import java.io.IOException
 import java.util.concurrent.TimeUnit
@@ -283,8 +281,10 @@ fun main() = application {
             if (varName == "gridSize")
                 grid = Grid(s.gridSize, drawer.bounds.center)
 
-            if (varName == "pSize")
+            if (varName == "pSize") {
                 cds.alignExpandRadius(ds.pSize)
+                if (ps.computeDrawing) ps.computeDrawing()
+            }
 
             if (varName == "pSize" || varName == "avoidOverlap")
                 cps.alignPartitionClearance(s.avoidOverlap, ds.pSize)
@@ -296,6 +296,12 @@ fun main() = application {
             val v = flip((view.inversed * Vector4(mp.x, mp.y, 0.0, 1.0)).xy)
             return if (s.useGrid) grid.snap(v) else v
         }
+
+        fun Pattern.nearby(p: Vector2): Boolean =
+            when(this) {
+                is SinglePoint -> point.pos.distanceTo(p) < 3 * ds.pSize
+                else -> p in contour || (contour.nearest(p).position - p).length < 3 * ds.pSize
+            }
 
         mouse.buttonDown.listen { mouseEvent ->
             if (!mouseEvent.propagationCancelled) {
@@ -318,32 +324,32 @@ fun main() = application {
                     Tool.ModifyPartition -> {
                         if (mouseEvent.button == MouseButton.LEFT) {
                             val useHighlights = highlights.isNotEmpty()
-                            var found = false
+                            var foundPattern: Int? = null
                             if (useHighlights) {
                                 for ((i, high) in highlights.withIndex()) {
                                     if (mp in (drawing.getOrNull(i) ?: high.contour)) {
-                                        selectedPattern = i
-                                        found = true
+                                        foundPattern = i
                                     }
                                 }
                             } else {
                                 for ((i, patt) in partition.patterns.withIndex()) {
-                                    if (mp in patt.contour) {
-                                        selectedPattern = i
-                                        found = true
+                                    if (patt.nearby(mp)) {
+                                        foundPattern = i
                                     }
                                 }
                             }
-                            if (!found) {
-                                selectedPattern = null
+                            selectedPattern = if (foundPattern == null || foundPattern == selectedPattern) {
+                                null
+                            } else {
+                                foundPattern
                             }
                         } else if (mouseEvent.button == MouseButton.RIGHT) {
                             if (selectedPattern != null) {
                                 val singlePoints = partition.patterns.filterIsInstance<SinglePoint>()
 
                                 var foundSp: SinglePoint? = null
-                                for ((j, sp) in singlePoints.withIndex()) {
-                                    if (selectedPattern == j) continue
+                                for (sp in singlePoints) {
+                                    if (partition.patterns[selectedPattern!!] == sp) continue
                                     if (mp.distanceTo(sp.point.pos) < max(3 * ds.pSize, cds.expandRadius)) {
                                         foundSp = sp
                                     }
@@ -593,10 +599,19 @@ fun main() = application {
                 isolated {
                     if (ds.showPoints) {
                         stroke = ColorRGBa.BLACK
+
                         strokeWeight = ds.pointStrokeWeight
-                        for (p in partition.points) {
-                            fill = lightColors[p.type]
-                            circle(p.pos, ds.pSize)
+                        for ((i, pattern) in partition.patterns.withIndex()) {
+                            for (p in pattern.points) {
+                                fill = lightColors[p.type]
+                                isolated {
+                                    if (pattern is SinglePoint && highlights.isEmpty() && selectedPattern == i) {
+                                        strokeWeight *= 1.5
+                                        stroke = darkColors[pattern.type]
+                                    }
+                                    circle(p.pos, ds.pSize)
+                                }
+                            }
                         }
                     }
                 }
