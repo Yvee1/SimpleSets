@@ -377,7 +377,7 @@ fun separatingCurve(drawer: CompositionDrawer?, interC: ShapeContour, gCircles: 
                         orientation(currentPos, currentPos + currentDir, tp.end) != orient
                     }
 
-                val crossesCh = when (tp) {
+                val crossesCh = if (ch.empty) false else when (tp) {
                     is TangentOrSharedPoint.SharedPoint -> tp.pos in ch
                     is TangentOrSharedPoint.Tangent -> LineSegment(tp.start, tp.end).contour.overlaps(ch)
                 }

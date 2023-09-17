@@ -21,8 +21,13 @@ data class Reef(override val points: List<Point>, override val weight: Int): Pat
         boundaryPoints.map { it.pos }
     }
     override operator fun contains(v: Vector2) = v in vecs
+
+    val maxDistance by lazy {
+        boundaryPoints.zipWithNext { a, b -> a.pos.distanceTo(b.pos) }.max()
+    }
+
     override fun isValid(cps: ComputePartitionSettings): Boolean {
-        return boundaryPoints.zipWithNext { a, b -> a.pos.squaredDistanceTo(b.pos) }.max() < cps.bendDistance.pow(2)
+        return maxDistance < cps.bendDistance
     }
 
     override fun original() = copy(points=boundaryPoints.map { it.originalPoint ?: it })

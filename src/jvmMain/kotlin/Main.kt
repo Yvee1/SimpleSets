@@ -18,14 +18,16 @@ import org.openrndr.extra.parameters.*
 import org.openrndr.math.*
 import org.openrndr.shape.*
 import org.openrndr.svg.toSVG
-import patterns.Pattern
 import patterns.Point
+import patterns.SinglePoint
 import patterns.computePartition
 import java.io.File
 import java.io.IOException
 import java.util.concurrent.TimeUnit
+import kotlin.math.max
 import kotlin.math.round
 import kotlin.math.roundToInt
+import kotlin.random.Random
 
 fun fakeMain() {
     val c = Circle(Vector2.ZERO, 100.0)
@@ -44,37 +46,48 @@ fun main() = application {
     }
 
     program {
-        var points = mutableListOf<Point>()
         var type = 0
         var partitionInstance: PartitionInstance
-        var patterns: List<Pattern>
+        var partition: Partition = Partition.EMPTY
         var highlights = listOf<Highlight>()
-        var clippedIslands = listOf<ShapeContour>()
-        var mergedIndex = mutableMapOf<Int, Int>()
-        var mergedIslands = listOf<Pair<ShapeContour, List<Int>>>()
-        var overlapIslands = listOf<ShapeContour>()
+        var drawing = listOf<ShapeContour>()
         var visibilityContours = listOf<List<ShapeContour>>()
         var voronoiCells = listOf<ShapeContour>()
-        var obstacles = listOf<Highlight>()
         var visibilityGraph = Graph(emptyList(), emptyList(), emptyList())
         var visibilityEdges = listOf<ShapeContour>()
         var bridges = listOf<Bridge>()
         var composition: (Boolean) -> Composition = { _ -> drawComposition { } }
         var calculating = false
 
-        fun clearData(clearPoints: Boolean = true){
-            if (clearPoints)
-                points.clear()
-                partitionInstance = PartitionInstance(points)
-            patterns = emptyList()
+        var selectedPattern: Int? = null
+
+        fun getPatternContour(i: Int) =
+            drawing.getOrNull(i) ?: highlights.getOrNull(i)?.contour ?: partition.patterns[i].contour
+
+        fun asyncCompute(block: () -> Unit) {
+            launch {
+                GlobalScope.launch {
+                    try {
+                        calculating = true
+                        block()
+                    }
+                    catch(e: Throwable) {
+                        e.printStackTrace()
+                        calculating = false
+                    }
+                    calculating = false
+                }.join()
+            }
+        }
+
+        fun clearData(clearPartition: Boolean = true){
+            if (clearPartition)
+                partition = Partition.EMPTY
+                partitionInstance = PartitionInstance(emptyList())
             highlights = emptyList()
-            clippedIslands = emptyList()
-            mergedIndex = mutableMapOf()
-            mergedIslands = emptyList()
-            overlapIslands = emptyList()
+            drawing = emptyList()
             visibilityContours = emptyList()
             voronoiCells = emptyList()
-            obstacles = emptyList()
             visibilityGraph = Graph(emptyList(), emptyList(), emptyList())
             visibilityEdges = emptyList()
             bridges = emptyList()
@@ -83,13 +96,87 @@ fun main() = application {
 
         val gui = GUI(GUIAppearance(ColorRGBa.BLUE_STEEL))
 
-        val s = object {
-//            @BooleanParameter("Intersect islands with voronoi", order = 1)
-//            var voronoiIntersect = false
-//
-//            @BooleanParameter("Merge islands", order = 1)
-//            var mergeIslands = false
+        val ds = DrawSettings()
+        val cps = ComputePartitionSettings()
+        val cds = ComputeDrawingSettings()
+        val cbs = ComputeBridgesSettings()
 
+        val ps = object {
+            @BooleanParameter("Auto compute drawing")
+            var computeDrawing = true
+
+            @ActionParameter("Compute drawing")
+            fun computeDrawing() {
+//                asyncCompute {
+                highlights = partition.patterns.map { it.toHighlight(cds.expandRadius) }
+                if (cds.intersectionResolution == IntersectionResolution.Overlap) {
+                    drawing = highlights.withIndex().map { (i, isle) ->
+                        morphIsland(null, isle, highlights.subList(0, i))
+                    }
+                } else {
+                    drawing = highlights.map { it.contour }
+                }
+//                }
+            }
+
+            fun modifiedPartition() {
+                clearData(false)
+                if (computeDrawing) {
+                    computeDrawing()
+                }
+            }
+
+            @BooleanParameter("Auto compute bridges")
+            var computeBridges = false
+
+            @ActionParameter("Greedy partition", order = 1)
+            fun computeGreedy() {
+                asyncCompute {
+                    partitionInstance = PartitionInstance(partition.points, cps)
+                    partition = partitionInstance.computePartition()
+                    modifiedPartition()
+                }
+            }
+
+            @ActionParameter("Mutate")
+            fun mutate() {
+                partition.mutate(cps)
+                modifiedPartition()
+            }
+
+            @ActionParameter("Simulated annealing")
+            fun doAnnealing() {
+                asyncCompute {
+                    partition = simulatedAnnealing(partition, cps, 1000, Random.Default)
+                    modifiedPartition()
+                }
+            }
+
+            @ActionParameter("Compute bridges")
+            fun computeBridges() {
+                asyncCompute {
+                    val obstacles = highlights.map { it.scale(1 + cbs.clearance / it.circles.first().radius) }
+                    visibilityContours = highlights.map { i1 ->
+                        highlights.filter { i2 -> i2.type == i1.type }
+                            .flatMap { i2 -> i1.visibilityContours(i2) }
+                    }
+                    voronoiCells =
+                        voronoiDiagram(
+                            partition.patterns.map { it.original() },
+                            cds.expandRadius + cbs.clearance,
+//                                        approxFactor = 1.0
+                        )
+
+                    if (ds.showVisibilityGraph || ds.showBridges) {
+                        visibilityGraph = Graph(highlights, obstacles, voronoiCells, cbs.smoothBridges)
+                        visibilityEdges = visibilityGraph.edges.map { it.contour }
+                        bridges = visibilityGraph.spanningTrees()
+                    }
+                }
+            }
+        }
+
+        val s = object {
             @DoubleParameter("Avoid overlap", 0.0, 1.0, order = 8000)
             var avoidOverlap: Double = 0.25
 
@@ -105,7 +192,8 @@ fun main() = application {
             @ActionParameter("Load example input", order = 11)
             fun loadExample() {
                 clearData()
-                points = getExampleInput(exampleInput).toMutableList()
+                partition = Partition(getExampleInput(exampleInput).toMutableList())
+                ps.modifiedPartition()
             }
 
             @TextParameter("Input ipe file (no file extension)", order = 14)
@@ -116,7 +204,8 @@ fun main() = application {
                 clearData()
                 try {
                     val ipe = File("input-output/$inputFileName.ipe").readText()
-                    points = ipeToPoints(ipe).toMutableList()
+                    partition = Partition(ipeToPoints(ipe).toMutableList())
+                    ps.modifiedPartition()
                 } catch (e: IOException) {
                     println("Could not read input file")
                     e.printStackTrace()
@@ -128,7 +217,7 @@ fun main() = application {
 
             @ActionParameter("Save points", order = 23)
             fun savePoints() {
-                writeToIpe(points, "input-output/$outputFileName-points.ipe")
+                writeToIpe(partition.points, "input-output/$outputFileName-points.ipe")
                 gui.saveParameters(File("input-output/$outputFileName-parameters.json"))
             }
 
@@ -142,14 +231,17 @@ fun main() = application {
 
         }
 
-        val ds = DrawSettings()
-        val cps = ComputePartitionSettings()
-        val cds = ComputeDrawingSettings()
-        val cbs = ComputeBridgesSettings()
+        val ts = object {
+            @OptionParameter("Tool")
+            var tool: Tool = Tool.ModifyPartition
+        }
+
         cds.alignExpandRadius(ds.pSize)
         cps.alignPartitionClearance(s.avoidOverlap, ds.pSize)
 
         gui.add(s, "General")
+        gui.add(ts, "Tools")
+        gui.add(ps, "Pipeline")
         gui.add(ds, "Draw settings")
         gui.add(cps, "Compute partition")
         gui.add(cds, "Compute drawing")
@@ -193,6 +285,9 @@ fun main() = application {
 
             if (varName == "pSize")
                 cds.alignExpandRadius(ds.pSize)
+
+            if (varName == "pSize" || varName == "avoidOverlap")
+                cps.alignPartitionClearance(s.avoidOverlap, ds.pSize)
         }
 
         fun flip(v: Vector2) = Vector2(v.x, drawer.bounds.height - v.y)
@@ -204,15 +299,75 @@ fun main() = application {
 
         mouse.buttonDown.listen { mouseEvent ->
             if (!mouseEvent.propagationCancelled) {
-                if (mouseEvent.button == MouseButton.LEFT) {
-                    val p = transformMouse(mouseEvent.position)
-                    if (points.none { it.pos == p })
-                        points.add(Point(p, type))
-                }
-                else if (mouseEvent.button == MouseButton.RIGHT) {
-                    val mp = transformMouse(mouseEvent.position)
-                    val closest = points.withIndex().minByOrNull { (_, p) -> ((p.originalPoint ?: p).pos - mp).squaredLength } ?: return@listen
-                    points.removeAt(closest.index)
+                val mp = transformMouse(mouseEvent.position)
+                when (ts.tool) {
+                    Tool.AddPoint -> {
+                        if (mouseEvent.button == MouseButton.LEFT) {
+                            if (partition.points.none { it.pos == mp }) {
+                                partition.add(Point(mp, type))
+                                ps.modifiedPartition()
+                            }
+                        } else if (mouseEvent.button == MouseButton.RIGHT) {
+                            val closest = partition.points.withIndex().minByOrNull { (_, p) ->
+                                ((p.originalPoint ?: p).pos - mp).squaredLength
+                            } ?: return@listen
+                            partition.removeAt(closest.index)
+                            ps.modifiedPartition()
+                        }
+                    }
+                    Tool.ModifyPartition -> {
+                        if (mouseEvent.button == MouseButton.LEFT) {
+                            val useHighlights = highlights.isNotEmpty()
+                            var found = false
+                            if (useHighlights) {
+                                for ((i, high) in highlights.withIndex()) {
+                                    if (mp in (drawing.getOrNull(i) ?: high.contour)) {
+                                        selectedPattern = i
+                                        found = true
+                                    }
+                                }
+                            } else {
+                                for ((i, patt) in partition.patterns.withIndex()) {
+                                    if (mp in patt.contour) {
+                                        selectedPattern = i
+                                        found = true
+                                    }
+                                }
+                            }
+                            if (!found) {
+                                selectedPattern = null
+                            }
+                        } else if (mouseEvent.button == MouseButton.RIGHT) {
+                            if (selectedPattern != null) {
+                                val singlePoints = partition.patterns.filterIsInstance<SinglePoint>()
+
+                                var foundSp: SinglePoint? = null
+                                for ((j, sp) in singlePoints.withIndex()) {
+                                    if (selectedPattern == j) continue
+                                    if (mp.distanceTo(sp.point.pos) < max(3 * ds.pSize, cds.expandRadius)) {
+                                        foundSp = sp
+                                    }
+                                }
+                                if (foundSp != null) {
+                                    partition.maybeAddSinglePoint(selectedPattern!!, cps, foundSp, singlePoints)
+                                    ps.modifiedPartition()
+                                    selectedPattern = null
+                                }
+                            } else {
+                                var closePt: Point? = null
+                                for (pt in partition.points) {
+                                    if (mp.distanceTo(pt.pos) < max(3 * ds.pSize, cds.expandRadius)) {
+                                        closePt = pt
+                                    }
+                                }
+                                if (closePt != null) {
+                                    partition.breakPatterns2(closePt)
+                                    ps.modifiedPartition()
+//                                    partition.add(closePt)
+                                }
+                            }
+                        }
+                    }
                 }
             }
 
@@ -228,74 +383,13 @@ fun main() = application {
                     keyEvent.cancelPropagation()
                     if (calculating) return@listen
 
-                    clearData(clearPoints = false)
-                    partitionInstance = PartitionInstance(points, cps)
-                    launch {
-                        GlobalScope.launch {
-                            try {
-                                calculating = true
-                                patterns = partitionInstance.computePartition()
-                                highlights = patterns.map { it.toHighlight(cds.expandRadius) }
-                                obstacles = highlights.map { it.scale(1 + cbs.clearance / it.circles.first().radius) }
-                                visibilityContours = highlights.map { i1 ->
-                                    highlights.filter { i2 -> i2.type == i1.type }
-                                        .flatMap { i2 -> i1.visibilityContours(i2) }
-                                }
-                                voronoiCells =
-                                    voronoiDiagram(
-                                        patterns.map { it.original() },
-                                        cds.expandRadius + cbs.clearance,
-//                                        approxFactor = 1.0
-                                    )
-                                if (cds.intersectionResolution == IntersectionResolution.Overlap) {
-                                    overlapIslands = highlights.withIndex().map { (i, isle) ->
-                                        morphIsland(null, isle, highlights.subList(0, i))
-                                    }
-                                } else {
-//                                    clippedIslands =
-//                                        if (!cs.disjoint || !s.voronoiIntersect) highlights.map { it.contour } else highlights.withIndex()
-//                                            .map { (i, island) ->
-//                                                intersection(island.contour, voronoiCells[i]).outline
-//                                            }
-//                                    val tmp = mutableMapOf<Int, Pair<ShapeContour, List<Int>>>()
-//                                    mergedIslands = if (!s.mergeIslands) emptyList() else buildList {
-//                                        for (i1 in highlights.indices) {
-//                                            for (i2 in i1 + 1 until highlights.size) {
-//                                                if (highlights[i1].type != highlights[i2].type
-//                                                    || !highlights[i1].contour.bounds.intersects(highlights[i2].contour.bounds)
-//                                                ) continue
-//                                                if (highlights[i1].contour.intersections(highlights[i2].contour)
-//                                                        .isNotEmpty()
-//                                                ) {
-//                                                    val (c1, c2) = listOf(i1, i2).map { i ->
-//                                                        tmp[i] ?: (clippedIslands[i] to listOf(i))
-//                                                    }
-//                                                    if (c1 == c2) continue
-//                                                    removeIf { it == c1 || it == c2 }
-//                                                    val entry =
-//                                                        union(c1.first, c2.first).outline to (c1.second + c2.second)
-//                                                    add(entry)
-//                                                    (c1.second + c2.second).forEach { i -> tmp[i] = entry }
-//                                                }
-//                                            }
-//                                        }
-//                                    }
-//                                    mergedIndex = tmp.map { (i, target) ->
-//                                        i to mergedIslands.withIndex().find { it.value == target }!!.index
-//                                    }.toMap().toMutableMap()
-                                }
-                                if (ds.showVisibilityGraph || ds.showBridges) {
-                                    visibilityGraph = Graph(highlights, obstacles, voronoiCells, cbs.smoothBridges)
-                                    visibilityEdges = visibilityGraph.edges.map { it.contour }
-                                    bridges = visibilityGraph.spanningTrees()
-                                }
-                            }
-                            catch(e: Throwable) {
-                                e.printStackTrace()
-                                calculating = false
-                            }
-                            calculating = false
-                        }.join()
+                    clearData(clearPartition = false)
+                    partitionInstance = PartitionInstance(partition.points, cps)
+                    asyncCompute {
+                        ps.computeGreedy()
+//                        ps.doAnnealing()
+                        ps.computeDrawing()
+//                        ps.computeBridges()
                     }
                 }
 
@@ -306,8 +400,8 @@ fun main() = application {
 
                 if (keyEvent.key == KEY_BACKSPACE) {
                     keyEvent.cancelPropagation()
-                    if (points.isNotEmpty()){
-                        points.removeLast()
+                    if (partition.points.isNotEmpty()){
+                        partition.points.removeLast()
                     }
                 }
             }
@@ -338,12 +432,6 @@ fun main() = application {
                 stroke = ColorRGBa.GRAY.opacify(0.3)
                 if (s.useGrid) grid.draw(this)
 
-                // Draw preview of point placement
-                strokeWeight = ds.pointStrokeWeight
-                stroke = ColorRGBa.BLACK.opacify(0.5)
-                fill = lightColors[type].opacify(0.5)
-                if (showMouse) circle(transformMouse(mouse.position), ds.pSize)
-
                 if (ds.showVoronoi) {
                     isolated {
                         stroke = ColorRGBa.BLACK
@@ -355,50 +443,48 @@ fun main() = application {
                 if (ds.showClusterCircles && cps.clusterRadius > 0) {
                     fill = ColorRGBa.GRAY.opacify(0.3)
                     stroke = null
-                    circles(points.map { it.pos }, cps.clusterRadius)
+                    circles(partition.points.map { it.pos }, cps.clusterRadius)
                 }
 
                 if (ds.showBendDistance) {
                     fill = ColorRGBa.GRAY.opacify(0.3)
                     stroke = null
-                    circles(points.map { it.pos }, cps.bendDistance)
+                    circles(partition.points.map { it.pos }, cps.bendDistance)
                 }
 
-                if (obstacles.size > 1) {
-                    if (ds.showBridges) {
-                        for (bridge in bridges) {
-                            if (bridge.contour.empty) continue
-                            isolated {
+                if (ds.showBridges) {
+                    for (bridge in bridges) {
+                        if (bridge.contour.empty) continue
+                        isolated {
 
-                                if (ds.shadows) {
-                                    val shadows = contourShadows(bridge.contour, 0.5 * ds.pSize, 10, 0.08 * ds.pSize)
-                                    stroke = null
-                                    for ((i, shadow) in shadows.withIndex()) {
-                                        fill = ColorRGBa.GRAY.opacify(0.02 + (shadows.lastIndex - i.toDouble()) / shadows.size * 0.2)
-                                        contour(shadow)
-                                    }
+                            if (ds.shadows) {
+                                val shadows = contourShadows(bridge.contour, 0.5 * ds.pSize, 10, 0.08 * ds.pSize)
+                                stroke = null
+                                for ((i, shadow) in shadows.withIndex()) {
+                                    fill = ColorRGBa.GRAY.opacify(0.02 + (shadows.lastIndex - i.toDouble()) / shadows.size * 0.2)
+                                    contour(shadow)
                                 }
-
-                                fill = null
-                                stroke = ColorRGBa.BLACK
-                                strokeWeight *= 4
-                                lineJoin = LineJoin.ROUND
-                                contour(bridge.contour)
-
-                                strokeWeight /= 3
-                                stroke = lightColors[highlights[bridge.island1].type]
-                                contour(bridge.contour)
                             }
+
+                            fill = null
+                            stroke = ColorRGBa.BLACK
+                            strokeWeight *= 4
+                            lineJoin = LineJoin.ROUND
+                            contour(bridge.contour)
+
+                            strokeWeight /= 3
+                            stroke = lightColors[highlights[bridge.island1].type]
+                            contour(bridge.contour)
                         }
                     }
                 }
 
-                val end = (ds.subset * highlights.size).roundToInt()
+                val end = (ds.subset * partition.patterns.size).roundToInt()
 
                 for (i in 0 until end) {
-                    if (ds.showVisibilityContours) {
+                    if (highlights.isNotEmpty() && ds.showVisibilityContours) {
                         isolated {
-                            stroke = darkColors[highlights[i].type].opacify(0.3)
+                            stroke = darkColors[partition.patterns[i].type].opacify(0.3)
                             strokeWeight = ds.contourStrokeWeight
                             strokeWeight *= 6
                             fill = null
@@ -412,40 +498,52 @@ fun main() = application {
                 }
 
                 for (i in 0 until end) {
-                    val island = highlights[i]
+                    val pattern = partition.patterns[i]
                     strokeWeight = ds.contourStrokeWeight
                     stroke = ColorRGBa.BLACK
 //                    fill = lightColors[island.type].opacify(0.3)
-                    fill = lightColors[island.type].mix(ColorRGBa.WHITE, 0.7)
+                    fill = lightColors[pattern.type].mix(ColorRGBa.WHITE, 0.7)
 
-                    val mi = mergedIndex[i]
-                    val islandContour: ShapeContour = when {
-                        mi != null && mergedIslands[mi].second.first() == i -> {
-//                            if (m) {
-                                lineJoin = LineJoin.ROUND
-                                mergedIslands[mi].first
-//                            }
-                        }
-                        i in clippedIslands.indices -> clippedIslands[i]
-                        i in overlapIslands.indices -> overlapIslands[i]
-                        else -> island.contour
-                    }
+                    val patternContour = getPatternContour(i)
 
-                    if (ds.showIslands && !islandContour.empty) {
+                    if (ds.showIslands && !patternContour.empty) {
                         if (ds.shadows) {
-                            val shadows = contourShadows(islandContour, 0.08 * ds.pSize, 10, 0.08 * ds.pSize)
+                            val shadows = contourShadows(patternContour, 0.08 * ds.pSize, 10, 0.08 * ds.pSize)
                             stroke = null
                             for ((i, shadow) in shadows.withIndex()) {
-                                fill = ColorRGBa.GRAY.opacify(0.02 + (shadows.lastIndex - i.toDouble()) / shadows.size * 0.2)
+                                fill =
+                                    ColorRGBa.GRAY.opacify(0.02 + (shadows.lastIndex - i.toDouble()) / shadows.size * 0.2)
                                 contour(shadow)
                             }
                         }
                         strokeWeight = ds.contourStrokeWeight
                         stroke = ColorRGBa.BLACK
-                        fill = lightColors[island.type].mix(ColorRGBa.WHITE, 0.7)
-                        contour(islandContour)
+                        if (selectedPattern == i) {
+                            strokeWeight *= 1.5
+//                            stroke = ColorRGBa.ORANGE
+                            stroke = darkColors[pattern.type]
+                        }
+                        fill = lightColors[pattern.type].mix(ColorRGBa.WHITE, 0.7)
+                        contour(patternContour)
                     }
                 }
+//                }
+//                else {
+//                    for (i in 0 until end) {
+//                        val pattern = partition.patterns[i]
+//                        strokeWeight = ds.contourStrokeWeight
+//                        stroke = ColorRGBa.BLACK
+////                    fill = lightColors[island.type].opacify(0.3)
+//                        fill = lightColors[pattern.type].mix(ColorRGBa.WHITE, 0.7)
+//
+//                        if (ds.showIslands && !pattern.contour.empty) {
+//                            strokeWeight = ds.contourStrokeWeight
+//                            stroke = ColorRGBa.BLACK
+//                            fill = lightColors[pattern.type].mix(ColorRGBa.WHITE, 0.7)
+//                            contour(pattern.contour)
+//                        }
+//                    }
+//                }
 
                 if (ds.showVisibilityGraph) {
                     isolated {
@@ -496,21 +594,31 @@ fun main() = application {
                     if (ds.showPoints) {
                         stroke = ColorRGBa.BLACK
                         strokeWeight = ds.pointStrokeWeight
-                        for (p in points) {
+                        for (p in partition.points) {
                             fill = lightColors[p.type]
                             circle(p.pos, ds.pSize)
                         }
                     }
                 }
+
+                if (ts.tool == Tool.AddPoint) {
+                    // Draw preview of point placement
+                    strokeWeight = ds.pointStrokeWeight
+                    stroke = ColorRGBa.BLACK.opacify(0.5)
+                    fill = lightColors[type].opacify(0.5)
+                    if (showMouse) circle(transformMouse(mouse.position), ds.pSize)
+                }
             }}
 
             drawer.composition(composition(true))
-            if (ds.showVisibilityGraph && vertex != null) {
                 drawer.isolated {
                     ortho()
                     model = Matrix44.IDENTITY
                     this.view = Matrix44.IDENTITY
-                    text("${vertex::class} $vertex", Vector2(0.0, 12.0))
+                    if (calculating)
+                        text("Computing...", Vector2(width - 85.0, height - 5.0))
+                    if (ds.showVisibilityGraph && vertex != null) {
+                        text("${vertex::class} $vertex", Vector2(0.0, 12.0))
                 }
             }
         }
@@ -526,4 +634,9 @@ fun String.runCommand(workingDir: File) {
         .redirectError(ProcessBuilder.Redirect.INHERIT)
         .start()
         .waitFor(60, TimeUnit.MINUTES)
+}
+
+enum class Tool {
+    AddPoint,
+    ModifyPartition
 }

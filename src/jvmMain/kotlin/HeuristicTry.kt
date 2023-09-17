@@ -25,12 +25,14 @@ fun main() = application {
             )
 
         val r = Random.Default
-        val p = Partition(pts, listOf(Island(pts, pts.size)).toMutableList())
+        var p = Partition(pts.toMutableList(), listOf(Island(pts, pts.size)).toMutableList())
+        println(p.cost())
 
+        p = simulatedAnnealing(p, cps, 100, r)
 
         keyboard.keyDown.listen {
             p.mutate(cps, r)
-            println(p.patterns)
+            println(p.cost())
         }
 
         extend {

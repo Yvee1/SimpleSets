@@ -3,7 +3,7 @@ import patterns.Point
 import patterns.StripeData
 import geometric.transformPoints
 
-class PartitionInstance(originalPoints: List<Point>,
+class PartitionInstance(val originalPoints: List<Point>,
                         val density: Double = Double.MAX_VALUE,
                         val bendDistance: Double = Double.MAX_VALUE,
                         val bendInflection: Boolean = true,

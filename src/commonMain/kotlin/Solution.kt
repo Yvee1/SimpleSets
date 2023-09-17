@@ -30,7 +30,7 @@ data class Solution(
     ) {
         try {
             val partitionInstance = PartitionInstance(points, cps)
-            patterns = partitionInstance.computePartition()
+            patterns = partitionInstance.computePartition().patterns
             highlights = patterns.map { it.toHighlight(cds.expandRadius) }
             obstacles = highlights.map { it.scale(1 + cbs.clearance / it.circles.first().radius) }
             visibilityContours = highlights.map { i1 ->

@@ -1,6 +1,7 @@
 package patterns
 
 import ComputePartitionSettings
+import Partition
 import geometric.Orientation
 import PartitionInstance
 import org.openrndr.math.Vector2
@@ -25,12 +26,18 @@ fun PartitionInstance.computePattern(uncovered: List<Point>, obstacles: List<Pat
     val bend = if (bendInflection) largestInflectionReef(uncovered, obstacles)
                else largestMonotoneReef(Orientation.RIGHT, uncovered, obstacles)
     if (bend.weight == 0 && cluster.weight == 0) return lonelyPoint
-    if (bend.weight >= cluster.weight) return bend
-    return cluster
+    if (bend.weight >= cluster.weight && bend.weight > 2) return bend
+    if (cluster.weight > 2)
+        return cluster
+    if (cluster.weight == 2)
+        return Matching(cluster.points[0], cluster.points[1])
+    if (cluster.weight == 1)
+        return SinglePoint(cluster.points[0])
+    error("Exceptional case")
 }
 
-fun PartitionInstance.computePartition(disjoint: Boolean = true): List<Pattern> {
-    return buildList {
+fun PartitionInstance.computePartition(disjoint: Boolean = true): Partition {
+    val patterns: List<Pattern> = buildList {
         val patterns = this@buildList
         var uncovered = points
         while (uncovered.isNotEmpty()){
@@ -44,4 +51,5 @@ fun PartitionInstance.computePartition(disjoint: Boolean = true): List<Pattern> 
             uncovered = uncovered.filter { it.pos !in pattern }
         }
     }
+    return Partition(originalPoints.toMutableList(), patterns.map { it.original() }.toMutableList())
 }
