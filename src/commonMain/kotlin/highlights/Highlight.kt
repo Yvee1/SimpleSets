@@ -52,6 +52,35 @@ fun Highlight.connector(other: Highlight): List<LineSegment> {
     return listOf(best)
 }
 
+fun Pattern.connector(other: Pattern): LineSegment {
+    if (this is SinglePoint && other is SinglePoint) {
+        return LineSegment(this.point.pos, other.point.pos)
+    }
+
+    if (this is SinglePoint) {
+        return LineSegment(point.pos, other.contour.nearest(point.pos).position)
+    }
+
+    if (other is SinglePoint) {
+        return LineSegment(contour.nearest(other.point.pos).position, other.point.pos)
+    }
+
+    lateinit var best: LineSegment
+    var bestDistance = Double.MAX_VALUE
+
+    for (ls1 in segments) {
+        for (ls2 in other.segments) {
+            val cand = ls1.connector(ls2)
+            if (cand.length < bestDistance) {
+                best = cand
+                bestDistance = cand.length
+            }
+        }
+    }
+
+    return best
+}
+
 fun LineSegment.connector(other: LineSegment): LineSegment {
     val cands = listOf(nearest(other.start) to other.start, nearest(other.end) to other.end, start to other.nearest(start), end to other.nearest(end))
     val conn = cands.minBy { (it.second - it.first).squaredLength }

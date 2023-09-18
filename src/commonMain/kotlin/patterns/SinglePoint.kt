@@ -2,6 +2,7 @@ package patterns
 
 import ComputePartitionSettings
 import org.openrndr.math.Vector2
+import org.openrndr.shape.LineSegment
 import org.openrndr.shape.ShapeContour
 
 data class SinglePoint(val point: Point) : Pattern() {
@@ -10,6 +11,7 @@ data class SinglePoint(val point: Point) : Pattern() {
     override val type = point.type
     override val points = listOf(point)
     override val boundaryPoints = listOf(point)
+    override val segments = emptyList<LineSegment>()
     override fun original() = point.originalPoint?.let { SinglePoint(it) } ?: this
     override fun isEmpty() = false
     override operator fun contains(v: Vector2) = v == point.pos

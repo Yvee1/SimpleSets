@@ -7,6 +7,7 @@ import org.openrndr.extra.color.spaces.toOKHSLa
 import org.openrndr.extra.parameters.BooleanParameter
 import org.openrndr.extra.parameters.DoubleParameter
 import org.openrndr.extra.parameters.OptionParameter
+import kotlin.math.max
 
 // TODO: Settings
 // 1. High level: What to compute? Bridges? Voronoi? Overlap resolution? etc.
@@ -34,9 +35,15 @@ data class ComputePartitionSettings(
 
     @DoubleParameter("Partition clearance", 0.0, 10.0, order=6000)
     var partitionClearance: Double = 1.0,
+
+    @DoubleParameter("Single-double threshold", 0.0, 200.0)
+    var singleDouble: Double = clusterRadius * 2
 ) {
     fun alignPartitionClearance(avoidOverlap: Double, pointSize: Double) {
         partitionClearance = avoidOverlap * pointSize
+    }
+    fun alignSingleDouble() {
+        singleDouble = max(clusterRadius * 2, bendDistance)
     }
 }
 

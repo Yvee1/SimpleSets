@@ -150,6 +150,14 @@ fun main() = application {
                 }
             }
 
+            @ActionParameter("Repartition close patterns")
+            fun repartitionClose() {
+                asyncCompute {
+                    partition = repartitionClosePatterns(partition, cps, 20, Random.Default)
+                    modifiedPartition()
+                }
+            }
+
             @ActionParameter("Compute bridges")
             fun computeBridges() {
                 asyncCompute {
@@ -236,6 +244,7 @@ fun main() = application {
 
         cds.alignExpandRadius(ds.pSize)
         cps.alignPartitionClearance(s.avoidOverlap, ds.pSize)
+        cps.alignSingleDouble()
 
         gui.add(s, "General")
         gui.add(ts, "Tools")
@@ -286,6 +295,10 @@ fun main() = application {
                 if (ps.computeDrawing) ps.computeDrawing()
             }
 
+            if (varName == "bendDistance" || varName == "clusterRadius") {
+                cps.alignSingleDouble()
+            }
+
             if (varName == "pSize" || varName == "avoidOverlap")
                 cps.alignPartitionClearance(s.avoidOverlap, ds.pSize)
         }
@@ -302,6 +315,34 @@ fun main() = application {
                 is SinglePoint -> point.pos.distanceTo(p) < 3 * ds.pSize
                 else -> p in contour || (contour.nearest(p).position - p).length < 3 * ds.pSize
             }
+
+        fun findPattern(mp: Vector2): Int? {
+            val useHighlights = highlights.isNotEmpty()
+            var foundPattern: Int? = null
+            if (useHighlights) {
+                for ((i, high) in highlights.withIndex()) {
+                    if (mp in (drawing.getOrNull(i) ?: high.contour)) {
+                        foundPattern = i
+                    }
+                }
+            } else {
+                for ((i, patt) in partition.patterns.withIndex()) {
+                    if (patt.nearby(mp)) {
+                        foundPattern = i
+                    }
+                }
+            }
+            return foundPattern
+        }
+
+        fun selectPattern(mp: Vector2) {
+            val foundPattern = findPattern(mp)
+            selectedPattern = if (foundPattern == null || foundPattern == selectedPattern) {
+                null
+            } else {
+                foundPattern
+            }
+        }
 
         mouse.buttonDown.listen { mouseEvent ->
             if (!mouseEvent.propagationCancelled) {
@@ -323,26 +364,7 @@ fun main() = application {
                     }
                     Tool.ModifyPartition -> {
                         if (mouseEvent.button == MouseButton.LEFT) {
-                            val useHighlights = highlights.isNotEmpty()
-                            var foundPattern: Int? = null
-                            if (useHighlights) {
-                                for ((i, high) in highlights.withIndex()) {
-                                    if (mp in (drawing.getOrNull(i) ?: high.contour)) {
-                                        foundPattern = i
-                                    }
-                                }
-                            } else {
-                                for ((i, patt) in partition.patterns.withIndex()) {
-                                    if (patt.nearby(mp)) {
-                                        foundPattern = i
-                                    }
-                                }
-                            }
-                            selectedPattern = if (foundPattern == null || foundPattern == selectedPattern) {
-                                null
-                            } else {
-                                foundPattern
-                            }
+                            selectPattern(mp)
                         } else if (mouseEvent.button == MouseButton.RIGHT) {
                             if (selectedPattern != null) {
                                 val singlePoints = partition.patterns.filterIsInstance<SinglePoint>()
@@ -374,6 +396,18 @@ fun main() = application {
                             }
                         }
                     }
+                    Tool.Repartition -> {
+                        if (mouseEvent.button == MouseButton.LEFT) {
+                            selectPattern(mp)
+                        } else if (mouseEvent.button == MouseButton.RIGHT) {
+                            if (selectedPattern == null) return@listen
+                            val foundPattern = findPattern(mp)
+                            if (foundPattern == null || foundPattern == selectedPattern) return@listen
+                            partition = repartitionPatterns(partition, listOf(partition.patterns[selectedPattern!!], partition.patterns[foundPattern]), 1000, cps)
+                            ps.modifiedPartition()
+                            selectedPattern = null
+                        }
+                    }
                 }
             }
 
@@ -393,8 +427,9 @@ fun main() = application {
                     partitionInstance = PartitionInstance(partition.points, cps)
                     asyncCompute {
                         ps.computeGreedy()
+                        ps.modifiedPartition()
 //                        ps.doAnnealing()
-                        ps.computeDrawing()
+//                        ps.computeDrawing()
 //                        ps.computeBridges()
                     }
                 }
@@ -632,6 +667,8 @@ fun main() = application {
                     this.view = Matrix44.IDENTITY
                     if (calculating)
                         text("Computing...", Vector2(width - 85.0, height - 5.0))
+                    if (!calculating)
+                        text("Cost: ${partition.cost(cps.singleDouble)}", Vector2(width - 100.0, height - 5.0))
                     if (ds.showVisibilityGraph && vertex != null) {
                         text("${vertex::class} $vertex", Vector2(0.0, 12.0))
                 }
@@ -653,5 +690,6 @@ fun String.runCommand(workingDir: File) {
 
 enum class Tool {
     AddPoint,
-    ModifyPartition
+    ModifyPartition,
+    Repartition
 }

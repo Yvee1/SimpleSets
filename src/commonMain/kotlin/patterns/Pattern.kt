@@ -5,6 +5,7 @@ import Partition
 import geometric.Orientation
 import PartitionInstance
 import org.openrndr.math.Vector2
+import org.openrndr.shape.LineSegment
 import org.openrndr.shape.ShapeContour
 
 sealed class Pattern {
@@ -13,6 +14,7 @@ sealed class Pattern {
     abstract val type: Int
     abstract val points: List<Point>
     abstract val boundaryPoints: List<Point>
+    abstract val segments: List<LineSegment>
     abstract fun original(): Pattern
     abstract fun isEmpty(): Boolean
     abstract operator fun contains(v: Vector2): Boolean

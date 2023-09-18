@@ -6,6 +6,7 @@ import org.openrndr.extra.triangulation.delaunayTriangulation
 import org.openrndr.math.Vector2
 import org.openrndr.math.asDegrees
 import org.openrndr.math.asRadians
+import org.openrndr.shape.LineSegment
 import org.openrndr.shape.ShapeContour
 import org.openrndr.shape.contains
 import org.openrndr.shape.intersection
@@ -22,7 +23,8 @@ data class Island(override val points: List<Point>, override val weight: Int): P
     private val vecs by lazy {
         points.map { it.pos }
     }
-
+    override val segments: List<LineSegment>
+        get() = (boundaryPoints + boundaryPoints.first()).zipWithNext { a, b -> LineSegment(a.pos, b.pos) }
     override operator fun contains(v: Vector2) = v in contour
 
     override fun isValid(cps: ComputePartitionSettings): Boolean {

@@ -1,9 +1,24 @@
 import geometric.overlaps
+import highlights.connector
 import org.openrndr.shape.contains
 import patterns.*
 import kotlin.math.*
 import kotlin.random.Random
-import kotlin.random.nextInt
+
+fun repartitionClosePatterns(initial: Partition, cps: ComputePartitionSettings, iters: Int, rng: Random): Partition {
+    var current: Partition = initial.copy()
+
+    repeat(iters) {
+        println(it)
+        val pattern = current.patterns.random(rng)
+        val other = (current.patterns - pattern).minBy {
+            pattern.connector(it).squaredLength
+        }
+        current = repartitionPatterns(current, listOf(pattern, other), 500, cps, rng)
+    }
+
+    return current
+}
 
 fun simulatedAnnealing(initial: Partition, cps: ComputePartitionSettings, kmax: Int, rng: Random): Partition {
     var current = initial.copy()
@@ -16,20 +31,20 @@ fun simulatedAnnealing(initial: Partition, cps: ComputePartitionSettings, kmax: 
     val c = (tEnd / temperature).pow(1.0 / kmax)
 
     var best: Partition = initial.copy()
-    var bestCost: Double = initial.cost()
+    var bestCost: Double = initial.cost(cps.singleDouble)
 
-    println(current.cost())
+    println(current.cost(cps.singleDouble))
     for (k in 0 until kmax) {
         if (k % 10 == 0)
-            println(current.cost())
+            println(current.cost(cps.singleDouble))
 
         val candidate = current.copy()
-        candidate.mutate(cps, rng)
-        if (rng.nextDouble() < prob(current.cost(), candidate.cost(), temperature)) {
+        candidate.mutate(cps, rng=rng)
+        if (rng.nextDouble() < prob(current.cost(cps.singleDouble), candidate.cost(cps.singleDouble), temperature)) {
             current = candidate
-            if (current.cost() < bestCost) {
+            if (current.cost(cps.singleDouble) < bestCost) {
                 best = current.copy()
-                bestCost = current.cost()
+                bestCost = current.cost(cps.singleDouble)
             }
         }
 
@@ -47,53 +62,100 @@ fun startingTemperature(partition: Partition, cps: ComputePartitionSettings, ite
     var costChange = 0.0
 
     for (k in 0 until iters) {
-        val cost1 = partition.cost()
-        partition.mutate(cps, rng)
-        val cost2 = partition.cost()
+        val cost1 = partition.cost(cps.singleDouble)
+        partition.mutate(cps, rng=rng)
+        val cost2 = partition.cost(cps.singleDouble)
         costChange += abs(cost2 - cost1)
     }
 
     return costChange / iters
 }
 
-fun Partition.mutate(cps: ComputePartitionSettings, rng: Random = Random.Default) {
-    var found = false
+sealed class Mutation
+
+data class PointSplit(val originalPattern: Pattern, val splitOffPattern: Pattern, val shrunkPattern: Pattern): Mutation()
+
+data class PatternMerge(val oldPatterns: List<Pattern>, val newPattern: Pattern): Mutation()
+
+data object Failed: Mutation()
+
+// Returns what mutation was performed.
+// If a point was split off, then (at least) return the index of its new pattern.
+// If a point was merged into another pattern, then (at least) return the index of the old pattern that was removed.
+fun Partition.mutate(cps: ComputePartitionSettings, subset: List<Pattern> = patterns, rng: Random = Random.Default): Mutation {
     var iters = 0
     while (iters < 1000) {
         iters++
 
-        val i = rng.nextInt(patterns.indices)
-        val pattern = patterns[i]
+//        val i = subset?.random(rng) ?: rng.nextInt(patterns.indices)
+//        val pattern = patterns[i]
+        val pattern = subset.random(rng)
         val remove = rng.nextBoolean()
 
         if (remove && pattern.weight > 1) {
             val result = pattern.removeRandomPoint(cps, rng)
             if (result != null) {
                 val (newPattern, p) = result
-                found = true
-                patterns[i] = newPattern
-                patterns.add(SinglePoint(p))
-                break
+                removedPointFromPattern(p, pattern, newPattern)
+                return PointSplit(pattern, patterns.last(), newPattern)
             }
         } else {
-            val singlePoints = patterns.filterIsInstance<SinglePoint>()
-            val candSinglePoints = singlePoints.filter { it.type == pattern.type }
-            if (candSinglePoints.isEmpty() || candSinglePoints.size == 1 && candSinglePoints[0] == pattern) continue
+            val singlePoints = patterns.withIndex().filter { it.value is SinglePoint }
+            val candSinglePoints = singlePoints.filter { it.value.type == pattern.type }
+            if (candSinglePoints.isEmpty() || candSinglePoints.size == 1 && candSinglePoints[0].value == pattern) continue
             val pt =
-                (if (pattern is SinglePoint) (candSinglePoints.filter { it != pattern }) else candSinglePoints).random(rng)
-            if (maybeAddSinglePoint(i, cps, pt, singlePoints)) {
-                found = true
-                break
+                (if (pattern is SinglePoint) (candSinglePoints.filter { it.value != pattern }) else candSinglePoints).random(rng)
+            val merge = maybeAddSinglePoint(pattern, cps, pt.value as SinglePoint, singlePoints.map { it.value as SinglePoint})
+            if (merge != null) {
+                return merge
             } else continue
         }
     }
 
-    if (!found)
-        error("Too many iterations trying to find neighbour of partition")
+    return Failed
+//        error("Too many iterations trying to find neighbour of partition")
+}
+
+fun repartitionPatterns(initial: Partition, patterns: List<Pattern>, iters: Int,
+                        cps: ComputePartitionSettings, rng: Random = Random.Default): Partition {
+    var best: Partition = initial.copy()
+    var bestCost: Double = initial.cost(cps.singleDouble)
+
+    val current = initial.copy()
+
+    val currentPatterns = patterns.toMutableList()
+
+    // Random walk
+    repeat(iters) {
+        val mutation = current.mutate(cps, currentPatterns, rng)
+        when (mutation) {
+            is PointSplit -> {
+                currentPatterns.remove(mutation.originalPattern)
+                currentPatterns.add(mutation.splitOffPattern)
+                currentPatterns.add(mutation.shrunkPattern)
+            }
+            is PatternMerge -> {
+                currentPatterns.removeAll(mutation.oldPatterns)
+                currentPatterns.add(mutation.newPattern)
+            }
+            Failed -> {}
+        }
+        if (current.cost(cps.singleDouble) < bestCost) {
+            best = current.copy()
+            bestCost = current.cost(cps.singleDouble)
+        }
+    }
+
+    return best
+}
+
+fun Partition.maybeAddSinglePoint(pattern: Pattern, cps: ComputePartitionSettings, pt: SinglePoint,
+                                  singlePoints: List<SinglePoint> = patterns.filterIsInstance<SinglePoint>()): PatternMerge? {
+    return maybeAddSinglePoint(index(pattern), cps, pt, singlePoints)
 }
 
 fun Partition.maybeAddSinglePoint(patternIndex: Int, cps: ComputePartitionSettings, pt: SinglePoint,
-                                  singlePoints: List<SinglePoint> = patterns.filterIsInstance<SinglePoint>()): Boolean {
+                                  singlePoints: List<SinglePoint> = patterns.filterIsInstance<SinglePoint>()): PatternMerge? {
     val pattern = patterns[patternIndex]
     var result = pattern.addPoint(cps, pt.point)
     if (result != null) {
@@ -105,7 +167,7 @@ fun Partition.maybeAddSinglePoint(patternIndex: Int, cps: ComputePartitionSettin
                 it != pt && it.point.pos in (result as Island).contour
             }
             if (accidentalAdds.isNotEmpty()) {
-                if (accidentalAdds.any { it.type != result!!.type }) return false
+                if (accidentalAdds.any { it.type != result!!.type }) return null
                 result = (result as Island).addPoints(cps, accidentalAdds.map { it.point })
                 additionalRemovals.addAll(accidentalAdds)
             }
@@ -120,15 +182,18 @@ fun Partition.maybeAddSinglePoint(patternIndex: Int, cps: ComputePartitionSettin
                     break
                 }
             }
-            if (intersections) return false
+            if (intersections) return null
         }
 
         patterns[patternIndex] = result!!
         patterns.remove(pt)
         patterns.removeAll(additionalRemovals)
-        return true
+        result.points.forEach {
+            pointToPattern[it] = result
+        }
+        return PatternMerge(additionalRemovals + pt + pattern, result)
     } else {
-        return false
+        return null
     }
 }
 

@@ -5,6 +5,7 @@ import PartitionInstance
 import geometric.orientation
 import org.openrndr.math.Vector2
 import org.openrndr.math.asDegrees
+import org.openrndr.shape.LineSegment
 import org.openrndr.shape.ShapeContour
 import kotlin.math.pow
 
@@ -14,6 +15,8 @@ data class Reef(override val points: List<Point>, override val weight: Int): Pat
     override val contour by lazy {
         ShapeContour.fromPoints(boundaryPoints.map { it.pos }, false)
     }
+    override val segments: List<LineSegment>
+        get() = points.zipWithNext { a, b -> LineSegment(a.pos, b.pos) }
     companion object {
         val EMPTY = Reef(listOf(), 0)
     }
