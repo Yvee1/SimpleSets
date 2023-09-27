@@ -1,5 +1,8 @@
+import highlights.toHighlight
+import org.openrndr.shape.intersection
 import patterns.*
 import kotlin.math.min
+import kotlin.math.sqrt
 
 data class Partition(val points: MutableList<Point>, val patterns: MutableList<Pattern>) {
     constructor(points: List<Point>): this(points.toMutableList(), points.map { SinglePoint(it) }.toMutableList())
@@ -94,8 +97,87 @@ data class Partition(val points: MutableList<Point>, val patterns: MutableList<P
         }
     }
 
-    fun cost(singleDouble: Double): Double {
-        return patterns.sumOf { it.cost(singleDouble) }
+    fun cost(singleDouble: Double, partitionClearance: Double): Double {
+        var intersectionArea = 0.0
+        if (partitionClearance > 0) {
+            for (i in patterns.indices) {
+                for (j in i + 1 until patterns.size) {
+                    val p = patterns[i]
+                    val q = patterns[j]
+                    val common = intersection(
+                        p.toHighlight(partitionClearance).contour,
+                        q.toHighlight(partitionClearance).contour
+                    )
+                    intersectionArea += common.area
+                }
+            }
+        }
+        return patterns.sumOf { it.cost(singleDouble) }// + intersectionArea
+    }
+
+    // Assumption: newPatterns are a subset of patterns, and removePatterns is disjoint from patterns.
+    fun updateCost(singleDouble: Double, partitionClearance: Double,
+                   removedPatterns: List<Pattern>, newPatterns: List<Pattern>): Double {
+        var delta = 0.0
+
+        for (p in removedPatterns) {
+            delta -= p.cost(singleDouble)
+        }
+
+        for (p in newPatterns) {
+            delta += p.cost(singleDouble)
+        }
+
+        if (partitionClearance == 0.0) return delta
+
+        for (p in patterns - newPatterns) {
+            for (q in removedPatterns) {
+                if (p.points.intersect(q.points.toSet()).isEmpty()) {
+                    val common = intersection(
+                        p.toHighlight(partitionClearance).contour,
+                        q.toHighlight(partitionClearance).contour
+                    )
+                    delta -= common.area
+                }
+            }
+        }
+
+        for (i in removedPatterns.indices) {
+            for (j in i + 1 until removedPatterns.size) {
+                val p = removedPatterns[i]
+                val q = removedPatterns[j]
+                val common = intersection(
+                    p.toHighlight(partitionClearance).contour,
+                    q.toHighlight(partitionClearance).contour
+                )
+                delta -= common.area
+            }
+        }
+
+        for (p in patterns - newPatterns.toSet()) {
+            for (q in newPatterns) {
+                val common = intersection(
+                    p.toHighlight(partitionClearance).contour,
+                    q.toHighlight(partitionClearance).contour
+                )
+                delta += common.area
+            }
+        }
+
+        for (i in newPatterns.indices) {
+            for (j in i + 1 until newPatterns.size) {
+                val p = newPatterns[i]
+                val q = newPatterns[j]
+
+                val common = intersection(
+                    p.toHighlight(partitionClearance).contour,
+                    q.toHighlight(partitionClearance).contour
+                )
+                delta += common.area
+            }
+        }
+
+        return delta
     }
 
     fun copy(): Partition {

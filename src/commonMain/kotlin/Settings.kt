@@ -111,6 +111,9 @@ data class DrawSettings(
     @BooleanParameter("Show cluster circles", order = 10000)
     var showClusterCircles: Boolean = false,
 
+    @BooleanParameter("Show island Voronoi", order = 10003)
+    var showVoronoiCells: Boolean = false,
+
     @BooleanParameter("Show bend distance", order = 10005)
     var showBendDistance: Boolean = false,
 

@@ -3,7 +3,23 @@ import org.openrndr.color.ColorRGBa
 import patterns.*
 import kotlin.random.Random
 
-fun main() = application {
+fun main() {
+    val points = getExampleInput(ExampleInput.NYC)
+    val cps = ComputePartitionSettings(
+        bendDistance=50.64,
+        bendInflection=true,
+        maxBendAngle=107.32,
+        maxTurningAngle=54.783,
+        clusterRadius=18.634,
+        partitionClearance = 6.0
+    )
+    val instance = PartitionInstance(points, cps)
+    val greedy = instance.computePartition()
+    val rng = Random.Default
+    repartitionClosePatterns(greedy, cps, 5, rng)
+}
+
+fun veryFakeMain() = application {
     configure {
         width = 800
         height = 800
@@ -26,13 +42,11 @@ fun main() = application {
 
         val r = Random.Default
         var p = Partition(pts.toMutableList(), listOf(Island(pts, pts.size)).toMutableList())
-        println(p.cost(cps.singleDouble))
 
         p = simulatedAnnealing(p, cps, 100, r)
 
         keyboard.keyDown.listen {
             p.mutate(cps, rng=r)
-            println(p.cost(cps.singleDouble))
         }
 
         extend {

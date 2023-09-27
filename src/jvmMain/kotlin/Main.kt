@@ -47,6 +47,9 @@ fun main() = application {
         var type = 0
         var partitionInstance: PartitionInstance
         var partition: Partition = Partition.EMPTY
+        var previousPartition: Partition = Partition.EMPTY
+        var partitionCost: Double = 0.0
+        var deltaCost = 0.0
         var highlights = listOf<Highlight>()
         var drawing = listOf<ShapeContour>()
         var visibilityContours = listOf<List<ShapeContour>>()
@@ -79,9 +82,11 @@ fun main() = application {
         }
 
         fun clearData(clearPartition: Boolean = true){
-            if (clearPartition)
+            if (clearPartition) {
                 partition = Partition.EMPTY
                 partitionInstance = PartitionInstance(emptyList())
+                partitionCost = 0.0
+            }
             highlights = emptyList()
             drawing = emptyList()
             visibilityContours = emptyList()
@@ -119,6 +124,13 @@ fun main() = application {
 
             fun modifiedPartition() {
                 clearData(false)
+                deltaCost = partition.updateCost(cps.singleDouble, cps.partitionClearance,
+                    previousPartition.patterns - partition.patterns.toSet(),
+                    partition.patterns - previousPartition.patterns.toSet()
+                )
+                partitionCost = partition.cost(cps.singleDouble, cps.partitionClearance)
+                previousPartition = partition.copy()
+
                 if (computeDrawing) {
                     computeDrawing()
                 }
@@ -402,8 +414,10 @@ fun main() = application {
                         } else if (mouseEvent.button == MouseButton.RIGHT) {
                             if (selectedPattern == null) return@listen
                             val foundPattern = findPattern(mp)
-                            if (foundPattern == null || foundPattern == selectedPattern) return@listen
-                            partition = repartitionPatterns(partition, listOf(partition.patterns[selectedPattern!!], partition.patterns[foundPattern]), 1000, cps)
+                            if (foundPattern == null) return@listen
+                            val subset = if (selectedPattern!! == foundPattern) listOf(partition.patterns[foundPattern])
+                                else listOf(partition.patterns[selectedPattern!!], partition.patterns[foundPattern])
+                            partition = repartitionPatterns(partition, subset, 1000, cps)
                             ps.modifiedPartition()
                             selectedPattern = null
                         }
@@ -442,7 +456,7 @@ fun main() = application {
                 if (keyEvent.key == KEY_BACKSPACE) {
                     keyEvent.cancelPropagation()
                     if (partition.points.isNotEmpty()){
-                        partition.points.removeLast()
+                        partition.removeLast()
                     }
                 }
             }
@@ -479,18 +493,6 @@ fun main() = application {
                         fill = ColorRGBa.GRAY.opacify(0.1)
                         contours(voronoiCells)
                     }
-                }
-
-                if (ds.showClusterCircles && cps.clusterRadius > 0) {
-                    fill = ColorRGBa.GRAY.opacify(0.3)
-                    stroke = null
-                    circles(partition.points.map { it.pos }, cps.clusterRadius)
-                }
-
-                if (ds.showBendDistance) {
-                    fill = ColorRGBa.GRAY.opacify(0.3)
-                    stroke = null
-                    circles(partition.points.map { it.pos }, cps.bendDistance)
                 }
 
                 if (ds.showBridges) {
@@ -566,8 +568,28 @@ fun main() = application {
                         }
                         fill = lightColors[pattern.type].mix(ColorRGBa.WHITE, 0.7)
                         contour(patternContour)
+
+                        if (ds.showVoronoiCells && pattern is Island) {
+                            isolated {
+                                fill = null
+                                contours(pattern.voronoiCells)
+                            }
+                        }
                     }
                 }
+
+                if (ds.showBendDistance) {
+                    fill = ColorRGBa.GRAY.opacify(0.1)
+                    stroke = null
+                    circles(partition.points.map { it.pos }, cps.bendDistance)
+                }
+
+                if (ds.showClusterCircles && cps.clusterRadius > 0) {
+                    fill = ColorRGBa.GRAY.opacify(0.1)
+                    stroke = null
+                    circles(partition.points.map { it.pos }, cps.clusterRadius)
+                }
+
 //                }
 //                else {
 //                    for (i in 0 until end) {
@@ -667,8 +689,11 @@ fun main() = application {
                     this.view = Matrix44.IDENTITY
                     if (calculating)
                         text("Computing...", Vector2(width - 85.0, height - 5.0))
-                    if (!calculating)
-                        text("Cost: ${partition.cost(cps.singleDouble)}", Vector2(width - 100.0, height - 5.0))
+                    if (!calculating) {
+                        selectedPattern?.let { text("Selected cost: %.1f".format(partition.patterns[it].cost(cps.singleDouble)), Vector2(width - 200.0, height - 35.0)) }
+                        text("Delta cost: %.1f".format(deltaCost), Vector2(width - 200.0, height - 20.0))
+                        text("Cost: %.1f".format(partitionCost), Vector2(width - 200.0, height - 5.0))
+                    }
                     if (ds.showVisibilityGraph && vertex != null) {
                         text("${vertex::class} $vertex", Vector2(0.0, 12.0))
                 }

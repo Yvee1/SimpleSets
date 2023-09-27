@@ -35,6 +35,13 @@ data class Island(override val points: List<Point>, override val weight: Int): P
         val EMPTY = Island(listOf(), 0)
     }
 
+    val voronoiCells by lazy {
+        val delaunay = vecs.delaunayTriangulation()
+        val ch = delaunay.hull()
+        val voronoi = delaunay.voronoiDiagram(ch.bounds)
+        voronoi.cellPolygons().map { it.shape.intersection(ch.reversed.shape).contours.firstOrNull() ?: ShapeContour.EMPTY }
+    }
+
     override fun original() = copy(points=points.map { it.originalPoint ?: it })
     override fun isEmpty() = points.isEmpty()
 }

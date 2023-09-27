@@ -14,7 +14,7 @@ fun repartitionClosePatterns(initial: Partition, cps: ComputePartitionSettings, 
         val other = (current.patterns - pattern).minBy {
             pattern.connector(it).squaredLength
         }
-        current = repartitionPatterns(current, listOf(pattern, other), 500, cps, rng)
+        current = repartitionPatterns(current, listOf(pattern, other), 100, cps, rng)
     }
 
     return current
@@ -31,20 +31,20 @@ fun simulatedAnnealing(initial: Partition, cps: ComputePartitionSettings, kmax: 
     val c = (tEnd / temperature).pow(1.0 / kmax)
 
     var best: Partition = initial.copy()
-    var bestCost: Double = initial.cost(cps.singleDouble)
+    var bestCost: Double = initial.cost(cps.singleDouble, cps.partitionClearance)
 
-    println(current.cost(cps.singleDouble))
+    println(current.cost(cps.singleDouble, cps.partitionClearance))
     for (k in 0 until kmax) {
         if (k % 10 == 0)
-            println(current.cost(cps.singleDouble))
+            println(current.cost(cps.singleDouble, cps.partitionClearance))
 
         val candidate = current.copy()
         candidate.mutate(cps, rng=rng)
-        if (rng.nextDouble() < prob(current.cost(cps.singleDouble), candidate.cost(cps.singleDouble), temperature)) {
+        if (rng.nextDouble() < prob(current.cost(cps.singleDouble, cps.partitionClearance), candidate.cost(cps.singleDouble, cps.partitionClearance), temperature)) {
             current = candidate
-            if (current.cost(cps.singleDouble) < bestCost) {
+            if (current.cost(cps.singleDouble, cps.partitionClearance) < bestCost) {
                 best = current.copy()
-                bestCost = current.cost(cps.singleDouble)
+                bestCost = current.cost(cps.singleDouble,cps.partitionClearance)
             }
         }
 
@@ -62,9 +62,9 @@ fun startingTemperature(partition: Partition, cps: ComputePartitionSettings, ite
     var costChange = 0.0
 
     for (k in 0 until iters) {
-        val cost1 = partition.cost(cps.singleDouble)
+        val cost1 = partition.cost(cps.singleDouble, cps.partitionClearance)
         partition.mutate(cps, rng=rng)
-        val cost2 = partition.cost(cps.singleDouble)
+        val cost2 = partition.cost(cps.singleDouble, cps.partitionClearance)
         costChange += abs(cost2 - cost1)
     }
 
@@ -79,9 +79,6 @@ data class PatternMerge(val oldPatterns: List<Pattern>, val newPattern: Pattern)
 
 data object Failed: Mutation()
 
-// Returns what mutation was performed.
-// If a point was split off, then (at least) return the index of its new pattern.
-// If a point was merged into another pattern, then (at least) return the index of the old pattern that was removed.
 fun Partition.mutate(cps: ComputePartitionSettings, subset: List<Pattern> = patterns, rng: Random = Random.Default): Mutation {
     var iters = 0
     while (iters < 1000) {
@@ -100,12 +97,12 @@ fun Partition.mutate(cps: ComputePartitionSettings, subset: List<Pattern> = patt
                 return PointSplit(pattern, patterns.last(), newPattern)
             }
         } else {
-            val singlePoints = patterns.withIndex().filter { it.value is SinglePoint }
-            val candSinglePoints = singlePoints.filter { it.value.type == pattern.type }
-            if (candSinglePoints.isEmpty() || candSinglePoints.size == 1 && candSinglePoints[0].value == pattern) continue
+            val singlePoints = subset.filter { it is SinglePoint }
+            val candSinglePoints = singlePoints.filter { it.type == pattern.type }
+            if (candSinglePoints.isEmpty() || candSinglePoints.size == 1 && candSinglePoints[0] == pattern) continue
             val pt =
-                (if (pattern is SinglePoint) (candSinglePoints.filter { it.value != pattern }) else candSinglePoints).random(rng)
-            val merge = maybeAddSinglePoint(pattern, cps, pt.value as SinglePoint, singlePoints.map { it.value as SinglePoint})
+                (if (pattern is SinglePoint) (candSinglePoints.filter { it != pattern }) else candSinglePoints).random(rng)
+            val merge = maybeAddSinglePoint(pattern, cps, pt as SinglePoint, singlePoints.map { it as SinglePoint })
             if (merge != null) {
                 return merge
             } else continue
@@ -118,32 +115,49 @@ fun Partition.mutate(cps: ComputePartitionSettings, subset: List<Pattern> = patt
 
 fun repartitionPatterns(initial: Partition, patterns: List<Pattern>, iters: Int,
                         cps: ComputePartitionSettings, rng: Random = Random.Default): Partition {
+    val initialCost = initial.cost(cps.singleDouble, cps.partitionClearance)
     var best: Partition = initial.copy()
-    var bestCost: Double = initial.cost(cps.singleDouble)
+    var bestCost: Double = initialCost
 
     val current = initial.copy()
+    var currentCost = initialCost
 
     val currentPatterns = patterns.toMutableList()
 
     // Random walk
     repeat(iters) {
         val mutation = current.mutate(cps, currentPatterns, rng)
+        val removedPatterns = mutableListOf<Pattern>()
+        val newPatterns = mutableListOf<Pattern>()
         when (mutation) {
             is PointSplit -> {
-                currentPatterns.remove(mutation.originalPattern)
-                currentPatterns.add(mutation.splitOffPattern)
-                currentPatterns.add(mutation.shrunkPattern)
+                removedPatterns.add(mutation.originalPattern)
+                newPatterns.add(mutation.splitOffPattern)
+                newPatterns.add(mutation.shrunkPattern)
             }
             is PatternMerge -> {
-                currentPatterns.removeAll(mutation.oldPatterns)
-                currentPatterns.add(mutation.newPattern)
+                removedPatterns.addAll(mutation.oldPatterns)
+                newPatterns.add(mutation.newPattern)
             }
             Failed -> {}
         }
-        if (current.cost(cps.singleDouble) < bestCost) {
-            best = current.copy()
-            bestCost = current.cost(cps.singleDouble)
+        currentPatterns.removeAll(removedPatterns)
+        currentPatterns.addAll(newPatterns)
+        val newCost = currentCost + current.updateCost(cps.singleDouble,
+            cps.partitionClearance, removedPatterns, newPatterns)
+        if (abs(newCost - current.cost(cps.singleDouble, cps.partitionClearance)) > 0.001) {
+            error("Problem!")
         }
+            //current.cost(cps.singleDouble, cps.partitionClearance)
+//        println("New cost: $newCost")
+//        println("Calculated difference: ${current.updateCost(cps.singleDouble,
+//            cps.partitionClearance, removedPatterns, newPatterns)}")
+        if (newCost < bestCost) {
+            best = current.copy()
+            bestCost = newCost
+            println(bestCost)
+        }
+        currentCost = newCost
     }
 
     return best
