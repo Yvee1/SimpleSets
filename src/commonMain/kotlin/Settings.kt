@@ -96,6 +96,9 @@ data class DrawSettings(
     @DoubleParameter("Point size", 0.1, 10.0, order = 0)
     var pSize: Double = 10.0,
 
+    @DoubleParameter("Whiten", 0.0, 1.0, order = 1000)
+    var whiten: Double = 0.7,
+
     @BooleanParameter("Show points", order = 8980)
     var showPoints: Boolean = true,
 
