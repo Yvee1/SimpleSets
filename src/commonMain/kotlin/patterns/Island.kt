@@ -14,7 +14,7 @@ import kotlin.math.acos
 import kotlin.math.cos
 import kotlin.math.sqrt
 
-data class Island(override val points: List<Point>, override val weight: Int): Pattern() {
+data class Island(override val points: List<Point>, override val weight: Int = points.size): Pattern() {
     override val type = points.firstOrNull()?.type ?: -1
     override val boundaryPoints: List<Point> = convexHull(points)
     override val contour by lazy {

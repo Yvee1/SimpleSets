@@ -114,10 +114,10 @@ fun main() = application {
                     circle(v.x.position, 1.5)
                 }
 
-                highlightPoints(island1, ds)
-                highlightPoints(island2, ds)
-                highlightPoints(island3, ds)
-                highlightPoints(island4, ds)
+                coloredPoints(island1.points, ds)
+                coloredPoints(island2.points, ds)
+                coloredPoints(island3.points, ds)
+                coloredPoints(island4.points, ds)
             }
         }
     }

@@ -180,6 +180,16 @@ data class Partition(val points: MutableList<Point>, val patterns: MutableList<P
         return delta
     }
 
+    // Assumes oldPattern1.points union oldPattern2.points = newPattern.points
+    fun merge(oldPattern1: Pattern, oldPattern2: Pattern, newPattern: Pattern) {
+        patterns.remove(oldPattern1)
+        patterns.remove(oldPattern2)
+        patterns.add(newPattern)
+        for (p in newPattern.points) {
+            pointToPattern[p] = newPattern
+        }
+    }
+
     fun copy(): Partition {
         return copy(points = points, patterns = patterns.toMutableList())
     }
