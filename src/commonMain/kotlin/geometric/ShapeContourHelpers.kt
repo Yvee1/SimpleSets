@@ -15,6 +15,8 @@ val ShapeContour.end get() = segments.last().end
 
 fun ShapeContour.direction(ut: Double): Vector2 = normal(ut).perpendicular(polarity.opposite)
 
+fun ShapeContour.distanceTo(v: Vector2) = nearest(v).position.distanceTo(v)
+
 operator fun ShapeContour.contains(other: ShapeContour) =
     intersections(other).isEmpty() &&
             other.position(0.0) in this

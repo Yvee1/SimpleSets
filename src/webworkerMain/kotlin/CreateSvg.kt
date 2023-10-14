@@ -15,10 +15,10 @@ fun createSvg(points: List<Point>, cps: ComputePartitionSettings, drawSet: DrawS
             }
 //        }
 
-        if (drawSet.showClusterCircles && cps.clusterRadius > 0) {
+        if (drawSet.showClusterCircles && cps.coverRadius > 0) {
             fill = ColorRGBa.GRAY.opacify(0.3)
             stroke = null
-            circles(points.map { it.pos }, cps.clusterRadius)
+            circles(points.map { it.pos }, cps.coverRadius)
         }
 
         if (drawSet.showBendDistance) {

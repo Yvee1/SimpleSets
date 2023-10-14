@@ -19,7 +19,7 @@ sealed class Highlight {
 
 fun Pattern.toHighlight(expandRadius: Double) = when(this) {
     is Island -> toHighlight(expandRadius)
-    is Reef -> toHighlight(expandRadius)
+    is Bank -> toHighlight(expandRadius)
     is SinglePoint -> toHighlight(expandRadius)
     is Matching -> toHighlight(expandRadius)
 }

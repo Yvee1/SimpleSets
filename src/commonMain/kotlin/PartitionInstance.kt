@@ -25,7 +25,7 @@ class PartitionInstance(val originalPoints: List<Point>,
 
     constructor(originalPoints: List<Point>, set: ComputePartitionSettings) :
             this(originalPoints,
-                set.clusterRadius,
+                set.coverRadius,
                 set.bendDistance,
                 set.bendInflection,
                 set.maxBendAngle,

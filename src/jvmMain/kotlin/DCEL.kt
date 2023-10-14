@@ -11,7 +11,7 @@ import org.openrndr.shape.ContourIntersection
 import org.openrndr.shape.ShapeContour
 import org.openrndr.shape.intersections
 import patterns.Island
-import patterns.Reef
+import patterns.Bank
 
 fun main() = application {
     configure {
@@ -45,27 +45,12 @@ fun main() = application {
         val ch4 = convexHull(pts4)
         val bigGap = (ch4 + ch4.first()).zipWithNext { a, b -> a.pos.squaredDistanceTo(b.pos) }.withIndex().maxBy { it.value }.index
         val bendPts = ch4.subList((bigGap + 1) % ch4.size, ch4.size) + ch4.subList(0, (bigGap + 1) % ch4.size)
-        val pattern4 = Reef(bendPts, bendPts.size)
+        val pattern4 = Bank(bendPts, bendPts.size)
         val island4 = pattern4.toHighlight(cds.expandRadius)
 
         val highlights = listOf(island1, island2, island3, island4)
 
         val xGraph = XGraph(highlights)
-
-//        val eStar = xGraph.edges[1]//.next().prev().next().prev()//.next()
-        val heStart = xGraph.edges[1].halfEdges!!.first
-
-        val visited = mutableListOf(heStart)
-        var current = heStart
-        var faceContour = heStart.contour
-
-        while (current.next != heStart) {
-            current = current.next
-            visited.add(current)
-            faceContour += current.contour
-        }
-
-        faceContour = faceContour.close()
 
         extend(Camera2D()) {
             view = Matrix44(
@@ -75,16 +60,29 @@ fun main() = application {
                 0.0, 0.0, 0.0, 1.0
             )
         }
+
         extend {
             drawer.apply {
                 clear(ColorRGBa.WHITE)
 
-                for (f in xGraph.faces) {
-//                    for (origin in f.origins) {
-                    if (f.origins.size == 1) {
-                        fill = ds.colorSettings.lightColors[f.origins.first().type].toColorRGBa().opacify(0.5)
-                        stroke = null
-                        contour(f.contour!!)
+//                for (f in xGraph.faces) {
+////                    for (origin in f.origins) {
+//                    if (f.origins.size == 1) {
+//                        fill = ds.colorSettings.lightColors[xGraph.hs[f.origins.first()].type].toColorRGBa().opacify(0.5)
+//                        stroke = null
+//                        contour(f.contour!!)
+//                    }
+//                }
+
+                val cs = xGraph.intersectionComponents(0, 3)
+
+                for (c in cs) {
+                    for (f in c) {
+                            drawer.apply {
+                                fill = ColorRGBa.GRAY
+                                stroke = null
+                                contour(f.contour!!)
+                            }
                     }
                 }
 
@@ -93,8 +91,6 @@ fun main() = application {
 
                     for (e in es) {
                         isolated {
-//                            if (e == heStar.original)
-//                                strokeWeight *= 2
                             shadeStyle = shadeStyle {
                                 fragmentTransform = """
                                 x_stroke.rgb *= vec3(c_contourPosition / p_length);
@@ -105,8 +101,6 @@ fun main() = application {
                         }
                     }
                 }
-//                shadeStyle = null
-//                contour(eStar.contour)
                 stroke = ColorRGBa.BLACK
                 xGraph.vertices.forEach { v ->
                     fill = ColorRGBa.WHITE
@@ -123,7 +117,7 @@ fun main() = application {
     }
 }
 
-data class XEdge(val h: Highlight, val source: XVertex, val target: XVertex, val contour: ShapeContour) {
+data class XEdge(val hIndex: Int, val source: XVertex, val target: XVertex, val contour: ShapeContour) {
     val start get() = contour.start
     val end get() = contour.end
 
@@ -143,16 +137,6 @@ data class XEdge(val h: Highlight, val source: XVertex, val target: XVertex, val
         target.edges.add(halfEdges!!.second)
         return halfEdges!!
     }
-
-//    fun next(): XEdge =
-//        target.edges.first {
-//            it != this && it.end.squaredDistanceTo(end) < 1E-6
-//        }
-//
-//    fun prev(): XEdge =
-//        source.edges.first {
-//            it != this && it.start.squaredDistanceTo(start) < 1E-6
-//        }
 }
 
 data class XVertex(val x: ContourIntersection, val h1: Highlight, val h2: Highlight, val edges: MutableList<XHalfEdge> = mutableListOf())
@@ -175,7 +159,7 @@ data class XHalfEdge(val source: XVertex, val target: XVertex, val contour: Shap
     }
 }
 
-data class XFace(val edge: XHalfEdge, val origins: Set<Highlight>, val contour: ShapeContour?) {
+data class XFace(val edge: XHalfEdge, val origins: Set<Int>, val contour: ShapeContour?) {
 
 }
 
@@ -214,6 +198,10 @@ data class XGraph(val hs: List<Highlight>) {
 
     val faces = mutableListOf<XFace>()
 
+    val hFacesMap = List(hs.size) {
+        mutableListOf<XFace>()
+    }
+
     init {
         createEdges()
         createFaces()
@@ -224,13 +212,13 @@ data class XGraph(val hs: List<Highlight>) {
             val h = hs[i]
             val tValues = hVertsMap[i].sortedBy { it.second }
             val middleEdges = tValues.zipWithNext { (v1, t1), (v2, t2) ->
-                val e = XEdge(h, v1, v2, h.contour.sub(t1, t2))
+                val e = XEdge(i, v1, v2, h.contour.sub(t1, t2))
                 e.splitAndAdd()
                 e
             }
             val (lastV, lastT) = tValues.last()
             val (firstV, firstT) = tValues.first()
-            val lastEdge = XEdge(h, lastV, firstV, h.contour.sub(lastT, 1.0) + h.contour.sub(0.0, firstT))
+            val lastEdge = XEdge(i, lastV, firstV, h.contour.sub(lastT, 1.0) + h.contour.sub(0.0, firstT))
             lastEdge.splitAndAdd()
             hEdgesMap[i].addAll(middleEdges)
             hEdgesMap[i].add(lastEdge)
@@ -245,9 +233,9 @@ data class XGraph(val hs: List<Highlight>) {
             val visited = mutableListOf(heStart)
             var current = heStart
             var faceContour = heStart.contour
-            val origins = mutableSetOf<Highlight>()
+            val origins = mutableSetOf<Int>()
             if (current.source == current.original.source) {
-                origins.add(current.original.h)
+                origins.add(current.original.hIndex)
             }
 
             while (current.next != heStart) {
@@ -255,7 +243,7 @@ data class XGraph(val hs: List<Highlight>) {
                 visited.add(current)
                 faceContour += current.contour
                 if (current.source == current.original.source) {
-                    origins.add(current.original.h)
+                    origins.add(current.original.hIndex)
                 }
             }
 
@@ -266,10 +254,56 @@ data class XGraph(val hs: List<Highlight>) {
 
             val f = XFace(heStart, origins, finalFaceContour)
             faces.add(f)
+            for (i in origins) {
+                hFacesMap[i].add(f)
+            }
 
             visited.forEach { e ->
                 e.face = f
             }
         }
+    }
+
+    fun intersectionComponents() =
+        List(hs.size) { i ->
+            val intersectedFaces = hFacesMap[i].filter { it.origins.size > 1 }.toMutableList()
+            ccFaces(intersectedFaces)
+        }
+
+    private fun ccFaces(subset: List<XFace>): List<List<XFace>> {
+        val remainder = subset.toMutableList()
+        val components = mutableListOf<List<XFace>>()
+
+        while (remainder.isNotEmpty()) {
+            val component = mutableListOf<XFace>()
+            val first = remainder.first()
+            val q = mutableListOf(first)
+
+            while (q.isNotEmpty()) {
+                val f = q.removeFirst()
+                component.add(f)
+                val startEdge = f.edge
+                var currentEdge = startEdge
+
+                do {
+                    val candidate = currentEdge.twin.face
+                    if (candidate !in component && candidate in remainder) {
+                        component.add(candidate)
+                        q.add(candidate)
+                    }
+                    currentEdge = currentEdge.next
+                } while (currentEdge != startEdge)
+            }
+
+            components.add(component)
+            remainder.removeAll(component)
+        }
+
+        return components.toList()
+    }
+
+    fun intersectionComponents(i: Int, j: Int): List<List<XFace>> {
+        val commonFaces = faces.filter { i in it.origins && j in it.origins }
+        return ccFaces(commonFaces)
     }
 }

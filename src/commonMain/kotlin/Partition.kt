@@ -2,7 +2,6 @@ import highlights.toHighlight
 import org.openrndr.shape.intersection
 import patterns.*
 import kotlin.math.min
-import kotlin.math.sqrt
 
 data class Partition(val points: MutableList<Point>, val patterns: MutableList<Pattern>) {
     constructor(points: List<Point>): this(points.toMutableList(), points.map { SinglePoint(it) }.toMutableList())
@@ -204,5 +203,5 @@ fun Pattern.cost(singleDouble: Double): Double =
         is SinglePoint -> singleDouble / 2
         is Matching -> point1.pos.distanceTo(point2.pos)
         is Island -> coverRadius(points.map { it.pos }) * 2.0
-        is Reef -> maxDistance
+        is Bank -> maxDistance
     }

@@ -255,7 +255,7 @@ fun main() = application {
         }
 
         cds.alignExpandRadius(ds.pSize)
-        cps.alignPartitionClearance(s.avoidOverlap, ds.pSize)
+        cps.alignPartitionClearance(s.avoidOverlap, cds.expandRadius)
         cps.alignSingleDouble()
 
         gui.add(s, "General")
@@ -312,7 +312,7 @@ fun main() = application {
             }
 
             if (varName == "pSize" || varName == "avoidOverlap")
-                cps.alignPartitionClearance(s.avoidOverlap, ds.pSize)
+                cps.alignPartitionClearance(s.avoidOverlap, cds.expandRadius)
         }
 
         fun flip(v: Vector2) = Vector2(v.x, drawer.bounds.height - v.y)
@@ -584,10 +584,10 @@ fun main() = application {
                     circles(partition.points.map { it.pos }, cps.bendDistance)
                 }
 
-                if (ds.showClusterCircles && cps.clusterRadius > 0) {
+                if (ds.showClusterCircles && cps.coverRadius > 0) {
                     fill = ColorRGBa.GRAY.opacify(0.1)
                     stroke = null
-                    circles(partition.points.map { it.pos }, cps.clusterRadius)
+                    circles(partition.points.map { it.pos }, cps.coverRadius)
                 }
 
 //                }
@@ -713,7 +713,7 @@ fun String.runCommand(workingDir: File) {
         .waitFor(60, TimeUnit.MINUTES)
 }
 
-enum class Tool {
+private enum class Tool {
     AddPoint,
     ModifyPartition,
     Repartition

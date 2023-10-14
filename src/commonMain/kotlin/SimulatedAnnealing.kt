@@ -212,7 +212,7 @@ fun Partition.maybeAddSinglePoint(patternIndex: Int, cps: ComputePartitionSettin
 }
 
 private fun Island.addPoints(cps: ComputePartitionSettings, pts: List<Point>): Pattern? =
-    if (coverRadius((points + pts).map { it.pos }) <= cps.clusterRadius) {
+    if (coverRadius((points + pts).map { it.pos }) <= cps.coverRadius) {
         Island(points + pts, weight + 1)
     } else {
         null
@@ -221,7 +221,7 @@ private fun Island.addPoints(cps: ComputePartitionSettings, pts: List<Point>): P
 fun Pattern.addPoint(cps: ComputePartitionSettings, pt: Point): Pattern? =
     when (this) {
         is SinglePoint -> {
-            if (point.pos.distanceTo(pt.pos) <= max(cps.bendDistance, cps.clusterRadius * 2)) {
+            if (point.pos.distanceTo(pt.pos) <= max(cps.bendDistance, cps.coverRadius * 2)) {
                 Matching(point, pt)
             } else {
                 null
@@ -229,28 +229,28 @@ fun Pattern.addPoint(cps: ComputePartitionSettings, pt: Point): Pattern? =
         }
 
         is Island -> {
-            if (coverRadius((points + pt).map { it.pos }) <= cps.clusterRadius) {
+            if (coverRadius((points + pt).map { it.pos }) <= cps.coverRadius) {
                 Island(points + pt, weight + 1)
             } else {
                 null
             }
         }
 
-        is Reef -> {
+        is Bank -> {
             // Check whether pt is within bend distance
             val dStart2 = pt.pos.squaredDistanceTo(start.pos)
             val dEnd2 = pt.pos.squaredDistanceTo(end.pos)
 
             if (dStart2 < dEnd2) {
                 if (dStart2 < cps.bendDistance.pow(2)) {
-                    Reef(listOf(pt) + points, weight + 1)
+                    Bank(listOf(pt) + points, weight + 1)
                 } else {
                     null
                 }
             } else {
                 if (dEnd2 < cps.bendDistance.pow(2)) {
                     // TODO: other criteria..
-                    Reef(points + pt, weight + 1)
+                    Bank(points + pt, weight + 1)
                 } else {
                     null
                 }
@@ -258,7 +258,7 @@ fun Pattern.addPoint(cps: ComputePartitionSettings, pt: Point): Pattern? =
         }
 
         is Matching -> {
-            if (coverRadius((points + pt).map { it.pos }) <= cps.clusterRadius) {
+            if (coverRadius((points + pt).map { it.pos }) <= cps.coverRadius) {
                 Island(points + pt, weight + 1)
             } else {
                 // TODO: Reef..
@@ -270,7 +270,7 @@ fun Pattern.addPoint(cps: ComputePartitionSettings, pt: Point): Pattern? =
 fun Pattern.removeRandomPoint(cps: ComputePartitionSettings, rng: Random): Pair<Pattern, Point>? {
     val (newPattern, p) = when (this) {
         is Island -> removeRandomPoint(rng)
-        is Reef -> removeRandomPoint(rng)
+        is Bank -> removeRandomPoint(rng)
         is Matching -> removeRandomPoint(rng)
         is SinglePoint -> error("Cannot remove point from SinglePoint")
     }
@@ -295,7 +295,7 @@ fun Island.removeRandomPoint(rng: Random): Pair<Pattern, Point> {
 }
 
 // Remove random end point
-fun Reef.removeRandomPoint(rng: Random): Pair<Pattern, Point> {
+fun Bank.removeRandomPoint(rng: Random): Pair<Pattern, Point> {
     val removeStart = rng.nextBoolean()
 
     if (points.size == 3) {

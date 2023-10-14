@@ -2,7 +2,7 @@ package highlights
 
 import geometric.Arc
 import geometric.Orientation
-import patterns.Reef
+import patterns.Bank
 import patterns.Point
 import org.openrndr.math.Vector2
 import org.openrndr.math.YPolarity
@@ -100,4 +100,4 @@ class BendHighlight(override val points: List<Point>, expandRadius: Double): Hig
     override fun scale(s: Double) = BendHighlight(points, circles.first().radius * s)
 }
 
-fun Reef.toHighlight(expandRadius: Double) = BendHighlight(original().boundaryPoints, expandRadius)
+fun Bank.toHighlight(expandRadius: Double) = BendHighlight(original().boundaryPoints, expandRadius)

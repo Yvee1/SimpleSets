@@ -14,7 +14,7 @@ import org.openrndr.shape.LineSegment
 import org.openrndr.shape.Rectangle
 import org.openrndr.shape.bounds
 import org.openrndr.shape.intersections
-import patterns.Reef
+import patterns.Bank
 import patterns.Point
 import react.FC
 import react.Props
@@ -172,7 +172,7 @@ fun bendPreview(maxDistance: Double, maxTurningAngle: Double, maxTotalAngle: Dou
         fill = rgb(color).opacify(0.3)
         if (!pts.zipWithNext().all { (a, b) -> a.distanceTo(b) < expandRadius }
             && pts.first().distanceTo(pts.last()) > 2 * expandRadius) {
-            val c = Reef(pts.map { Point(it, 0) }, pts.size).toHighlight(expandRadius).contour
+            val c = Bank(pts.map { Point(it, 0) }, pts.size).toHighlight(expandRadius).contour
             contour(c)
         }
         strokeWeight = pointStrokeWeight

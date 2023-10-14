@@ -10,7 +10,7 @@ fun main() {
         bendInflection=true,
         maxBendAngle=107.32,
         maxTurningAngle=54.783,
-        clusterRadius=18.634,
+        coverRadius=18.634,
         partitionClearance = 6.0
     )
     val instance = PartitionInstance(points, cps)
@@ -60,7 +60,7 @@ fun veryFakeMain() = application {
                 for (part in p.patterns) {
                     when(part) {
                         is Island -> contour(part.contour)
-                        is Reef -> contour(part.contour)
+                        is Bank -> contour(part.contour)
                         is SinglePoint -> circle(part.point.pos, 10.0)
                         is Matching -> contour(part.contour)
                     }

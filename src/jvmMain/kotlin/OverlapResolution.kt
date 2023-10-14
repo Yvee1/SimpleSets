@@ -108,7 +108,7 @@ fun main() = application {
             val ch4 = convexHull(pts4)
             val bigGap = (ch4 + ch4.first()).zipWithNext { a, b -> a.pos.squaredDistanceTo(b.pos) }.withIndex().maxBy { it.value }.index
             val bendPts = ch4.subList((bigGap + 1) % ch4.size, ch4.size) + ch4.subList(0, (bigGap + 1) % ch4.size)
-            val pattern4 = Reef(bendPts, bendPts.size)
+            val pattern4 = Bank(bendPts, bendPts.size)
             val island4 = pattern4.toHighlight(computeDrawingSettings.expandRadius)
 
             val c = drawComposition {

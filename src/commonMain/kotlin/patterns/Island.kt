@@ -20,15 +20,15 @@ data class Island(override val points: List<Point>, override val weight: Int = p
     override val contour by lazy {
         ShapeContour.fromPoints(boundaryPoints.map { it.pos }, true)
     }
-    private val vecs by lazy {
+    override val vecs by lazy {
         points.map { it.pos }
     }
     override val segments: List<LineSegment>
         get() = (boundaryPoints + boundaryPoints.first()).zipWithNext { a, b -> LineSegment(a.pos, b.pos) }
     override operator fun contains(v: Vector2) = v in contour
-
+    override val coverRadius by lazy { coverRadius(vecs) }
     override fun isValid(cps: ComputePartitionSettings): Boolean {
-        return coverRadius(vecs) <= cps.clusterRadius
+        return coverRadius <= cps.coverRadius
     }
 
     companion object {

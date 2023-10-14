@@ -22,28 +22,28 @@ data class ComputePartitionSettings(
     var bendDistance: Double = 20.0,
 
     @BooleanParameter("Inflection", order=2000)
-    var bendInflection: Boolean = true,
+    var bendInflection: Boolean = false,
 
     @DoubleParameter("Max bend angle", 0.0, 180.0, order=3000)
     var maxBendAngle: Double = 180.0,
 
     @DoubleParameter("Max turning angle", 0.0, 180.0, order=4000)
-    var maxTurningAngle: Double = 180.0,
+    var maxTurningAngle: Double = 70.0,
 
     @DoubleParameter("Cluster radius", 0.0, 100.0, order=5000)
-    var clusterRadius: Double = 50.0,
+    var coverRadius: Double = 50.0,
 
     @DoubleParameter("Partition clearance", 0.0, 10.0, order=6000)
     var partitionClearance: Double = 1.0,
 
     @DoubleParameter("Single-double threshold", 0.0, 200.0)
-    var singleDouble: Double = clusterRadius * 2
+    var singleDouble: Double = coverRadius * 2
 ) {
-    fun alignPartitionClearance(avoidOverlap: Double, pointSize: Double) {
-        partitionClearance = avoidOverlap * pointSize
+    fun alignPartitionClearance(avoidOverlap: Double, expandRadius: Double) {
+        partitionClearance = avoidOverlap * expandRadius
     }
     fun alignSingleDouble() {
-        singleDouble = max(clusterRadius * 2, bendDistance)
+        singleDouble = max(coverRadius * 2, bendDistance)
     }
 }
 
@@ -130,7 +130,7 @@ data class DrawSettings(
     var subset: Double = 1.0,
 
     @BooleanParameter("Shadows", order = 1)
-    var shadows: Boolean = true,
+    var shadows: Boolean = false,
 
     var colorSettings: ColorSettings = ColorSettings(lightColors.map { it.toColorRGB() }, darkColors.map { it.toColorRGB() })
 //    var useGrid: Boolean = true,

@@ -13,8 +13,10 @@ sealed class Pattern {
     abstract val contour: ShapeContour
     abstract val type: Int
     abstract val points: List<Point>
+    abstract val vecs: List<Vector2>
     abstract val boundaryPoints: List<Point>
     abstract val segments: List<LineSegment>
+    abstract val coverRadius: Double
     abstract fun original(): Pattern
     abstract fun isEmpty(): Boolean
     abstract operator fun contains(v: Vector2): Boolean

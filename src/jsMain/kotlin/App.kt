@@ -25,7 +25,6 @@ import react.dom.events.NativeMouseEvent
 import react.dom.events.PointerEvent
 import sideWindow.Divider
 import sideWindow.DraggableDivider
-import sideWindow.SelectExample
 import sideWindow.SideWindow
 import sideWindow.settings.BendSettingsPanel
 import sideWindow.settings.ClusterSettingsPanel
@@ -90,7 +89,7 @@ val App = FC<Props> {
         bendInflection = bendInflection,
         maxBendAngle = maxBendAngle,
         maxTurningAngle = maxTurningAngle,
-        clusterRadius = clusterRadius,
+        coverRadius = clusterRadius,
         partitionClearance = 0.0, // TODO: Add UI setting for this?
     )
 
