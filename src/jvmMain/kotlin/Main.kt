@@ -114,7 +114,7 @@ fun main() = application {
                 highlights = partition.patterns.map { it.toHighlight(cds.expandRadius) }
                 if (cds.intersectionResolution == IntersectionResolution.Overlap) {
                     drawing = highlights.withIndex().map { (i, isle) ->
-                        morphIsland(null, isle, highlights.subList(0, i))
+                        morphHighlight(null, isle, highlights.subList(0, i), cds)
                     }
                 } else {
                     drawing = highlights.map { it.contour }

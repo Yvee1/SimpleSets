@@ -8,7 +8,8 @@ out
 video/
 screenshots/
 gui-parameters/
-input-output/
+input-output/*
 .file-dialog.properties
 kotlin-js-store
 webpack.config.d
+!input-output/4pts.ipe

@@ -23,7 +23,7 @@ fun main() = application {
 
     program {
         val drawSettings = DrawSettings(pSize = 5.0)
-        val computeDrawingSettings = ComputeDrawingSettings(expandRadius = drawSettings.pSize * 3)
+        val cds = ComputeDrawingSettings(expandRadius = drawSettings.pSize * 3)
 
         val s = 2.5
         val mat = transform {
@@ -93,23 +93,23 @@ fun main() = application {
         extend {
             val pts1 = points.filter { it.type == 0 }
             val pattern1 = Island(pts1, pts1.size)
-            val island1 = pattern1.toHighlight(computeDrawingSettings.expandRadius)
+            val island1 = pattern1.toHighlight(cds.expandRadius)
 
             val pts2 = points.filter { it.type == 1 }
             val pattern2 = Island(pts2, pts2.size)
-            val island2 = pattern2.toHighlight(computeDrawingSettings.expandRadius)
+            val island2 = pattern2.toHighlight(cds.expandRadius)
 
             val pts3 = points.filter { it.type == 2 }
 //            print("$pts3\r")
             val pattern3 = Island(pts3, pts3.size)
-            val island3 = pattern3.toHighlight(computeDrawingSettings.expandRadius)
+            val island3 = pattern3.toHighlight(cds.expandRadius)
 
             val pts4 = points.filter { it.type == 3 }
             val ch4 = convexHull(pts4)
             val bigGap = (ch4 + ch4.first()).zipWithNext { a, b -> a.pos.squaredDistanceTo(b.pos) }.withIndex().maxBy { it.value }.index
             val bendPts = ch4.subList((bigGap + 1) % ch4.size, ch4.size) + ch4.subList(0, (bigGap + 1) % ch4.size)
             val pattern4 = Bank(bendPts, bendPts.size)
-            val island4 = pattern4.toHighlight(computeDrawingSettings.expandRadius)
+            val island4 = pattern4.toHighlight(cds.expandRadius)
 
             val c = drawComposition {
 //                model *= mat
@@ -140,7 +140,7 @@ fun main() = application {
                 stroke = ColorRGBa.BLACK
                 contour(island3.contour)
 
-                val m4 = morphIsland(null, island4, listOf(island2))
+                val m4 = morphHighlight(null, island4, listOf(island2), cds)
                 if (m4.segments.isNotEmpty()) {
                     val shadows = contourShadows(m4, 0.5, 10, 0.4)
                     stroke = null
@@ -157,7 +157,7 @@ fun main() = application {
 //                lineLoop(island1.points.map { it.pos })
 //                contour(island2.contour)
 //                val m =  morphIsland(null, island2, listOf(IslandOverlap(island2, island1, 1.0)))
-                val m = morphIsland(null, island1, listOf(island2, island3, island4))
+                val m = morphHighlight(null, island1, listOf(island2, island3, island4), cds)
                 if (m.segments.isNotEmpty()) {
                     val shadows = contourShadows(m, 0.5, 10, 0.4)
                     stroke = null
@@ -741,7 +741,7 @@ fun separatingCurve(drawer: CompositionDrawer?, interC: ShapeContour, gCircles: 
     return final
 }
 
-fun morphIsland(drawer: CompositionDrawer?, highlight: Highlight, overlapees: List<Highlight>): ShapeContour {
+fun morphHighlight(drawer: CompositionDrawer?, highlight: Highlight, overlapees: List<Highlight>, cds: ComputeDrawingSettings): ShapeContour {
 //    require(overlaps.all { it.overlapper == island }) {
 //        "Provided island in function ${::morphIsland.name} is not the overlapper for all provided overlaps."
 //    }
@@ -791,7 +791,7 @@ fun morphIsland(drawer: CompositionDrawer?, highlight: Highlight, overlapees: Li
     val circles = gCircles + bCircles
     val r = circles[0].radius
     val (gSmallerCircles, bSmallerCircles) = growCircles(gCircles.map { it.center }, bCircles.map { it.center },
-        r, r * 0.625)
+        r, r * cds.pointClearance)
 
 //    drawer?.apply {
 //        fill = ColorRGBa.RED
@@ -817,4 +817,39 @@ fun morphIsland(drawer: CompositionDrawer?, highlight: Highlight, overlapees: Li
     }
 
     return result.close()
+}
+
+fun morphCurve(c: ShapeContour, inclCircles: List<Circle>, exclCircles: List<Circle>, cds: ComputeDrawingSettings): ShapeContour {
+    if (exclCircles.isEmpty()) return c
+
+    var piece = Shape(listOf(c))
+    for (circle in exclCircles) {
+        piece = difference(piece, circle.copy(radius = cds.expandRadius).contour)
+    }
+
+    val pieces = piece.contours.filter { it.length > 1.0 }.mergeAdjacent()
+
+    if (pieces.isEmpty()) return c
+    if (pieces.size == 1 && pieces[0].start.squaredDistanceTo(pieces[0].end) < 1E-6) {
+        return c
+    }
+
+    val broken = (pieces + pieces[0]).zipWithNext { c1, c2 ->
+        c.subVC(c1.end, c2.start)
+    }
+
+    val mends = broken.map { interC ->
+        if (interC.segments.isEmpty()) ShapeContour.EMPTY else {
+            separatingCurve(null, interC, inclCircles, exclCircles)
+        }
+    }
+
+    var result = ShapeContour.EMPTY
+    for (i in pieces.indices) {
+        result += pieces[i]
+        if (!mends[i].empty)
+            result += mends[i]
+    }
+
+    return result
 }

@@ -58,8 +58,11 @@ data class ComputeDrawingSettings(
     @DoubleParameter("Expand radius", 0.1, 100.0, order = 3)
     var expandRadius: Double = 30.0,
 
-    @OptionParameter("Overlap resolution", order = 1)
+    @OptionParameter("Overlap resolution", order = 4)
     var intersectionResolution: IntersectionResolution = IntersectionResolution.Overlap,
+
+    @DoubleParameter("Point clearance", 0.0, 1.0, order = 5)
+    var pointClearance: Double = 0.625
 ) {
     fun alignExpandRadius(pointSize: Double) {
         expandRadius = if (intersectionResolution != IntersectionResolution.None) pointSize * 3 else 0.0001
