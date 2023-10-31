@@ -33,12 +33,8 @@ fun main() = application {
         var partition: Partition = Partition.EMPTY
         var filtration: List<Pair<Double, Partition>> = emptyList()
         var highlights = listOf<Highlight>()
-        var drawing = listOf<ShapeContour>()
         var composition: (Boolean) -> Composition = { _ -> drawComposition { } }
         var calculating = false
-
-        fun getPatternContour(i: Int) =
-            drawing.getOrNull(i) ?: highlights.getOrNull(i)?.contour ?: partition.patterns[i].contour
 
         fun asyncCompute(block: () -> Unit) {
             launch {
@@ -56,16 +52,6 @@ fun main() = application {
             }
         }
 
-        fun clearData(clearPartition: Boolean = true){
-            if (clearPartition) {
-                partition = Partition.EMPTY
-                filtration = emptyList()
-            }
-            highlights = emptyList()
-            drawing = emptyList()
-            composition = { _ -> drawComposition { } }
-        }
-
         val gui = GUI(GUIAppearance(ColorRGBa.BLUE_STEEL))
 
         val ds = DrawSettings()
@@ -73,22 +59,31 @@ fun main() = application {
         val cds = ComputeDrawingSettings()
         val tgs = TopoGrowSettings()
 
+        var xGraph = XGraph(emptyList(), cds)
+
+        fun clearData(clearPartition: Boolean = true){
+            if (clearPartition) {
+                partition = Partition.EMPTY
+                filtration = emptyList()
+            }
+            highlights = emptyList()
+            xGraph = XGraph(emptyList(), cds)
+            composition = { _ -> drawComposition { } }
+        }
+
         val ps = object {
             @BooleanParameter("Auto compute drawing")
             var computeDrawing = true
 
             @ActionParameter("Compute drawing")
             fun computeDrawing() {
-//                asyncCompute {
-                highlights = partition.patterns.map { it.toHighlight(cds.expandRadius) }
-                if (cds.intersectionResolution == IntersectionResolution.Overlap) {
-                    drawing = highlights.withIndex().map { (i, isle) ->
-                        morphHighlight(null, isle, highlights.subList(0, i), cds)
-                    }
-                } else {
-                    drawing = highlights.map { it.contour }
+                try {
+                    highlights = partition.patterns.map { it.toHighlight(cds.expandRadius) }
+                    xGraph = XGraph(highlights, cds)
                 }
-//                }
+                catch(e: Throwable) {
+                    e.printStackTrace()
+                }
             }
 
             fun modifiedPartition() {
@@ -174,15 +169,12 @@ fun main() = application {
             @DoubleParameter("Cover radius", 2.5, 6.0, order = 8000)
             var coverRadius: Double = 3.5
 
+            @DoubleParameter("Smoothing", 0.001, 0.3, order = 10000)
+            var smoothing: Double = 0.2
 //            @DoubleParameter("Avoid overlap", 0.0, 1.0, order = 8000)
 //            var avoidOverlap: Double = 0.25
         }
 
-        ds.pSize = scs.pSize
-        cds.alignExpandRadius(ds.pSize)
-        cps.alignPartitionClearance(1.0, cds.expandRadius)
-        cps.coverRadius = scs.coverRadius * cds.expandRadius
-        cps.alignSingleDouble()
 
         gui.add(inputOutputSettings, "Input output settings")
 //        gui.add(uiSettings, "UI Settings")
@@ -193,6 +185,12 @@ fun main() = application {
         extend(gui)
         gui.visible = false
         gui.compartmentsCollapsedByDefault = false
+
+        ds.pSize = scs.pSize
+        cds.alignExpandRadius(ds.pSize)
+        cps.alignPartitionClearance(1.0, cds.expandRadius)
+        cps.coverRadius = scs.coverRadius * cds.expandRadius
+        cps.alignSingleDouble()
 
         class Grid(val cellSize: Double, val center: Vector2){
             fun snap(p: Vector2): Vector2 = (p - center).mapComponents { round(it / cellSize) * cellSize } + center
@@ -245,6 +243,11 @@ fun main() = application {
                     ps.modifiedPartition()
                 }
             }
+
+            if (varName == "smoothing") {
+                cds.smoothing = scs.smoothing
+                ps.computeDrawing()
+            }
         }
 
         fun flip(v: Vector2) = Vector2(v.x, drawer.bounds.height - v.y)
@@ -259,25 +262,6 @@ fun main() = application {
                 is SinglePoint -> point.pos.distanceTo(p) < 3 * ds.pSize
                 else -> p in contour || (contour.nearest(p).position - p).length < 3 * ds.pSize
             }
-
-        fun findPattern(mp: Vector2): Int? {
-            val useHighlights = highlights.isNotEmpty()
-            var foundPattern: Int? = null
-            if (useHighlights) {
-                for ((i, high) in highlights.withIndex()) {
-                    if (mp in (drawing.getOrNull(i) ?: high.contour)) {
-                        foundPattern = i
-                    }
-                }
-            } else {
-                for ((i, patt) in partition.patterns.withIndex()) {
-                    if (patt.nearby(mp)) {
-                        foundPattern = i
-                    }
-                }
-            }
-            return foundPattern
-        }
 
         keyboard.keyDown.listen { keyEvent ->
             if (!keyEvent.propagationCancelled) {
@@ -325,43 +309,7 @@ fun main() = application {
                 stroke = ColorRGBa.GRAY.opacify(0.3)
                 if (uiSettings.useGrid) grid.draw(this)
 
-                val end = min((ds.subset * partition.patterns.size).roundToInt(), partition.patterns.size)
-
-                for (i in 0 until end) {
-                    val pattern = partition.patterns[i]
-                    strokeWeight = ds.contourStrokeWeight
-                    stroke = ColorRGBa.BLACK
-                    fill = lightColors[pattern.type].mix(ColorRGBa.WHITE, 0.7)
-
-                    val patternContour = getPatternContour(i)
-
-                    if (ds.showIslands && !patternContour.empty) {
-                        if (ds.shadows) {
-                            val shadows = contourShadows(patternContour, 0.08 * ds.pSize, 10, 0.08 * ds.pSize)
-                            stroke = null
-                            for ((i, shadow) in shadows.withIndex()) {
-                                fill =
-                                    ColorRGBa.GRAY.opacify(0.02 + (shadows.lastIndex - i.toDouble()) / shadows.size * 0.2)
-                                contour(shadow)
-                            }
-                        }
-                        strokeWeight = ds.contourStrokeWeight
-                        stroke = ColorRGBa.BLACK
-                        fill = lightColors[pattern.type].mix(ColorRGBa.WHITE, 0.7)
-                        contour(patternContour)
-
-                        if (ds.showVoronoiCells && pattern is Island) {
-                            isolated {
-                                fill = null
-                                contours(pattern.voronoiCells)
-                            }
-                        }
-                    }
-                }
-
-//                fill = ColorRGBa.GRAY.opacify(0.1)
-//                stroke = null
-//                circles(partition.points.map { it.pos }, cps.coverRadius)
+                xGraph.draw(this, ds)
 
                 isolated {
                     if (ds.showPoints) {
@@ -378,6 +326,10 @@ fun main() = application {
                         }
                     }
                 }
+
+//                stroke = null
+//                fill = ColorRGBa.BLACK.opacify(0.1)
+//                circles(partition.points.map { it.pos }, cps.coverRadius)
             }}
             drawer.composition(composition(true))
         }

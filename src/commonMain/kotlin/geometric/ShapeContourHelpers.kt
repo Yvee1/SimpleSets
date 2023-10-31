@@ -134,3 +134,17 @@ fun List<ShapeContour>.mergeAdjacent(): List<ShapeContour> {
 
     return new
 }
+
+fun ShapeContour.isStraight(): Boolean {
+    val normals = equidistantPositionsWithT(50).map {
+        normal(it.second)
+    }
+
+    for (i in normals.indices) {
+        for (j in i + 1 until normals.size) {
+            if (normals[i].distanceTo(normals[j]) > 0.05) return false
+        }
+    }
+
+    return true
+}

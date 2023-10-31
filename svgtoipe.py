@@ -419,7 +419,7 @@ class Svg():
                    svgtoipe_version)
     self.out.write('<ipestyle>\n')
     self.out.write(('<layout paper="%d %d" frame="%d %d" ' +
-                    'origin="0 0" crop="no"/>\n') %
+                    'origin="0 0"/>\n') %
                    (self.width, self.height, self.width, self.height))
     for t in range(10, 100, 10):
       self.out.write('<opacity name="%d%%" value="0.%d"/>\n' % (t, t))

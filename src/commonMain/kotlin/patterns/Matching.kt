@@ -27,12 +27,12 @@ data class Matching(val point1: Point, val point2: Point) : Pattern() {
         val angle = angleBetween(point1.pos - point2.pos, p.pos - point1.pos)
         if (angle > cps.maxTurningAngle.asRadians) return null
         if (angle > cps.maxBendAngle.asRadians) return null
-        println("Strange things incoming!!")
-        println("Any moment now")
-        val ptList = listOf(p, point1, point2)
-        println("Normal point list: $ptList")
-        val wtf = Bank(ptList)
-        println("Good now: ${wtf}")
+//        println("Strange things incoming!!")
+//        println("Any moment now")
+//        val ptList = listOf(p, point1, point2)
+//        println("Normal point list: $ptList")
+//        val wat = Bank(ptList)
+//        println("Good now: ${wat}")
         val huh = point1.pos.distanceTo(p.pos) / 2 to Bank(listOf(p, point1, point2))
         return huh
 
@@ -47,5 +47,9 @@ data class Matching(val point1: Point, val point2: Point) : Pattern() {
 
     fun extension(p: Point, cps: ComputePartitionSettings): Pair<Double, Bank>? {
         return listOfNotNull(extensionStart(p, cps), extensionEnd(p, cps)).minByOrNull { it.first }
+    }
+
+    fun toBank(): Bank {
+        return Bank(points)
     }
 }

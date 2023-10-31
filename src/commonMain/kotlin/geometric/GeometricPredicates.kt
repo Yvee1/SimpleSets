@@ -51,3 +51,6 @@ fun compare(x1: Double, x2: Double): Orientation {
         }
     }
 }
+
+fun bisector(v1: Vector2, v2: Vector2): Vector2 =
+    (v1.normalized + v2.normalized).normalized

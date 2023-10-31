@@ -9,6 +9,7 @@ import org.openrndr.math.asDegrees
 import org.openrndr.math.asRadians
 import org.openrndr.shape.LineSegment
 import org.openrndr.shape.ShapeContour
+import kotlin.math.max
 
 data class Bank(override val points: List<Point>, override val weight: Int = points.size): Pattern() {
     override val boundaryPoints = points
@@ -32,15 +33,11 @@ data class Bank(override val points: List<Point>, override val weight: Int = poi
 
     override val coverRadius = maxDistance / 2
 
-    override fun isValid(cps: ComputePartitionSettings): Boolean {
-        // TODO? Add angle constraints
-        return maxDistance < cps.bendDistance
-    }
-
     // A bank consists of bends, each with an orientation and an angle
-    var bends: List<Bend> = buildList {
+    val bends: List<Bend> = buildList {
         var orientation: Orientation? = null
-        var bendAngle = 0.0
+        var bendTotalAngle = 0.0
+        var bendMaxAngle = 0.0
         var startIndex = 0
 
         for (i in points.indices) {
@@ -49,27 +46,37 @@ data class Bank(override val points: List<Point>, override val weight: Int = poi
             val angle = angleBetween(points[i + 1].pos - points[i].pos, points[i + 2].pos - points[i + 1].pos)
             if (orientation == or.opposite()) {
                 // Switched orientation
-                add(Bend(orientation, bendAngle, startIndex, i + 1))
+                add(Bend(orientation, bendMaxAngle, bendTotalAngle, startIndex, i + 1))
                 orientation = or
-                bendAngle = angle
+                bendTotalAngle = angle
+                bendMaxAngle = angle
                 startIndex = i
             } else {
                 orientation = or
-                bendAngle += angle
+                bendTotalAngle += angle
+                bendMaxAngle = max(bendMaxAngle, angle)
             }
         }
 
         if (orientation == null) {
-            println("Very strange stuff is happening $points")
+//            println("Very strange stuff is happening $points")
 
         } else
-            add(Bend(orientation!!, bendAngle, startIndex, points.lastIndex))
+            add(Bend(orientation!!, bendMaxAngle, bendTotalAngle, startIndex, points.lastIndex))
+    }
+
+    override fun isValid(cps: ComputePartitionSettings): Boolean {
+        val inflectionIsFine = bends.size <= 1 || cps.bendInflection && bends.size <= 2
+        val anglesAreFine = bends.all { it.maxAngle <= cps.maxTurningAngle.asRadians }
+        val totalAngleIsFine = bends.sumOf { it.totalAngle } <= cps.maxBendAngle.asRadians
+
+        return inflectionIsFine && anglesAreFine && totalAngleIsFine
     }
 
     fun extensionStart(p: Point, cps: ComputePartitionSettings): Pair<Double, Bank>? {
         val angle = angleBetween(start.pos - points[1].pos, p.pos - start.pos)
         if (angle > cps.maxTurningAngle.asRadians) return null
-        if (angle + bends[0].angle > cps.maxBendAngle.asRadians) return null
+        if (angle + bends[0].totalAngle > cps.maxBendAngle.asRadians) return null
         val orient = orientation(p.pos, start.pos, points[1].pos)
         if (orient != bends.first().orientation && (bends.size >= 2 || !cps.bendInflection)) return null
         return start.pos.distanceTo(p.pos) / 2 to Bank(listOf(p) + points)
@@ -78,14 +85,46 @@ data class Bank(override val points: List<Point>, override val weight: Int = poi
     fun extensionEnd(p: Point, cps: ComputePartitionSettings): Pair<Double, Bank>? {
         val angle = angleBetween(end.pos - points[points.lastIndex - 1].pos, p.pos - end.pos)
         if (angle > cps.maxTurningAngle.asRadians) return null
-        if (angle + bends.last().angle > cps.maxBendAngle.asRadians) return null
+        if (angle + bends.last().totalAngle > cps.maxBendAngle.asRadians) return null
         val orient = orientation(points[points.lastIndex - 1].pos, points.last().pos, p.pos)
         if (orient != bends.last().orientation && (bends.size >= 2 || !cps.bendInflection)) return null
         return end.pos.distanceTo(p.pos) / 2 to Bank(points + listOf(p))
     }
 
+    fun extensionStart(other: Bank, cps: ComputePartitionSettings): Pair<Double, Bank>? {
+        val newBank1 = Bank(other.points + this.points)
+        val newBank2 = Bank(other.points.reversed() + this.points)
+        val newBank = listOf(newBank1, newBank2).filter { it.isValid(cps) }.minByOrNull { it.coverRadius }
+
+        return if (newBank != null) {
+            newBank.coverRadius to newBank
+        } else null
+    }
+
+    fun extensionEnd(other: Bank, cps: ComputePartitionSettings): Pair<Double, Bank>? {
+        val newBank1 = Bank(this.points + other.points)
+        val newBank2 = Bank(this.points + other.points.reversed())
+        val newBank = listOf(newBank1, newBank2).filter { it.isValid(cps) }.minByOrNull { it.coverRadius }
+
+        return if (newBank != null) {
+            newBank.coverRadius to newBank
+        } else null
+    }
+
     fun extension(p: Point, cps: ComputePartitionSettings): Pair<Double, Bank>? {
-        return listOfNotNull(extensionStart(p, cps), extensionEnd(p, cps)).minByOrNull { it.first }
+        return listOfNotNull(extensionStart(p, cps), extensionEnd(p, cps))
+            .filter { it.second.isValid(cps) }
+            .minByOrNull { it.first }
+    }
+
+    fun extension(other: Bank, cps: ComputePartitionSettings): Pair<Double, Bank>? {
+        return listOfNotNull(extensionStart(other, cps), extensionEnd(other, cps))
+            .filter { it.second.isValid(cps) }
+            .minByOrNull { it.first }
+    }
+
+    fun extension(other: Matching, cps: ComputePartitionSettings): Pair<Double, Bank>? {
+        return extension(other.toBank(), cps)
     }
 
     override fun original() = copy(points=boundaryPoints.map { it.originalPoint ?: it })
@@ -95,7 +134,8 @@ data class Bank(override val points: List<Point>, override val weight: Int = poi
     val end get() = points.last()
 }
 
-data class Bend(val orientation: Orientation, val angle: Double, val startIndex: Int, val endIndex: Int)
+data class Bend(val orientation: Orientation, val maxAngle: Double, val totalAngle: Double,
+                val startIndex: Int, val endIndex: Int)
 
 fun PartitionInstance.clusterIsMonotoneBend(island: Island): Boolean {
     if (island.weight != island.points.size) return false

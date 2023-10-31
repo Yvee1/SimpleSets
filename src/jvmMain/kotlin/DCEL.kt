@@ -5,8 +5,13 @@ import org.openrndr.application
 import org.openrndr.color.ColorRGBa
 import org.openrndr.math.Matrix44
 import org.openrndr.shape.*
+import org.openrndr.svg.toSVG
+import patterns.Bank
+import patterns.Island
 import patterns.SinglePoint
 import java.io.File
+import kotlin.math.max
+import kotlin.math.min
 
 fun main() = application {
     configure {
@@ -17,8 +22,8 @@ fun main() = application {
     }
 
     program {
-        val ds = DrawSettings(pSize = 5.0, whiten = 0.0)
-        val cds = ComputeDrawingSettings(expandRadius = ds.pSize * 3, pointClearance = 0.625)
+        val ds = DrawSettings(pSize = 5.0, whiten = 0.5)
+        val cds = ComputeDrawingSettings(expandRadius = ds.pSize * 3, pointClearance = 0.7)
 
 //        val points = getExampleInput(ExampleInput.OverlapExample2).map {
 //            it.copy(pos = it.pos.copy(y = height - it.pos.y - 250.0))
@@ -65,13 +70,21 @@ fun main() = application {
         val pattern4 = SinglePoint(pts4[0])
         val island4 = pattern4.toHighlight(cds.expandRadius)
 
-        val pts = pts1 + pts2 + pts3 + pts4
+        val pts =
+            pts1 +
+            pts2 +
+            pts3 +
+//            pts4 +
+            emptyList()
 
-        val highlights = listOf(island1, island2, island3, island4)
+        val highlights = listOf(
+            island1,
+            island2,
+            island3,
+//            island4
+        )
 
         val xGraph = XGraph(highlights, cds)
-
-        println(xGraph.hyperedges()[0].ordering())
 
         extend(Camera2D()) {
             view = Matrix44(
@@ -82,29 +95,55 @@ fun main() = application {
             )
         }
 
+        val comp = drawComposition {
+            xGraph.draw(this, ds)
+
+            coloredPoints(pts, ds)
+
+            stroke = null
+            fill = ColorRGBa.WHITE.opacify(0.9)
+            rectangle(drawer.bounds)
+
+            val i = 2
+            val c = xGraph.intersectionComponents(i)[0]
+
+            val avoidees = mutableSetOf<Int>()
+            for (f in c.faces) {
+                avoidees.addAll(f.ordering.takeWhile { it != i })
+            }
+
+            val cont = c.boundaryPart(i)
+            val (inclCircles, exclCircles) = xGraph.relevantCircles(i, avoidees.toList(), c)
+
+            val morphed = morphCurve(cont, inclCircles, exclCircles, cds, this)
+
+            stroke = ColorRGBa.BLUE
+            fill = null
+            contour(morphed)
+        }
+
+        val svg = comp.toSVG()
+        File("input-output/DCEL.svg").writeText(svg)
+        "py svgtoipe.py input-output/DCEL.svg".runCommand(File("."))
+
         extend {
+
+
             drawer.apply {
-                clear(ColorRGBa.BLACK)
+                clear(ColorRGBa.WHITE)
+                composition(comp)
 
-                for (f in xGraph.faces) {
-                    composition((f.fillDrawing ?: continue)(xGraph.hs, ds))
-                }
-
-                for (f in xGraph.faces) {
-                    composition((f.strokeDrawing ?: continue)(xGraph.hs, ds))
-                }
-
-//                stroke = ColorRGBa.BLACK
-//                xGraph.vertices.forEach { v ->
-//                    fill = ColorRGBa.WHITE
-//                    strokeWeight = 0.5
-//                    circle(v.x.position, 1.5)
-//                }
-
-                coloredPoints(pts, ds)
+//                var arcs = mutableListOf<Shape>()
+//                val c = highlights[3].contour.sub(0.3, 0.5)
 //
-//                fill = null
-//                circles(pts.map { it.pos }, cds.pointClearance * cds.expandRadius)
+//                for (a in highlights[3].arcs) {
+//                    arcs.add(intersection(c.shape, a.contour.shape))
+//                }
+//
+//                stroke = ColorRGBa.BLUE
+//                contour(c)
+//                stroke = ColorRGBa.RED
+//                shapes(arcs)
             }
         }
     }
@@ -143,12 +182,15 @@ data class XHalfEdge(val source: XVertex, val target: XVertex, val contour: Shap
     val start get() = contour.start
     val end get() = contour.end
 
+    val contourE by lazy {
+        contour.extend(0.001)
+    }
 
     lateinit var twin: XHalfEdge
 
     lateinit var face: XFace
 
-    var morphedContour: ShapeContour? = null
+//    var morphedContours = mutableMapOf<Int, ShapeContour>()
 
     val next by lazy {
         target.outgoing.first {
@@ -185,12 +227,26 @@ data class Relation(val left: Int, val right: Int, val preference: Ordering, var
 data class XFace(val edge: XHalfEdge, val origins: List<Int>, val contour: ShapeContour?) {
     val relations = mutableListOf<Relation>()
 
+    val morphedContours = mutableMapOf<Int, ShapeContour>()
+    val morphedEdge = mutableMapOf<Int, Shape>()
+    var wasMorphed = mutableMapOf<Int, Boolean>()
+
     data class Vertex(val i: Int) {
         val neighbors = mutableListOf<Vertex>()
         var mark = 0
     }
 
     val vertices = origins.associateWith { Vertex(it) }
+
+    val edges: List<XHalfEdge> by lazy {
+        buildList {
+            var current = edge
+            do {
+                add(current)
+                current = current.next
+            } while (current != edge)
+        }
+    }
 
     // Access only when ordering is final!
     val ordering: List<Int> by lazy {
@@ -234,28 +290,237 @@ data class XFace(val edge: XHalfEdge, val origins: List<Int>, val contour: Shape
     val top get() =
         ordering.last()
 
-    fun setMorphedEdge(i: Int, morphed: ShapeContour) {
-        val e = run {
-            var current = edge
+    fun setMorphedEdge(i: Int, morphed: ShapeContour, full: ShapeContour, drawer: CompositionDrawer? = null) {
+//        val e = run {
+//            var current = edge
+//
+//            do {
+//                if (current.original.hIndex == i) return@run current
+//                current = current.next
+//            } while (current != edge)
+//            return
+//        }
+//
+//        val intersections = buildList {
+//            var current = edge
+//
+//            do {
+//                val inters = current.contourE.intersections(morphed)
+//                addAll(inters)
+//                current = current.next
+//            } while (current != edge)
+//        }
 
-            do {
-                if (current.original.hIndex == i) return@run current
-                current = current.next
-            } while (current != edge)
-            return
+//        e.morphedContour = intersection(morphed, contour!!).contours.firstOrNull() ?: ShapeContour.EMPTY
+//
+//        if (intersections.size < 2) {
+//            println("Do not know how to cut morphed contour")
+//            return
+//        }
+
+//        val a = intersections.minBy { it.b.contourT }
+//        val b = intersections.maxBy { it.b.contourT }
+
+//        drawer?.apply {
+//            stroke = ColorRGBa.BLACK
+//            fill = ColorRGBa.WHITE
+//            strokeWeight = 0.4
+//            circle(a.position, 1.0)
+//            circle(b.position, 1.0)
+//        }
+
+//        e.morphedContours[i] = morphed.sub(a.b.contourT, b.b.contourT)
+        wasMorphed[i] = true
+        morphedEdge[i] = intersection(morphed, contour!!.buffer(0.1))
+
+//        run {
+//            var current = edge
+//
+//            do {
+//                if (current == e) {
+//                    current = current.next
+//                    continue
+//                }
+//
+//                val eBefore = current.start.squaredDistanceTo(e.end) < current.end.squaredDistanceTo(e.start)
+//
+//                // TODO: Do not sub the contourE but transform the ts and sub the contour property
+//                if (current.contourE == a.a.contour && current.contourE == b.a.contour) {
+//                    val t0 = min(a.a.contourT, b.a.contourT)
+//                    val t1 = max(a.a.contourT, b.a.contourT)
+//                    current.morphedContours[i] = current.contourE.sub(t0, t1)
+//                } else if (current.contourE == a.a.contour) {
+//                    val t0 = if (eBefore) a.a.contourT else 0.0
+//                    val t1 = if (!eBefore) a.a.contourT else 1.0
+//                    println("(t0, t1): ($t0, $t1)")
+//                    current.morphedContours[i] = current.contourE.sub(t0, t1)
+//                } else if (current.contourE == b.a.contour) {
+//                    val t0 = if (eBefore) b.a.contourT else 0.0
+//                    val t1 = if (!eBefore) b.a.contourT else 1.0
+//                    current.morphedContours[i] = current.contourE.sub(t0, t1)
+//                }
+//
+//                current = current.next
+//            } while (current != edge)
+//        }
+
+//        e.morphedContour = morphed
+
+//        val morphedFaceContour = run {
+//            var current = edge
+//            var c = current.morphedContours[i] ?: current.contour
+//
+//            while (current.next != edge) {
+//                current = current.next
+//                c += current.morphedContours[i] ?: current.contour
+//            }
+//
+//            c.close()
+//        }
+
+        val morphedFaceContour = intersection(full, contour).contours.firstOrNull() ?: ShapeContour.EMPTY
+
+        morphedContours[i] = morphedFaceContour
+    }
+
+    val seamDrawing: ((List<Highlight>, DrawSettings) -> Composition)? by lazy {
+        if (contour == null) return@lazy null
+
+        val toDraw = buildList {
+            for (i in ordering.asReversed()) {
+                add( 0, i)
+                if (morphedContours[last()] == null) break
+            }
         }
 
-        e.morphedContour = intersection(morphed, contour!!).contours.firstOrNull()
+        fun draw(hs: List<Highlight>, ds: DrawSettings): Composition {
+            return drawComposition {
+                for (i in toDraw) {
+                    val color = ds.colorSettings.lightColors[hs[i].type].toColorRGBa().mix(ColorRGBa.WHITE, ds.whiten)
+                    stroke = color
+                    strokeWeight = ds.contourStrokeWeight / 2
+                    fill = null
+                    contour(morphedContours[i] ?: contour)
+                }
+            }
+        }
+
+        ::draw
     }
 
     val fillDrawing: ((List<Highlight>, DrawSettings) -> Composition)? by lazy {
         if (contour == null) return@lazy null
 
+        val toDraw = buildList {
+            for (i in ordering.asReversed()) {
+                add( 0, i)
+                if (morphedContours[last()] == null) break
+            }
+        }
+
         fun draw(hs: List<Highlight>, ds: DrawSettings): Composition {
             return drawComposition {
-                stroke = null
-                fill = ds.colorSettings.lightColors[hs[top].type].toColorRGBa().mix(ColorRGBa.WHITE, ds.whiten)
-                contour(contour)
+                for (i in toDraw) {
+                    val color = ds.colorSettings.lightColors[hs[i].type].toColorRGBa().mix(ColorRGBa.WHITE, ds.whiten)
+                    stroke = null
+                    fill = color
+                    contour(morphedContours[i] ?: contour)
+                }
+            }
+        }
+
+        ::draw
+    }
+
+//    val shadowDrawing: ((List<Highlight>, DrawSettings) -> Composition)? by lazy {
+//        if (contour == null) return@lazy null
+//
+//        val toDraw = buildList {
+//            for (i in ordering.asReversed()) {
+//                add( 0, i)
+//                if (morphedContours[last()] == null) break
+//            }
+//        }
+//
+//        val cs = toDraw.map { i ->
+//            morphedContours[i] ?: contour
+//        }
+//
+//        val shadows = cs.map { c ->
+////            difference(c.buffer(1.0), c).contours[0]
+//            difference(c.buffer(2.0).reversed, c.reversed)
+//        }
+//
+//        fun draw(hs: List<Highlight>, ds: DrawSettings): Composition {
+//            return drawComposition {
+//                for (shadow in shadows) {
+////                    val color = ds.colorSettings.lightColors[hs[i].type].toColorRGBa().mix(ColorRGBa.WHITE, ds.whiten)
+////                    stroke = null
+//                    stroke = null
+//                    fill = ColorRGBa.BLACK.whiten(0.9)
+//                    shape(shadow)
+//                }
+//            }
+//        }
+//
+//        ::draw
+//    }
+
+    val shadowDrawing: ((List<Highlight>, DrawSettings) -> Composition)? by lazy {
+        if (contour == null) return@lazy null
+
+        val toDraw = buildList {
+            for (i in ordering.asReversed()) {
+                add( 0, i)
+                if (morphedContours[first()] == null) break
+            }
+        }
+
+        val edgeContours = buildList {
+            for ((iIndex, i) in toDraw.withIndex()) {
+                val conts = mutableListOf<ShapeContour>()
+                conts.addAll(morphedEdge[i]?.contours ?: emptyList())
+
+                if (!wasMorphed.getOrDefault(i, false)) {
+                    var current = edge
+
+                    var iters = 0
+                    do {
+                        iters++
+                        if (current.original.hIndex == i) {
+                            conts.add(current.contour)
+
+                        }
+                        current = current.next
+                    } while (current != edge && iters < 1000)
+                    if (iters >= 1000) {
+                        error("Problem")
+                    }
+                }
+
+                for (cont in conts) {
+                    var modified = Shape(listOf(cont))
+                    for (jIndex in iIndex + 1 until toDraw.size) {
+                        if (!morphedContours[toDraw[jIndex]]!!.empty)
+                            modified = difference(modified, morphedContours[toDraw[jIndex]]!!.buffer(0.1))
+                    }
+                    addAll(modified.contours)
+                }
+            }
+        }
+
+        fun draw(hs: List<Highlight>, ds: DrawSettings): Composition {
+            return drawComposition {
+//                stroke = ColorRGBa.BLACK
+//                strokeWeight = ds.contourStrokeWeight
+//                fill = null
+//                    shape(shadow)
+                for (ec in edgeContours) {
+                    fill = ColorRGBa.BLACK.opacify(0.05)
+                    stroke = null
+//                    shape(difference(ec.buffer(3.0), contour))
+                    shape(difference(ec.buffer(2.0).clockwise, contour.clockwise))
+                }
             }
         }
 
@@ -265,19 +530,50 @@ data class XFace(val edge: XHalfEdge, val origins: List<Int>, val contour: Shape
     val strokeDrawing: ((List<Highlight>, DrawSettings) -> Composition)? by lazy {
         if (contour == null) return@lazy null
 
-        val edgeContours = buildList {
-            var current = edge
+        val toDraw = buildList {
+            for (i in ordering.asReversed()) {
+                add( 0, i)
+                if (morphedContours[first()] == null) break
+            }
+        }
 
-            do {
-                if (current.original.hIndex == top) add(current.morphedContour ?: current.contour)
-                current = current.next
-            } while(current != edge)
+        val edgeContours = buildList {
+            for ((iIndex, i) in toDraw.withIndex()) {
+                val conts = mutableListOf<ShapeContour>()
+                conts.addAll(morphedEdge[i]?.contours ?: emptyList())
+
+                if (!wasMorphed.getOrDefault(i, false)) {
+                    var current = edge
+                    var iters = 0
+                    do {
+                        iters++
+                        if (current.original.hIndex == i) {
+                            conts.add(current.contour)
+
+                        }
+                        current = current.next
+                    } while (current != edge && iters < 1000)
+                    if (iters >= 1000) {
+                        error("Problem")
+                    }
+                }
+
+                for (cont in conts) {
+                    var modified = Shape(listOf(cont))
+                    for (jIndex in iIndex + 1 until toDraw.size) {
+                        if (!morphedContours[toDraw[jIndex]]!!.empty)
+                            modified = difference(modified, morphedContours[toDraw[jIndex]]!!.buffer(0.1))
+                    }
+                    addAll(modified.contours)
+                }
+            }
         }
 
         fun draw(hs: List<Highlight>, ds: DrawSettings): Composition {
             return drawComposition {
                 stroke = ColorRGBa.BLACK
                 strokeWeight = ds.contourStrokeWeight
+                fill = null
                 for (ec in edgeContours) {
                     contour(ec)
                 }
@@ -363,10 +659,17 @@ data class XGraph(val hs: List<Highlight>, val cds: ComputeDrawingSettings) {
 
                 val cont = c.boundaryPart(i)
                 val (inclCircles, exclCircles) = relevantCircles(i, avoidees.toList(), c)
+
+                if (exclCircles.isEmpty()) continue
+
                 val morphed = morphCurve(cont, inclCircles, exclCircles, cds)
 
+                val restComp = Component(hFacesMap[i] - c.faces)
+                val restCont = if (restComp.faces.isNotEmpty()) restComp.boundaryPart(i) else ShapeContour.EMPTY
+                val full = (morphed + restCont).close()
+
                 for (f in c.faces) {
-                    f.setMorphedEdge(i, morphed)
+                    f.setMorphedEdge(i, morphed, full)
                 }
             }
         }
@@ -375,6 +678,7 @@ data class XGraph(val hs: List<Highlight>, val cds: ComputeDrawingSettings) {
     private fun createEdges() {
         for (i in hs.indices) {
             val h = hs[i]
+            if (hVertsMap[i].isEmpty()) continue
             val tValues = hVertsMap[i].sortedBy { it.second }
             val middleEdges = tValues.zipWithNext { (v1, t1), (v2, t2) ->
                 val e = XEdge(i, v1, v2, h.contour.sub(t1, t2))
@@ -399,10 +703,15 @@ data class XGraph(val hs: List<Highlight>, val cds: ComputeDrawingSettings) {
             var current = heStart
             var faceContour = heStart.contour
 
-            while (current.next != heStart) {
+            var iters = 0
+            while (current.next != heStart && iters < 1000) {
+                iters++
                 current = current.next
                 visited.add(current)
                 faceContour += current.contour
+            }
+            if (iters >= 1000) {
+                error("Problem with computing faces (a face seems to exist of more than 1000 half edges)")
             }
 
             remainingHalfEdges.removeAll(visited)
@@ -433,29 +742,34 @@ data class XGraph(val hs: List<Highlight>, val cds: ComputeDrawingSettings) {
         val remainder = subset.toMutableList()
         val components = mutableListOf<Component>()
 
-        while (remainder.isNotEmpty()) {
+        var iters = 0
+        while (remainder.isNotEmpty() && iters < 1000000 ) {
+            iters++
             val component = mutableListOf<XFace>()
             val first = remainder.first()
             val q = mutableListOf(first)
 
-            while (q.isNotEmpty()) {
+            while (q.isNotEmpty() && iters < 1000000) {
+                iters++
                 val f = q.removeFirst()
                 component.add(f)
                 val startEdge = f.edge
                 var currentEdge = startEdge
 
                 do {
+                    iters++
                     val candidate = currentEdge.twin.face
                     if (candidate !in component && candidate in remainder && candidate !in q) {
                         q.add(candidate)
                     }
                     currentEdge = currentEdge.next
-                } while (currentEdge != startEdge)
+                } while (currentEdge != startEdge && iters < 1000000)
             }
 
             components.add(Component(component))
             remainder.removeAll(component)
         }
+        if (iters >= 1000000) error("Problem")
 
         return components.toList()
     }
@@ -473,8 +787,8 @@ data class XGraph(val hs: List<Highlight>, val cds: ComputeDrawingSettings) {
         val (includedCircles, excludedCircles) = growCircles(leftCircles.map { it.center }, rightCircles.map { it.center },
             r, r * cds.pointClearance)
 
-        return includedCircles.filterNot { it.radius > 0 && intersection(c.contour, it.shape).empty } to
-                excludedCircles.filterNot { it.radius > 0 && intersection(c.contour, it.shape).empty }
+        return includedCircles.filterNot { it.radius == 0.0 || intersection(c.contour, it.shape).empty } to
+                excludedCircles.filterNot { it.radius == 0.0 || intersection(c.contour, it.shape).empty }
     }
 
     fun relevantCircles(i: Int, avoidees: List<Int>, c: Component): Pair<List<Circle>, List<Circle>> {
@@ -485,21 +799,60 @@ data class XGraph(val hs: List<Highlight>, val cds: ComputeDrawingSettings) {
         val (includedCircles, excludedCircles) = growCircles(leftCircles.map { it.center }, rightCircles.map { it.center },
             r, r * cds.pointClearance)
 
-        return includedCircles.filterNot { it.radius > 0 && intersection(c.contour, it.shape).empty } to
-                excludedCircles.filterNot { it.radius > 0 && intersection(c.contour, it.shape).empty }
+        return includedCircles to //.filterNot { it.radius == 0.0 || intersection(c.contour, it.shape).empty } to
+                excludedCircles.filterNot { it.radius == 0.0 || intersection(c.contour, it.shape).empty }
     }
 
     fun computePreference(i: Int, j: Int, c: Component): Relation {
         var ord = Ordering.EQ
 
         val (lics, rjcs) = relevantCircles(i, j, c)
-
         val (ljcs, rics) = relevantCircles(j, i, c)
 
-        if (rics.isEmpty() && rjcs.isNotEmpty()) {
+        // 3. Check if circular or straight part is covered. Prefer straight part being covered
+        val es = c.faces.flatMap {
+            it.edges
+        }
+
+        // TODO: check; use c.boundaryPart(..) here?
+        val iStraight = es.filter {
+            it.original.hIndex == i
+        }.all { it.contour.isStraight() }
+
+        val jStraight = es.filter {
+            it.original.hIndex == j
+        }.all { it.contour.isStraight() }
+
+        // TODO: Check
+        if (iStraight && !jStraight) {
             ord = Ordering.LT
         }
-        if (rjcs.isEmpty() && rics.isNotEmpty()) {
+
+        if (jStraight && !iStraight) {
+            ord = Ordering.GT
+        }
+
+        val ci = c.boundaryPart(i)
+        val (_, brokenI) = breakCurve(ci, lics, rjcs, cds)
+        // TODO: check; should this not be cj?
+        val cj = c.boundaryPart(j)
+        val (_, brokenJ) = breakCurve(cj, ljcs, rics, cds)
+
+        // 2. Check if circular or straight part is indented. Highly prefer straight part being indented.
+        if (brokenI.any { !it.isStraight() } && brokenJ.all { it.isStraight() }) {
+            ord = Ordering.LT
+        }
+
+        if (brokenJ.any { !it.isStraight() } && brokenI.all { it.isStraight() }) {
+            ord = Ordering.GT
+        }
+
+        // 1.
+        if (rics.size < rjcs.size) {
+            ord = Ordering.LT // Prefer i on top
+        }
+
+        if (rjcs.size < rics.size) {
             ord = Ordering.GT
         }
 
@@ -538,6 +891,32 @@ data class XGraph(val hs: List<Highlight>, val cds: ComputeDrawingSettings) {
 
         return hEdges
     }
+
+    fun draw(drawer: CompositionDrawer, ds: DrawSettings) {
+        drawer.apply {
+            for (f in faces) {
+                composition((f.seamDrawing ?: continue)(hs, ds))
+            }
+
+            for (f in faces) {
+                composition((f.fillDrawing ?: continue)(hs, ds))
+            }
+
+//            for (f in faces) {
+//                composition((f.shadowDrawing ?: continue)(hs, ds))
+//            }
+
+            for (f in faces) {
+                composition((f.strokeDrawing ?: continue)(hs, ds))
+            }
+
+            for (i in hs.indices) {
+                if (hVertsMap[i].isEmpty()) {
+                    highlightContour(hs[i], ds)
+                }
+            }
+        }
+    }
 }
 
 data class Component(val faces: List<XFace>) {
@@ -546,8 +925,16 @@ data class Component(val faces: List<XFace>) {
             addAll(f.origins)
     }
 
-    val XHalfEdge.nextBoundaryEdge get() =
-        if (next.twin.face !in faces) next else next.twin.next
+    val XHalfEdge.nextBoundaryEdge: XHalfEdge get() {
+        var current = next
+        var iters = 0
+        while (current.twin.face in faces && iters < 1000) {
+            iters++
+            current = current.twin.next
+        }
+        if (iters >= 1000) error("Problem")
+        return current
+    }
 
     val XHalfEdge.prevBoundaryEdge get() =
         if (prev.twin.face !in faces) prev else prev.twin.prev
@@ -558,10 +945,13 @@ data class Component(val faces: List<XFace>) {
                 val startEdge = f.edge
                 var currentEdge = startEdge
 
+                var iters = 0
                 do {
+                    iters++
                     if (currentEdge.twin.face !in faces) return@run currentEdge
                     currentEdge = currentEdge.next
-                } while (currentEdge != startEdge)
+                } while (currentEdge != startEdge && iters < 1000)
+                if (iters >= 1000) error("Problem")
             }
             error("Could not found a boundary edge of component $this")
         }
@@ -569,11 +959,14 @@ data class Component(val faces: List<XFace>) {
         var currentEdge = boundaryEdge
         var c = boundaryEdge.contour
 
-        while (true) {
+        var iters = 0
+        while (iters < 1000) {
+            iters++
             currentEdge = currentEdge.nextBoundaryEdge
             if (currentEdge == boundaryEdge) break
             c += currentEdge.contour
         }
+        if (iters > 1000) error("Problem")
 
         c.close()
     }
@@ -585,14 +978,17 @@ data class Component(val faces: List<XFace>) {
                 val startEdge = f.edge
                 var currentEdge = startEdge
 
+                var iters = 0
                 do {
+                    iters++
                     if (currentEdge.original.hIndex == i) {
                         candidate = currentEdge
                         if (currentEdge.prevBoundaryEdge.original.hIndex != i)
                             return@run currentEdge
                     }
                     currentEdge = currentEdge.next
-                } while (currentEdge != startEdge)
+                } while (currentEdge != startEdge && iters < 1000)
+                if (iters >= 1000) error("Problem")
             }
             candidate ?: error("Could not found a boundary edge of component $this")
         }
@@ -600,11 +996,14 @@ data class Component(val faces: List<XFace>) {
         var currentEdge = startEdge
         var c = startEdge.contour
 
-        while (true) {
+        var iters = 0
+        while (iters < 1000) {
+            iters++
             currentEdge = currentEdge.nextBoundaryEdge
             if (currentEdge == startEdge || currentEdge.original.hIndex != i) break
             c += currentEdge.contour
         }
+        if (iters >= 1000) error("Problem")
 
         return c
     }
@@ -673,6 +1072,6 @@ data class Hyperedge(val origins: List<Int>, val relations: List<Relation>) {
 // Construct directed graphs for every hyperedge    Done
 // Check for cycles in every graph associated with a hyperedge      Done
 // Violate preferences where necessary to remove cycles (probably pref violations that do not propagate changes to other hyperedges)    TODO
-// Compute curves to avoid circles where needed, cut in pieces and store in each face?      In progress
-// Compute drawing for each face    In progress
+// Compute curves to avoid circles where needed, cut in pieces and store in each face?      Done
+// Compute drawing for each face    Done
 // Flesh out pairwise preferences   TODO

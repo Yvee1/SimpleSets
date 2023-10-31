@@ -22,7 +22,7 @@ data class ComputePartitionSettings(
     var bendDistance: Double = 20.0,
 
     @BooleanParameter("Inflection", order=2000)
-    var bendInflection: Boolean = false,
+    var bendInflection: Boolean = true,
 
     @DoubleParameter("Max bend angle", 0.0, 180.0, order=3000)
     var maxBendAngle: Double = 180.0,
@@ -62,8 +62,13 @@ data class ComputeDrawingSettings(
     var intersectionResolution: IntersectionResolution = IntersectionResolution.Overlap,
 
     @DoubleParameter("Point clearance", 0.0, 1.0, order = 5)
-    var pointClearance: Double = 0.625
+    var pointClearance: Double = 0.625,
+
+    @DoubleParameter("Smoothing", 0.001, 0.3)
+    var smoothing: Double = 0.3
 ) {
+    val smoothingRadius get() = smoothing * expandRadius
+
     fun alignExpandRadius(pointSize: Double) {
         expandRadius = if (intersectionResolution != IntersectionResolution.None) pointSize * 3 else 0.0001
     }
@@ -89,8 +94,16 @@ val red = rgb(0.984, 0.603, 0.6) to rgb(0.89, 0.102, 0.109)
 val green = rgb(0.698, 0.874, 0.541) to rgb(0.2, 0.627, 0.172)
 val orange = rgb(0.992, 0.749, 0.435) to rgb(1.0, 0.498, 0.0)
 val purple = rgb(0.792, 0.698, 0.839) to rgb(0.415, 0.239, 0.603)
+//val yellow = ColorRGBa(255 / 255.0, 255 / 255.0, 153 / 255.0) to rgb(251 / 255.0, 251 / 255.0, 0 / 255.0)
+//val brown = ColorRGBa(200 / 255.0, 130 / 255.0, 34 / 255.0) to rgb(176 / 255.0, 88 / 255.0, 40 / 255.0)
+//val yellow = rgb(251 / 255.0, 251 / 255.0, 0 / 255.0) to ColorRGBa(255 / 255.0, 255 / 255.0, 153 / 255.0)
+//val yellow = rgb(251 / 255.0, 236 / 255.0, 47 / 255.0) to ColorRGBa(255 / 255.0, 255 / 255.0, 153 / 255.0)
+val yellow = rgb(251 / 255.0, 240 / 255.0, 116 / 255.0) to ColorRGBa(255 / 255.0, 255 / 255.0, 153 / 255.0)
+//val brown = ColorRGBa(200 / 255.0, 130 / 255.0, 34 / 255.0) to rgb(176 / 255.0, 88 / 255.0, 40 / 255.0)
+//val brown = ColorRGBa(223 / 255.0, 153 / 255.0, 115 / 255.0) to ColorRGBa(200 / 255.0, 130 / 255.0, 34 / 255.0)
+val brown = ColorRGBa(234 / 255.0, 189 / 255.0, 162 / 255.0) to ColorRGBa(200 / 255.0, 130 / 255.0, 34 / 255.0)
 
-val colorPairs = listOf(blue, red, green, orange, purple)
+val colorPairs = listOf(blue, red, green, orange, purple, yellow, brown)
 val lightColors = colorPairs.map { it.first }
 val darkColors = colorPairs.map { it.second }
 
