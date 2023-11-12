@@ -30,7 +30,7 @@ val ColorSettingsPanel = FC<ColorSettingsPanelProps> { props ->
                 flexWrap = FlexWrap.wrap
             }
 
-            for (i in 1..5) {
+            for (i in 1..7) {
                 div {
                     css {
                         display = Display.flex

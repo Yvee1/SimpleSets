@@ -1,6 +1,6 @@
 package patterns
 
-import ComputePartitionSettings
+import GeneralSettings
 import PartitionInstance
 import geometric.Orientation
 import geometric.orientation
@@ -62,69 +62,69 @@ data class Bank(override val points: List<Point>, override val weight: Int = poi
 //            println("Very strange stuff is happening $points")
 
         } else
-            add(Bend(orientation!!, bendMaxAngle, bendTotalAngle, startIndex, points.lastIndex))
+            add(Bend(orientation, bendMaxAngle, bendTotalAngle, startIndex, points.lastIndex))
     }
 
-    override fun isValid(cps: ComputePartitionSettings): Boolean {
-        val inflectionIsFine = bends.size <= 1 || cps.bendInflection && bends.size <= 2
-        val anglesAreFine = bends.all { it.maxAngle <= cps.maxTurningAngle.asRadians }
-        val totalAngleIsFine = bends.sumOf { it.totalAngle } <= cps.maxBendAngle.asRadians
+    override fun isValid(gs: GeneralSettings): Boolean {
+        val inflectionIsFine = bends.size <= 1 || gs.bendInflection && bends.size <= 2
+        val anglesAreFine = bends.all { it.maxAngle <= gs.maxTurningAngle.asRadians }
+        val totalAngleIsFine = bends.sumOf { it.totalAngle } <= gs.maxBendAngle.asRadians
 
         return inflectionIsFine && anglesAreFine && totalAngleIsFine
     }
 
-    fun extensionStart(p: Point, cps: ComputePartitionSettings): Pair<Double, Bank>? {
+    fun extensionStart(p: Point, gs: GeneralSettings): Pair<Double, Bank>? {
         val angle = angleBetween(start.pos - points[1].pos, p.pos - start.pos)
-        if (angle > cps.maxTurningAngle.asRadians) return null
-        if (angle + bends[0].totalAngle > cps.maxBendAngle.asRadians) return null
+        if (angle > gs.maxTurningAngle.asRadians) return null
+        if (angle + bends[0].totalAngle > gs.maxBendAngle.asRadians) return null
         val orient = orientation(p.pos, start.pos, points[1].pos)
-        if (orient != bends.first().orientation && (bends.size >= 2 || !cps.bendInflection)) return null
+        if (orient != bends.first().orientation && (bends.size >= 2 || !gs.bendInflection)) return null
         return start.pos.distanceTo(p.pos) / 2 to Bank(listOf(p) + points)
     }
 
-    fun extensionEnd(p: Point, cps: ComputePartitionSettings): Pair<Double, Bank>? {
+    fun extensionEnd(p: Point, gs: GeneralSettings): Pair<Double, Bank>? {
         val angle = angleBetween(end.pos - points[points.lastIndex - 1].pos, p.pos - end.pos)
-        if (angle > cps.maxTurningAngle.asRadians) return null
-        if (angle + bends.last().totalAngle > cps.maxBendAngle.asRadians) return null
+        if (angle > gs.maxTurningAngle.asRadians) return null
+        if (angle + bends.last().totalAngle > gs.maxBendAngle.asRadians) return null
         val orient = orientation(points[points.lastIndex - 1].pos, points.last().pos, p.pos)
-        if (orient != bends.last().orientation && (bends.size >= 2 || !cps.bendInflection)) return null
+        if (orient != bends.last().orientation && (bends.size >= 2 || !gs.bendInflection)) return null
         return end.pos.distanceTo(p.pos) / 2 to Bank(points + listOf(p))
     }
 
-    fun extensionStart(other: Bank, cps: ComputePartitionSettings): Pair<Double, Bank>? {
+    fun extensionStart(other: Bank, gs: GeneralSettings): Pair<Double, Bank>? {
         val newBank1 = Bank(other.points + this.points)
         val newBank2 = Bank(other.points.reversed() + this.points)
-        val newBank = listOf(newBank1, newBank2).filter { it.isValid(cps) }.minByOrNull { it.coverRadius }
+        val newBank = listOf(newBank1, newBank2).filter { it.isValid(gs) }.minByOrNull { it.coverRadius }
 
         return if (newBank != null) {
             newBank.coverRadius to newBank
         } else null
     }
 
-    fun extensionEnd(other: Bank, cps: ComputePartitionSettings): Pair<Double, Bank>? {
+    fun extensionEnd(other: Bank, gs: GeneralSettings): Pair<Double, Bank>? {
         val newBank1 = Bank(this.points + other.points)
         val newBank2 = Bank(this.points + other.points.reversed())
-        val newBank = listOf(newBank1, newBank2).filter { it.isValid(cps) }.minByOrNull { it.coverRadius }
+        val newBank = listOf(newBank1, newBank2).filter { it.isValid(gs) }.minByOrNull { it.coverRadius }
 
         return if (newBank != null) {
             newBank.coverRadius to newBank
         } else null
     }
 
-    fun extension(p: Point, cps: ComputePartitionSettings): Pair<Double, Bank>? {
-        return listOfNotNull(extensionStart(p, cps), extensionEnd(p, cps))
-            .filter { it.second.isValid(cps) }
+    fun extension(p: Point, gs: GeneralSettings): Pair<Double, Bank>? {
+        return listOfNotNull(extensionStart(p, gs), extensionEnd(p, gs))
+            .filter { it.second.isValid(gs) }
             .minByOrNull { it.first }
     }
 
-    fun extension(other: Bank, cps: ComputePartitionSettings): Pair<Double, Bank>? {
-        return listOfNotNull(extensionStart(other, cps), extensionEnd(other, cps))
-            .filter { it.second.isValid(cps) }
+    fun extension(other: Bank, gs: GeneralSettings): Pair<Double, Bank>? {
+        return listOfNotNull(extensionStart(other, gs), extensionEnd(other, gs))
+            .filter { it.second.isValid(gs) }
             .minByOrNull { it.first }
     }
 
-    fun extension(other: Matching, cps: ComputePartitionSettings): Pair<Double, Bank>? {
-        return extension(other.toBank(), cps)
+    fun extension(other: Matching, gs: GeneralSettings): Pair<Double, Bank>? {
+        return extension(other.toBank(), gs)
     }
 
     override fun original() = copy(points=boundaryPoints.map { it.originalPoint ?: it })

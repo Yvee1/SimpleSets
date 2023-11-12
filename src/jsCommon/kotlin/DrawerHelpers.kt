@@ -1,7 +1,6 @@
 import highlights.Highlight
 import org.openrndr.color.ColorRGBa
 import org.openrndr.draw.Drawer
-import org.openrndr.shape.CompositionDrawer
 import patterns.Pattern
 import patterns.Point
 import patterns.SinglePoint

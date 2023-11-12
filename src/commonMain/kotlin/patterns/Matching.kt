@@ -1,6 +1,6 @@
 package patterns
 
-import ComputePartitionSettings
+import GeneralSettings
 import org.openrndr.math.Vector2
 import org.openrndr.math.asRadians
 import org.openrndr.shape.LineSegment
@@ -21,12 +21,12 @@ data class Matching(val point1: Point, val point2: Point) : Pattern() {
     override fun original() = Matching(point1.originalPoint ?: point1, point2.originalPoint ?: point2)
     override fun isEmpty() = false
     override operator fun contains(v: Vector2) = v in contour
-    override fun isValid(cps: ComputePartitionSettings) = point1.pos.distanceTo(point2.pos) <= max(cps.bendDistance, cps.coverRadius * 2)
+    override fun isValid(gs: GeneralSettings) = true
 
-    fun extensionStart(p: Point, cps: ComputePartitionSettings): Pair<Double, Bank>? {
+    fun extensionStart(p: Point, gs: GeneralSettings): Pair<Double, Bank>? {
         val angle = angleBetween(point1.pos - point2.pos, p.pos - point1.pos)
-        if (angle > cps.maxTurningAngle.asRadians) return null
-        if (angle > cps.maxBendAngle.asRadians) return null
+        if (angle > gs.maxTurningAngle.asRadians) return null
+        if (angle > gs.maxBendAngle.asRadians) return null
 //        println("Strange things incoming!!")
 //        println("Any moment now")
 //        val ptList = listOf(p, point1, point2)
@@ -38,15 +38,15 @@ data class Matching(val point1: Point, val point2: Point) : Pattern() {
 
     }
 
-    fun extensionEnd(p: Point, cps: ComputePartitionSettings): Pair<Double, Bank>? {
+    fun extensionEnd(p: Point, gs: GeneralSettings): Pair<Double, Bank>? {
         val angle = angleBetween(point2.pos - point1.pos, p.pos - point2.pos)
-        if (angle > cps.maxTurningAngle.asRadians) return null
-        if (angle > cps.maxBendAngle.asRadians) return null
+        if (angle > gs.maxTurningAngle.asRadians) return null
+        if (angle > gs.maxBendAngle.asRadians) return null
         return point2.pos.distanceTo(p.pos) / 2 to Bank(listOf(point1, point2, p))
     }
 
-    fun extension(p: Point, cps: ComputePartitionSettings): Pair<Double, Bank>? {
-        return listOfNotNull(extensionStart(p, cps), extensionEnd(p, cps)).minByOrNull { it.first }
+    fun extension(p: Point, gs: GeneralSettings): Pair<Double, Bank>? {
+        return listOfNotNull(extensionStart(p, gs), extensionEnd(p, gs)).minByOrNull { it.first }
     }
 
     fun toBank(): Bank {

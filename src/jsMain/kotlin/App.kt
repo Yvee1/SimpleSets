@@ -84,17 +84,14 @@ val App = FC<Props> {
             set(v) = clusterRadiusSetter(v)
     }
 
-    val computePartitionSettings = ComputePartitionSettings(
-        bendDistance = bendDistance,
+    val generalSettings = GeneralSettings(
         bendInflection = bendInflection,
         maxBendAngle = maxBendAngle,
         maxTurningAngle = maxTurningAngle,
-        coverRadius = clusterRadius,
-        partitionClearance = 0.0, // TODO: Add UI setting for this?
+        pSize = pointSize
     )
 
     val computeDrawingSettings = ComputeDrawingSettings(
-        expandRadius = 3 * pointSize,
         intersectionResolution = IntersectionResolution.Overlap // TODO: Add UI setting for this?
     )
 
@@ -102,12 +99,16 @@ val App = FC<Props> {
 
     )
 
+    val topoGrowSettings = TopoGrowSettings()
+
     val blue = ColorRGB(0.651, 0.807, 0.89)// to ColorRGB(0.121, 0.47, 0.705)
     val red = ColorRGB(0.984, 0.603, 0.6)// to ColorRGB(0.89, 0.102, 0.109)
     val green = ColorRGB(0.698, 0.874, 0.541)// to ColorRGB(0.2, 0.627, 0.172)
     val orange = ColorRGB(0.992, 0.749, 0.435)// to ColorRGB(1.0, 0.498, 0.0)
     val purple = ColorRGB(0.792, 0.698, 0.839)// to ColorRGB(0.415, 0.239, 0.603)
-    val defaultColors = listOf(blue, red, green, orange, purple)
+    val yellow = ColorRGB(251 / 255.0, 240 / 255.0, 116 / 255.0)
+    val brown = ColorRGB(234 / 255.0, 189 / 255.0, 162 / 255.0)
+    val defaultColors = listOf(blue, red, green, orange, purple, yellow, brown)
 
     val (colors, colorsSetter) = useState(defaultColors)
     val colorsObj = object: Colors {
@@ -119,7 +120,7 @@ val App = FC<Props> {
 
     }
     val colorSettings = ColorSettings(colors)
-    val drawSettings = DrawSettings(pSize = pointSize, colorSettings = colorSettings)
+    val drawSettings = DrawSettings(colorSettings = colorSettings)
 
     var viewMatrix: Matrix44 by useState(Matrix44.IDENTITY)
     val svgContainerRef: MutableRefObject<HTMLDivElement> = useRef(null)
@@ -137,15 +138,15 @@ val App = FC<Props> {
     var computing: Boolean by useState(false)
 
     var lastPoints: List<Point> by useState(emptyList())
-    var lastComputePartitionSettings: ComputePartitionSettings by useState(computePartitionSettings)
+    var lastGeneralSettings: GeneralSettings by useState(generalSettings)
     var lastComputeDrawingSettings: ComputeDrawingSettings by useState(computeDrawingSettings)
     var lastComputeBridgesSettings: ComputeBridgesSettings by useState(computeBridgesSettings)
     var lastSentPoints: List<Point> by useState(emptyList())
-    var lastSentPartitionSettings: ComputePartitionSettings by useState(computePartitionSettings)
+    var lastSentGeneralSettings: GeneralSettings by useState(generalSettings)
     var lastSentDrawingSettings: ComputeDrawingSettings by useState(computeDrawingSettings)
     var lastSentBridgesSettings: ComputeBridgesSettings by useState(computeBridgesSettings)
     val changedProblem = points != lastPoints
-            || computePartitionSettings != lastComputePartitionSettings
+            || generalSettings != lastGeneralSettings
             || computeDrawingSettings != lastComputeDrawingSettings
             || computeBridgesSettings != lastComputeBridgesSettings
 
@@ -171,7 +172,7 @@ val App = FC<Props> {
         svg = completedWork.svg
         computing = false
         lastPoints = lastSentPoints
-        lastComputePartitionSettings = lastSentPartitionSettings
+        lastGeneralSettings = lastSentGeneralSettings
         lastComputeDrawingSettings = lastSentDrawingSettings
         lastComputeBridgesSettings = lastSentBridgesSettings
         Unit
@@ -213,9 +214,9 @@ val App = FC<Props> {
                     value = bendSettings
                     BendSettingsPanel {
                         ptSize = pointSize
-                        ptStrokeWeight = drawSettings.pointStrokeWeight
-                        lineStrokeWeight = drawSettings.contourStrokeWeight
-                        expandRadius = computeDrawingSettings.expandRadius
+                        ptStrokeWeight = drawSettings.pointStrokeWeight(generalSettings)
+                        lineStrokeWeight = drawSettings.contourStrokeWeight(generalSettings)
+                        expandRadius = generalSettings.expandRadius
                         color = colors[currentType].toHex()
                     }
                 }
@@ -228,7 +229,7 @@ val App = FC<Props> {
                 PointSettingsContext.Provider {
                     value = pointSettings
                     PointSettingsPanel {
-                        strokeWeight = drawSettings.pointStrokeWeight
+                        strokeWeight = drawSettings.pointStrokeWeight(generalSettings)
                         fillColor = colorSettings.lightColors[currentType].toSvgString()
                     }
                 }
@@ -274,7 +275,7 @@ val App = FC<Props> {
 
                 tabIndex = 0
                 onKeyDown = {
-                    if (it.key in (1..5).map { it.toString() }) {
+                    if (it.key in (1..7).map { it.toString() }) {
                         currentType = it.key.toInt() - 1
                     }
                 }
@@ -344,12 +345,14 @@ val App = FC<Props> {
                                 title = "Run computations"
                                 onClick = {
                                     if (changedProblem) {
-                                        val assignment: Assignment = Compute(points, computePartitionSettings,
-                                            computeDrawingSettings, computeBridgesSettings, drawSettings)
+                                        val assignment: Assignment = Compute(
+                                            points, generalSettings, topoGrowSettings,
+                                            computeDrawingSettings, drawSettings
+                                        )
                                         worker.postMessage(Json.encodeToString(assignment))
                                         computing = true
                                         lastSentPoints = points
-                                        lastSentPartitionSettings = computePartitionSettings
+                                        lastSentGeneralSettings = generalSettings
                                         lastSentDrawingSettings = computeDrawingSettings
                                         lastSentBridgesSettings = computeBridgesSettings
                                     }
@@ -361,7 +364,7 @@ val App = FC<Props> {
 
                         +whiteSpace
 
-                        for (i in 1..5) {
+                        for (i in 1..7) {
                             IconButton {
                                 buttonProps = jso {
                                     title = "Add points of color $i with mouse"
@@ -540,7 +543,7 @@ val App = FC<Props> {
                                     r = pointSize
                                     fill = colorSettings.lightColors[p.type].toSvgString()
                                     stroke = "black"
-                                    strokeWidth = drawSettings.pointStrokeWeight
+                                    strokeWidth = drawSettings.pointStrokeWeight(generalSettings)
                                 }
                             }
                         }

@@ -1,6 +1,6 @@
 package patterns
 
-import ComputePartitionSettings
+import GeneralSettings
 import geometric.convexHull
 import org.openrndr.extra.triangulation.delaunayTriangulation
 import org.openrndr.math.Vector2
@@ -27,8 +27,8 @@ data class Island(override val points: List<Point>, override val weight: Int = p
         get() = (boundaryPoints + boundaryPoints.first()).zipWithNext { a, b -> LineSegment(a.pos, b.pos) }
     override operator fun contains(v: Vector2) = v in contour
     override val coverRadius by lazy { coverRadius(vecs) }
-    override fun isValid(cps: ComputePartitionSettings): Boolean {
-        return coverRadius <= cps.coverRadius
+    override fun isValid(gs: GeneralSettings): Boolean {
+        return true
     }
 
     companion object {

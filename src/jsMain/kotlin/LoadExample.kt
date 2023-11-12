@@ -12,6 +12,10 @@ fun getExampleInput(e: ExampleInput): List<Point> {
         ExampleInput.SmallExample -> require("example-input/small-example.ipe")
         ExampleInput.FiveColors -> require("example-input/5-colors.ipe")
         ExampleInput.OverlapExample -> require("example-input/overlap-example.ipe")
+        ExampleInput.OverlapExample2 -> require("example-input/overlap-example-2.ipe")
+        ExampleInput.HexaSwirl -> require("example-input/hexa-swirl.ipe")
+        ExampleInput.Bonn -> require("example-input/bonn.ipe")
+        ExampleInput.BadGodesberg -> require("example-input/BadGodesberg.ipe")
     }
     return ipeToPoints(ipe)
 }

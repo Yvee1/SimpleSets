@@ -1,134 +1,38 @@
 import geometric.distanceTo
 import geometric.overlaps
 import highlights.toHighlight
-import org.openrndr.KEY_SPACEBAR
-import org.openrndr.application
-import org.openrndr.color.ColorRGBa
-import org.openrndr.extra.gui.GUI
-import org.openrndr.extra.parameters.BooleanParameter
-import org.openrndr.extra.parameters.DoubleParameter
-import org.openrndr.math.Matrix44
-import org.openrndr.math.Vector2
 import org.openrndr.shape.Circle
+import org.openrndr.shape.contains
 import org.openrndr.shape.intersection
 import org.openrndr.shape.union
 import patterns.*
-import java.util.PriorityQueue
 import kotlin.math.PI
 import kotlin.math.ceil
 import kotlin.math.max
 import kotlin.math.sqrt
 
-fun main() = application {
-    configure {
-        width = 800
-        height = 800
-    }
-
-    program {
-        val ds = DrawSettings(pSize = 2.5)
-        val cds = ComputeDrawingSettings(expandRadius = ds.pSize * 3)
-        val cps = ComputePartitionSettings(partitionClearance = cds.expandRadius)
-        val tgs = TopoGrowSettings()
-
-        val points = getExampleInput(ExampleInput.NYC).map {
-            it.copy(pos = it.pos.copy(y = height - it.pos.y - 250.0))
-        }
-
-        var history = topoGrow(points, cps, tgs)
-
-        println(angleBetween(Vector2(1.0, 0.0), Vector2(-1.0, 0.01)))
-
-        extend(Camera2D()) {
-            view = Matrix44(
-                2.0576200100601754, 0.0, 0.0, 122.08451003137796,
-                0.0, 2.0576200100601754, 0.0, -85.79571180636515,
-                0.0, 0.0, 2.0576200100601754, 0.0,
-                0.0, 0.0, 0.0, 1.0
-            )
-        }
-
-        val gui = GUI()
-        val set = object {
-            @DoubleParameter("Filtration", 0.0, 1.0)
-            var filtration: Double = 1.0
-        }
-        gui.add(set)
-        gui.add(tgs)
-
-        keyboard.keyDown.listen { keyEvent ->
-            if (keyEvent.key == KEY_SPACEBAR) {
-                history = topoGrow(points, cps, tgs)
-            }
-        }
-
-        extend(gui)
-        extend {
-            drawer.apply {
-                clear(ColorRGBa.WHITE)
-                for (p in history[ceil(set.filtration * history.lastIndex).toInt()].second.patterns) {
-                    pattern(p, ds)
-                }
-            }
-        }
-    }
-}
-
 data class PossibleMergeEvent(val time: Double, val p1: Pattern, val p2: Pattern, val mergeResult: Pattern)
 
-data class TopoGrowSettings(
-    @BooleanParameter("Banks")
-    var banks: Boolean = true,
-
-    @BooleanParameter("Islands")
-    var islands: Boolean = true,
-
-    @BooleanParameter("Postpone cover radius increase")
-    var postponeCoverRadiusIncrease: Boolean = true,
-
-    @BooleanParameter("Postpone intersections")
-    var postponeIntersections: Boolean = true,
-
-    @DoubleParameter("Forbid too close", 0.0, 1.0)
-    var forbidTooClose: Double = 0.1
-)
-
 fun intersectionDelay(points: List<Point>, p: Pattern, q: Pattern, newPattern: Pattern,
-                      cps: ComputePartitionSettings, tgs: TopoGrowSettings): Double {
+                      gs: GeneralSettings, tgs: TopoGrowSettings
+): Double {
     if (!tgs.postponeIntersections) return 0.0
     var intersectionArea = 0.0
     for (pt in points) {
-        if (pt !in newPattern.points && newPattern.contour.distanceTo(pt.pos) < cps.partitionClearance * 2) {
-            val ptShape = Circle(pt.pos, cps.partitionClearance).shape
-            val npShape = newPattern.toHighlight(cps.partitionClearance).contour.shape
+        if (pt !in newPattern.points && newPattern.contour.distanceTo(pt.pos) < gs.expandRadius * 2) {
+            val ptShape = Circle(pt.pos, gs.expandRadius).shape
+            val npShape = newPattern.toHighlight(gs.expandRadius).contour.shape
             val newTotalArea = npShape.intersection(ptShape).area
-            val pShape = p.toHighlight(cps.partitionClearance).contour.shape
-            val qShape = q.toHighlight(cps.partitionClearance).contour.shape
+            val pShape = p.toHighlight(gs.expandRadius).contour.shape
+            val qShape = q.toHighlight(gs.expandRadius).contour.shape
             val oldArea = pShape.union(qShape).intersection(ptShape).area
             intersectionArea += newTotalArea - oldArea
         }
     }
     return sqrt(max(intersectionArea / PI, 0.0))
-
-//    if (!tgs.postponeIntersections) return 0.0
-//    var intersectionArea = 0.0
-//    for (pt in partition.points) {
-//        if (pt.type != newPattern.type && pt !in newPattern.points && newPattern.contour.distanceTo(pt.pos) < cps.partitionClearance * 2) {
-//            val ptShape = Circle(pt.pos, cps.partitionClearance).shape
-//            val npShape = newPattern.toHighlight(cps.partitionClearance).contour.shape
-//            val newTotalArea = npShape.intersection(ptShape).area
-//            val pShape = Circle(p.point.pos, cps.partitionClearance).shape
-//            val qShape = Circle(q.point.pos, cps.partitionClearance).shape
-//            val oldAreaP = pShape.intersection(ptShape).area
-//            val oldAreaQ = qShape.intersection(ptShape).area
-//            println(newTotalArea)
-//            intersectionArea += newTotalArea - oldAreaP - oldAreaQ
-//        }
-//    }
-//    return sqrt(max(intersectionArea, 0.0)) / 2
 }
 
-fun topoGrow(points: List<Point>, cps: ComputePartitionSettings, tgs: TopoGrowSettings): List<Pair<Double, Partition>> {
+fun topoGrow(points: List<Point>, gs: GeneralSettings, tgs: TopoGrowSettings): List<Pair<Double, Partition>> {
     // 1. Add SinglePoint -- SinglePoint merges
     // 2. Repeat the following
     // 3. Pick next event
@@ -165,7 +69,7 @@ fun topoGrow(points: List<Point>, cps: ComputePartitionSettings, tgs: TopoGrowSe
 
             val tooClose: Boolean = run {
                 for (pt in partition.points) {
-                    if (pt !in newPattern.points && newPattern.contour.distanceTo(pt.pos) < tgs.forbidTooClose * cps.partitionClearance) {
+                    if (pt !in newPattern.points && newPattern.contour.distanceTo(pt.pos) < tgs.forbidTooClose * gs.expandRadius) {
                         return@run true
                     }
                 }
@@ -174,7 +78,7 @@ fun topoGrow(points: List<Point>, cps: ComputePartitionSettings, tgs: TopoGrowSe
 
             if (tooClose) continue
 
-            val t = newPattern.coverRadius + intersectionDelay(partition.points, p, q, newPattern, cps, tgs)
+            val t = newPattern.coverRadius + intersectionDelay(partition.points, p, q, newPattern, gs, tgs)
             val ev = PossibleMergeEvent(t, p, q, newPattern)
             events.add(ev)
         }
@@ -192,14 +96,14 @@ fun topoGrow(points: List<Point>, cps: ComputePartitionSettings, tgs: TopoGrowSe
         val newPattern = ev.mergeResult
 
         val intersects = partition.patterns.any {
-            it != ev.p1 && it != ev.p2 && it !is SinglePoint && it.contour.overlaps(newPattern.contour)
+            it != ev.p1 && it != ev.p2 && (it is SinglePoint && it.point.pos in newPattern.contour || it !is SinglePoint && it.contour.overlaps(newPattern.contour))
         }
 
         if (intersects) continue
 
         val tooClose: Boolean = run {
             for (pt in partition.points) {
-                if (pt !in newPattern.points && newPattern.contour.distanceTo(pt.pos) < tgs.forbidTooClose * cps.partitionClearance) {
+                if (pt !in newPattern.points && newPattern.contour.distanceTo(pt.pos) < tgs.forbidTooClose * gs.expandRadius) {
                     return@run true
                 }
             }
@@ -222,19 +126,26 @@ fun topoGrow(points: List<Point>, cps: ComputePartitionSettings, tgs: TopoGrowSe
                 val delay = if (!tgs.postponeCoverRadiusIncrease) 0.0
                     else coverRadius - max(p.coverRadius, newPattern.coverRadius)
                 val freshPattern = Island(pts)
-                val t = coverRadius + delay + intersectionDelay(partition.points, p, newPattern, freshPattern, cps, tgs)
+                val t = coverRadius + delay + intersectionDelay(partition.points, p, newPattern, freshPattern, gs, tgs)
 
                 events.add(PossibleMergeEvent(t, newPattern, p, freshPattern))
             }
 
             if (tgs.banks && newPattern is Matching && p is SinglePoint) {
-                val result = newPattern.extension(p.point, cps)
+                val result = newPattern.extension(p.point, gs)
 
                 if (result != null) {
                     val delay = if (!tgs.postponeCoverRadiusIncrease) 0.0
                         else result.second.coverRadius -
                             newPattern.coverRadius
-                    val t = result.first + delay + intersectionDelay(partition.points, p, newPattern, result.second, cps, tgs)
+                    val t = result.first + delay + intersectionDelay(
+                        partition.points,
+                        p,
+                        newPattern,
+                        result.second,
+                        gs,
+                        tgs
+                    )
                     events.add(PossibleMergeEvent(t, newPattern, p, result.second))
                 }
             }
@@ -267,34 +178,41 @@ fun topoGrow(points: List<Point>, cps: ComputePartitionSettings, tgs: TopoGrowSe
                 val b2 = Bank(newPattern.points.reversed() + p.points)
                 val b3 = Bank(p.points + newPattern.points)
                 val b4 = Bank(p.points + newPattern.points.reversed())
-                val b = listOf(b1, b2, b3, b4).filter { it.isValid(cps) }.minByOrNull { it.coverRadius }
+                val b = listOf(b1, b2, b3, b4).filter { it.isValid(gs) }.minByOrNull { it.coverRadius }
 
                 if (b != null) {
                     val delay = if (!tgs.postponeCoverRadiusIncrease) 0.0
                     else b.coverRadius -
                             max(newPattern.coverRadius, p.coverRadius)
-                    val t = b.coverRadius + delay + intersectionDelay(partition.points, p, newPattern, b, cps, tgs)
+                    val t = b.coverRadius + delay + intersectionDelay(partition.points, p, newPattern, b, gs, tgs)
                     events.add(PossibleMergeEvent(t, newPattern, p, b))
                 }
             }
 
             if (tgs.banks && newPattern is Matching && p is Bank) {
-                val result = p.extension(newPattern, cps)
+                val result = p.extension(newPattern, gs)
 
                 if (result != null) {
                     val delay = if (!tgs.postponeCoverRadiusIncrease) 0.0
                     else result.second.coverRadius -
                             max(newPattern.coverRadius, p.coverRadius)
-                    val t = result.first + delay + intersectionDelay(partition.points, p, newPattern, result.second, cps, tgs)
+                    val t = result.first + delay + intersectionDelay(
+                        partition.points,
+                        p,
+                        newPattern,
+                        result.second,
+                        gs,
+                        tgs
+                    )
                     events.add(PossibleMergeEvent(t, newPattern, p, result.second))
                 }
             }
 
             if (tgs.banks && newPattern is Bank && p !is Island) {
                 val result = when(p) {
-                    is Bank -> newPattern.extension(p, cps)
-                    is Matching -> newPattern.extension(p, cps)
-                    is SinglePoint -> newPattern.extension(p.point, cps)
+                    is Bank -> newPattern.extension(p, gs)
+                    is Matching -> newPattern.extension(p, gs)
+                    is SinglePoint -> newPattern.extension(p.point, gs)
                     is Island -> error("Impossible")
                 }
 
@@ -302,7 +220,14 @@ fun topoGrow(points: List<Point>, cps: ComputePartitionSettings, tgs: TopoGrowSe
                     val delay = if (!tgs.postponeCoverRadiusIncrease) 0.0
                     else result.second.coverRadius -
                             max(newPattern.coverRadius, p.coverRadius)
-                    val t = result.first + delay + intersectionDelay(partition.points, p, newPattern, result.second, cps, tgs)
+                    val t = result.first + delay + intersectionDelay(
+                        partition.points,
+                        p,
+                        newPattern,
+                        result.second,
+                        gs,
+                        tgs
+                    )
                     events.add(PossibleMergeEvent(t, newPattern, p, result.second))
                 }
             }

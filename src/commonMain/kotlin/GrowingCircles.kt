@@ -1,46 +1,6 @@
-import org.openrndr.application
-import org.openrndr.color.ColorRGBa
-import org.openrndr.extra.noise.uniform
-import org.openrndr.extra.triangulation.voronoiDiagram
 import org.openrndr.math.Vector2
 import org.openrndr.shape.Circle
 import kotlin.math.min
-
-fun main() = application {
-    configure {
-        width = 800
-        height = 800
-    }
-
-    program {
-        val pts = MutableList(200) {
-            drawer.bounds.uniform(distanceToEdge = 100.0)
-        }
-
-        mouse.buttonDown.listen { e ->
-            val removing = pts.minBy { p ->
-                p.squaredDistanceTo(e.position)
-            }
-            pts.remove(removing)
-        }
-
-        extend {
-            val maxRadius = 10.0
-            val circles = growCircles(pts, maxRadius)
-            val vd = pts.voronoiDiagram(drawer.bounds)
-
-            drawer.apply {
-                clear(ColorRGBa.WHITE)
-                stroke = ColorRGBa.BLACK
-                fill = ColorRGBa.GRAY.opacify(0.5)
-                for ((p, r) in circles) {
-                    circle(p, r)
-                }
-                contours(vd.cellPolygons())
-            }
-        }
-    }
-}
 
 fun growCircles(pts: List<Vector2>, maxRadius: Double): List<Circle> {
     val growingCircles = pts.map { p ->
@@ -145,11 +105,6 @@ fun growCircles(pts1: List<Vector2>, pts2: List<Vector2>, maxRadius1: Double, ma
                     c1.frozen = true
                 }
             }
-
-//            minPair.toList().filter { !it.frozen }.forEach { c ->
-//                c.r = minD
-//                c.frozen = true
-//            }
         }
     } else {
         growingCircles.forEach {

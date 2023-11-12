@@ -7,25 +7,30 @@ import org.w3c.dom.MessageEvent
 external val self: DedicatedWorkerGlobalScope
 
 fun main() {
-    var lastSolution: Solution? = null
+    var lastFiltration: List<Pair<Double, Partition>>? = null
     var lastComputeAssignment: Compute? = null
 
     self.onmessage = { m: MessageEvent ->
         val assignment: Assignment = Json.decodeFromString(m.data as String)
         val svg = when (assignment) {
             is Compute -> {
-                val solution = Solution.compute(assignment.points, assignment.computePartitionSettings,
-                    assignment.computeDrawingSettings, assignment.computeBridgesSettings)
-                lastSolution = solution
+                val filtration = topoGrow(assignment.points, assignment.gs, assignment.tgs)
+                lastFiltration = filtration
                 lastComputeAssignment = assignment
-                createSvg(assignment.points, assignment.computePartitionSettings, assignment.drawSettings, solution)
+                createSvg(
+                    assignment.gs, assignment.cds, assignment.ds, filtration,
+                    3.0 * assignment.gs.expandRadius
+                ) // TODO
             }
 
             is DrawSvg -> {
-                if (lastSolution == null || lastComputeAssignment == null) {
+                if (lastFiltration == null || lastComputeAssignment == null) {
                     ""
                 } else {
-                    createSvg(lastComputeAssignment!!.points, lastComputeAssignment!!.computePartitionSettings, assignment.drawSettings, lastSolution!!)
+                    createSvg(
+                        lastComputeAssignment!!.gs, lastComputeAssignment!!.cds, assignment.drawSettings,
+                        lastFiltration!!, 3.0 * lastComputeAssignment!!.gs.expandRadius
+                    )
                 }
             }
         }

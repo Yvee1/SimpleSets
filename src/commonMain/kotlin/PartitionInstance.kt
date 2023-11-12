@@ -23,13 +23,13 @@ class PartitionInstance(val originalPoints: List<Point>,
     val stripeData = StripeData(points)
     val capsuleData = CapsuleData(points, partitionClearance)
 
-    constructor(originalPoints: List<Point>, set: ComputePartitionSettings) :
-            this(originalPoints,
-                set.coverRadius,
-                set.bendDistance,
-                set.bendInflection,
-                set.maxBendAngle,
-                set.maxTurningAngle,
-                set.partitionClearance
-            )
+//    constructor(originalPoints: List<Point>, set: ComputePartitionSettings) :
+//            this(originalPoints,
+//                set.coverRadius,
+//                set.bendDistance,
+//                set.bendInflection,
+//                set.maxBendAngle,
+//                set.maxTurningAngle,
+//                set.partitionClearance
+//            )
 }

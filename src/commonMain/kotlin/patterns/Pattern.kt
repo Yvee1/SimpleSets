@@ -1,6 +1,6 @@
 package patterns
 
-import ComputePartitionSettings
+import GeneralSettings
 import Partition
 import geometric.Orientation
 import PartitionInstance
@@ -20,7 +20,7 @@ sealed class Pattern {
     abstract fun original(): Pattern
     abstract fun isEmpty(): Boolean
     abstract operator fun contains(v: Vector2): Boolean
-    abstract fun isValid(cps: ComputePartitionSettings): Boolean
+    abstract fun isValid(gs: GeneralSettings): Boolean
 }
 
 fun PartitionInstance.computePattern(uncovered: List<Point>, obstacles: List<Pattern>): Pattern {
