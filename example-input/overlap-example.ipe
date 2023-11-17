@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <!DOCTYPE ipe SYSTEM "ipe.dtd">
-<ipe version="70218" creator="Ipe 7.2.28">
-<info created="D:20230621190934" modified="D:20231117160215"/>
+<ipe version="70218" creator="Ipe 7.2.27">
+<info created="D:20230621190934" modified="D:20231117165256"/>
 <ipestyle name="bettinacolors">
 <color name="Bettina blue" value="0 0.4 0.796"/>
 <color name="Bettina green" value="0.282 0.557 0"/>
@@ -427,7 +427,7 @@ h
 <layer name="alpha"/>
 <layer name="beta"/>
 <view layers="alpha beta" active="beta"/>
-<use layer="beta" matrix="0.976503 0.192551 -0.192551 0.976503 -20.0822 -4.64543" name="mark/fdisk(sfx)" pos="217.6 300.4" size="9" stroke="black" fill="CB light green"/>
+<use layer="beta" matrix="0.976503 0.192551 -0.192551 0.976503 -21.2896 4.49642" name="mark/fdisk(sfx)" pos="217.6 300.4" size="9" stroke="black" fill="CB light green"/>
 <use matrix="0.976503 0.192551 -0.192551 0.976503 -20.0822 -4.64543" name="mark/fdisk(sfx)" pos="259.6 310.399" size="9" stroke="black" fill="CB light orange"/>
 <use matrix="0.976503 0.192551 -0.192551 0.976503 -20.7776 -5.76816" name="mark/fdisk(sfx)" pos="320 299.601" size="9" stroke="black" fill="CB light orange"/>
 <use matrix="0.976503 0.192551 -0.192551 0.976503 -22.684 3.20397" name="mark/fdisk(sfx)" pos="298.8 338.801" size="9" stroke="black" fill="CB light orange"/>
