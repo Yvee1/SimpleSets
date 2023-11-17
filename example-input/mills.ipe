@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <!DOCTYPE ipe SYSTEM "ipe.dtd">
 <ipe version="70218" creator="Ipe 7.2.28">
-<info created="D:20231103113625" modified="D:20231103141232"/>
+<info created="D:20231103113625" modified="D:20231116161323"/>
 <ipestyle name="bettinacolors">
 <color name="Bettina blue" value="0 0.4 0.796"/>
 <color name="Bettina green" value="0.282 0.557 0"/>
@@ -458,8 +458,8 @@ h
 <use matrix="1 0 0 1 26.2638 29.9054" name="mark/fdisk(sfx)" pos="169.927 382.029" size="normal" stroke="black" fill="CB light green"/>
 <use matrix="1 0 0 1 26.2638 29.9054" name="mark/fdisk(sfx)" pos="172.833 375.99" size="normal" stroke="black" fill="CB light green"/>
 <use matrix="1 0 0 1 26.2638 29.9054" name="mark/fdisk(sfx)" pos="73.3686 371.132" size="normal" stroke="black" fill="CB light green"/>
-<use layer="Tjasker" matrix="1 0 0 1 26.2638 29.9054" name="mark/fdisk(sfx)" pos="185.076 334.119" size="normal" stroke="black" fill="CB light red"/>
-<use matrix="1 0 0 1 26.2638 29.9054" name="mark/fdisk(sfx)" pos="187.413 364.318" size="normal" stroke="black" fill="CB light red"/>
+<use layer="Tjasker" matrix="1 0 0 1 26.2638 29.9054" name="mark/fdisk(sfx)" pos="185.076 334.119" size="normal" stroke="black" fill="CB light purple"/>
+<use matrix="1 0 0 1 26.2638 29.9054" name="mark/fdisk(sfx)" pos="187.413 364.318" size="normal" stroke="black" fill="CB light purple"/>
 <use layer="alpha" matrix="1 0 0 1 26.2638 29.9054" name="mark/fdisk(sfx)" pos="15.0839 346.833" size="normal" stroke="black" fill="CB light blue"/>
 <use matrix="1 0 0 1 26.2638 29.9054" name="mark/fdisk(sfx)" pos="55.9014 334.958" size="normal" stroke="black" fill="CB light blue"/>
 <use matrix="1 0 0 1 26.2638 29.9054" name="mark/fdisk(sfx)" pos="2.63194 362.795" size="normal" stroke="black" fill="CB light blue"/>
