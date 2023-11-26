@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <!DOCTYPE ipe SYSTEM "ipe.dtd">
-<ipe version="70218" creator="Ipe 7.2.28">
-<info created="D:20230621190934" modified="D:20231117162004"/>
+<ipe version="70218" creator="Ipe 7.2.27">
+<info created="D:20230621190934" modified="D:20231126134519"/>
 <ipestyle name="bettinacolors">
 <color name="Bettina blue" value="0 0.4 0.796"/>
 <color name="Bettina green" value="0.282 0.557 0"/>
@@ -427,43 +427,20 @@ h
 <layer name="alpha"/>
 <layer name="beta"/>
 <view layers="alpha beta" active="beta"/>
-<path layer="beta" stroke="black" pen="heavier" cap="1" join="1">
-47.5792 473.678 m
-30.1846 469.231 l
-19.1792 455.48 l
-20.5793 439.054 l
-32.5796 426.29 l
-52.3866 426.624 l
-61.2832 447.583 l
-</path>
-<path matrix="1 0 0 1 -15.0618 75.2457" stroke="black" pen="heavier" cap="1" join="1">
-82.911 381.793 m
-81.393 350.584 l
-103.876 369.747 l
-h
-</path>
-<path matrix="1 0 0 1 -15.0618 75.2457" stroke="black" pen="heavier" cap="1" join="1">
-68.154 409.075 m
-60.155 385.075 l
-108.154 385.075 l
-100.154 409.075 l
-h
-</path>
-<use matrix="1 0 0 1 -42.9078 28.3204" name="mark/fdisk(sfx)" pos="96 456" size="large" stroke="black" fill="CB light green"/>
+<use layer="beta" matrix="1 0 0 1 -42.9078 28.3204" name="mark/fdisk(sfx)" pos="96 456" size="large" stroke="black" fill="CB light green"/>
 <use matrix="1 0 0 1 -50.9068 4.32039" name="mark/fdisk(sfx)" pos="96 456" size="large" stroke="black" fill="CB light green"/>
 <use matrix="1 0 0 1 -2.90784 4.32039" name="mark/fdisk(sfx)" pos="96 456" size="large" stroke="black" fill="CB light green"/>
 <use matrix="1 0 0 1 -10.9078 28.3204" name="mark/fdisk(sfx)" pos="96 456" size="large" stroke="black" fill="CB light green"/>
-<use matrix="1 0 0 1 -28.1508 1.03906" name="mark/fdisk(sfx)" pos="96 456" size="large" stroke="black" fill="CB light orange"/>
-<use matrix="1 0 0 1 -7.18584 -11.0074" name="mark/fdisk(sfx)" pos="96 456" size="large" stroke="black" fill="CB light orange"/>
-<use matrix="1 0 0 1 -29.6688 -30.1698" name="mark/fdisk(sfx)" pos="96 456" size="large" stroke="black" fill="CB light orange"/>
-<use matrix="1 0 0 1 -34.7168 -8.41744" name="mark/fdisk(sfx)" pos="96 456" size="large" stroke="black" fill="CB light blue"/>
-<use matrix="1 0 0 1 -43.6134 -29.3765" name="mark/fdisk(sfx)" pos="96 456" size="large" stroke="black" fill="CB light blue"/>
-<use matrix="1 0 0 1 -76.8208 -0.519828" name="mark/fdisk(sfx)" pos="96 456" size="large" stroke="black" fill="CB light blue"/>
+<use matrix="1 0 0 1 -26.9071 0.453717" name="mark/fdisk(sfx)" pos="96 456" size="large" stroke="black" fill="CB light orange"/>
+<use matrix="1 0 0 1 -16.2295 -18.0426" name="mark/fdisk(sfx)" pos="96 456" size="large" stroke="black" fill="CB light orange"/>
+<use matrix="1 0 0 1 -37.585 -18.0416" name="mark/fdisk(sfx)" pos="96 456" size="large" stroke="black" fill="CB light orange"/>
+<use matrix="1 0 0 1 -37.9614 -5.79413" name="mark/fdisk(sfx)" pos="96 456" size="large" stroke="black" fill="CB light blue"/>
+<use matrix="1 0 0 1 -49.3231 -25.4731" name="mark/fdisk(sfx)" pos="96 456" size="large" stroke="black" fill="CB light blue"/>
+<use matrix="1 0 0 1 -72.7169 -4.45009" name="mark/fdisk(sfx)" pos="96 456" size="large" stroke="black" fill="CB light blue"/>
 <use matrix="1 0 0 1 -48.4208 17.678" name="mark/fdisk(sfx)" pos="96 456" size="large" stroke="black" fill="CB light blue"/>
-<use matrix="1 0 0 1 -26.1208 29.7186" name="mark/fdisk(sfx)" pos="96 456" size="large" stroke="black" fill="CB light orange"/>
+<use matrix="1 0 0 1 -26.9078 30.303" name="mark/fdisk(sfx)" pos="96 456" size="large" stroke="black" fill="CB light orange"/>
 <use matrix="1 0 0 1 -26.9077 16.3206" name="mark/fdisk(sfx)" pos="96 456" size="large" stroke="black" fill="CB light green"/>
-<use matrix="1 0 0 1 -65.8154 13.2306" name="mark/fdisk(sfx)" pos="96 456" size="large" stroke="black" fill="CB light blue"/>
-<use matrix="1 0 0 1 -63.4204 -29.7097" name="mark/fdisk(sfx)" pos="96 456" size="large" stroke="black" fill="CB light blue"/>
-<use matrix="1 0 0 1 -75.4207 -16.9463" name="mark/fdisk(sfx)" pos="96 456" size="large" stroke="black" fill="CB light blue"/>
+<use matrix="1 0 0 1 -66.8374 12.2086" name="mark/fdisk(sfx)" pos="96 456" size="large" stroke="black" fill="CB light blue"/>
+<use matrix="1 0 0 1 -66.6039 -18.7458" name="mark/fdisk(sfx)" pos="96 456" size="large" stroke="black" fill="CB light blue"/>
 </page>
 </ipe>

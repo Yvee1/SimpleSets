@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <!DOCTYPE ipe SYSTEM "ipe.dtd">
 <ipe version="70218" creator="Ipe 7.2.27">
-<info created="D:20231117144528" modified="D:20231117144528"/>
+<info created="D:20231117144528" modified="D:20231120230327"/>
 <bitmap id="1" width="1438" height="820" BitsPerComponent="8" ColorSpace="DeviceRGB" Filter="FlateDecode" length="171255" encoding="base64">
 eNrsvQ94VOWZ95/utbvu79q6/dk/2uJWaXkLdUtts61XlreCVWlZpaymWLWKdaWNcHV9X5dd
 DftaXdtSg/8qpUbj8rNCVvOmVkhEKjEEDdCEYAQH+RcGEkJmEiYJM5nMZP5k/uZ3Jze5eThz
@@ -3599,7 +3599,7 @@ h
 <layout paper="350 497" origin="0 0" frame="350 497"/>
 </ipestyle>
 <page>
-<layer name="alpha"/>
+<layer name="Picture"/>
 <layer name="Hematological"/>
 <layer name="Psychiatric"/>
 <layer name="Neurological"/>
@@ -3612,53 +3612,65 @@ h
 <layer name="Nutritional"/>
 <layer name="Respiratory"/>
 <layer name="Gastrointestinal"/>
-<view layers="alpha Hematological Psychiatric Neurological Unclassified Metabolic Endocrine Cancer Multiple Renal Nutritional Respiratory Gastrointestinal" active="Gastrointestinal"/>
-<image layer="alpha" matrix="0.0851495 0 0 0.0851495 52.1204 359.601" rect="0 0 1438 820" bitmap="1"/>
-<use layer="Hematological" matrix="1 0 0 1 -0.145959 0.52054" name="mark/fdisk(sfx)" pos="71.6529 380.585" size="normal" stroke="black" fill="CB light green"/>
-<use matrix="1 0 0 1 3.66884 -3.89939" name="mark/fdisk(sfx)" pos="71.6529 380.585" size="normal" stroke="black" fill="CB light green"/>
-<use matrix="1 0 0 1 8.75525 -6.98757" name="mark/fdisk(sfx)" pos="71.6529 380.585" size="normal" stroke="black" fill="CB light green"/>
-<use matrix="1 0 0 1 7.84696 -13.8906" name="mark/fdisk(sfx)" pos="71.6529 380.585" size="normal" stroke="black" fill="CB light green"/>
-<use matrix="1 0 0 1 17.1115 -10.5602" name="mark/fdisk(sfx)" pos="71.6529 380.585" size="normal" stroke="black" fill="CB light green"/>
-<use matrix="1 0 0 1 22.9245 -5.59486" name="mark/fdisk(sfx)" pos="71.6529 380.585" size="normal" stroke="black" fill="CB light green"/>
-<use layer="Psychiatric" matrix="1 0 0 1 -3.35525 23.1676" name="mark/fdisk(sfx)" pos="71.6529 380.585" size="normal" stroke="black" fill="CB light blue"/>
-<use matrix="1 0 0 1 0.277898 20.2005" name="mark/fdisk(sfx)" pos="71.6529 380.585" size="normal" stroke="black" fill="CB light blue"/>
-<use matrix="1 0 0 1 6.45425 14.5691" name="mark/fdisk(sfx)" pos="71.6529 380.585" size="normal" stroke="black" fill="CB light blue"/>
-<use matrix="1 0 0 1 8.99746 28.6173" name="mark/fdisk(sfx)" pos="71.6529 380.585" size="normal" stroke="black" fill="CB light blue"/>
-<use layer="Hematological" matrix="1 0 0 1 17.7336 9.1042" name="mark/fdisk(sfx)" pos="71.6529 380.585" size="normal" stroke="black" fill="CB light green"/>
-<use matrix="1 0 0 1 14.937 22.6676" name="mark/fdisk(sfx)" pos="71.6529 380.585" size="normal" stroke="black" fill="CB light green"/>
-<use matrix="1 0 0 1 19.2251 25.5574" name="mark/fdisk(sfx)" pos="71.6529 380.585" size="normal" stroke="black" fill="CB light green"/>
-<use layer="Neurological" matrix="1 0 0 1 26.8771 32.4363" name="mark/fdisk(sfx)" pos="71.6529 380.585" size="normal" stroke="black" fill="CB light red"/>
-<use matrix="1 0 0 1 27.0588 12.5751" name="mark/fdisk(sfx)" pos="71.6529 380.585" size="normal" stroke="black" fill="CB light red"/>
-<use matrix="1 0 0 1 50.3109 25.2911" name="mark/fdisk(sfx)" pos="71.6529 380.585" size="normal" stroke="black" fill="CB light red"/>
-<use layer="Unclassified" matrix="1 0 0 1 2.47445 9.7288" name="mark/fdisk(sfx)" pos="71.6529 380.585" size="normal" stroke="black" fill="Gray 0.8"/>
-<use matrix="1 0 0 1 18.8236 17.9031" name="mark/fdisk(sfx)" pos="71.6529 380.585" size="normal" stroke="black" fill="Gray 0.8"/>
-<use layer="Metabolic" name="mark/fdisk(sfx)" pos="101.618 378.264" size="normal" stroke="black" fill="0.675 0.886 0.925"/>
-<use matrix="1 0 0 1 -8.11385 3.08793" name="mark/fdisk(sfx)" pos="101.618 378.264" size="normal" stroke="black" fill="0.675 0.886 0.925"/>
-<use matrix="1 0 0 1 -12.5342 5.44947" name="mark/fdisk(sfx)" pos="101.618 378.264" size="normal" stroke="black" fill="0.675 0.886 0.925"/>
-<use matrix="1 0 0 1 -17.6811 8.5982" name="mark/fdisk(sfx)" pos="101.618 378.264" size="normal" stroke="black" fill="0.675 0.886 0.925"/>
-<use matrix="1 0 0 1 -36.513 33.4247" name="mark/fdisk(sfx)" pos="101.618 378.264" size="normal" stroke="black" fill="0.675 0.886 0.925"/>
-<use layer="Endocrine" matrix="1 0 0 1 63.7087 25.1904" name="mark/fdisk(sfx)" pos="71.6529 380.585" size="normal" stroke="black" fill="0.953 0.773 0.047"/>
-<use matrix="1 0 0 1 67.0143 27.9882" name="mark/fdisk(sfx)" pos="71.6529 380.585" size="normal" stroke="black" fill="0.953 0.773 0.047"/>
-<use matrix="1 0 0 1 70.4227 22.176" name="mark/fdisk(sfx)" pos="71.6529 380.585" size="normal" stroke="black" fill="0.953 0.773 0.047"/>
-<use matrix="1 0 0 1 79.7508 16.938" name="mark/fdisk(sfx)" pos="71.6529 380.585" size="normal" stroke="black" fill="0.953 0.773 0.047"/>
-<use matrix="1 0 0 1 85.7064 2.87409" name="mark/fdisk(sfx)" pos="71.6529 380.585" size="normal" stroke="black" fill="0.953 0.773 0.047"/>
-<use layer="Cancer" matrix="1 0 0 1 69.6165 40.0665" name="mark/fdisk(sfx)" pos="71.6529 380.585" size="normal" stroke="black" fill="0.812 0.455 0.188"/>
-<use matrix="1 0 0 1 66.408 37.3417" name="mark/fdisk(sfx)" pos="71.6529 380.585" size="normal" stroke="black" fill="0.812 0.455 0.188"/>
-<use matrix="1 0 0 1 74.3404 32.6792" name="mark/fdisk(sfx)" pos="71.6529 380.585" size="normal" stroke="black" fill="0.812 0.455 0.188"/>
-<use matrix="1 0 0 1 81.6067 25.2312" name="mark/fdisk(sfx)" pos="71.6529 380.585" size="normal" stroke="black" fill="0.812 0.455 0.188"/>
-<use matrix="1 0 0 1 89.2968 20.5687" name="mark/fdisk(sfx)" pos="71.6529 380.585" size="normal" stroke="black" fill="0.812 0.455 0.188"/>
-<use matrix="1 0 0 1 76.8034 9.14607" name="mark/fdisk(sfx)" pos="71.6529 380.585" size="normal" stroke="black" fill="0.812 0.455 0.188"/>
-<use matrix="1 0 0 1 64.7535 13.0214" name="mark/fdisk(sfx)" pos="71.6529 380.585" size="normal" stroke="black" fill="0.812 0.455 0.188"/>
-<use matrix="1 0 0 1 53.1879 18.3501" name="mark/fdisk(sfx)" pos="71.6529 380.585" size="normal" stroke="black" fill="0.812 0.455 0.188"/>
-<use matrix="1 0 0 1 35.2182 17.9447" name="mark/fdisk(sfx)" pos="71.6529 380.585" size="normal" stroke="black" fill="0.812 0.455 0.188"/>
-<use layer="Multiple" name="mark/fdisk(sfx)" pos="102.39 415.605" size="normal" stroke="black" fill="0.863 0.839 0.545"/>
-<use matrix="1 0 0 1 2.15776 -5.1193" name="mark/fdisk(sfx)" pos="102.39 415.605" size="normal" stroke="black" fill="0.863 0.839 0.545"/>
-<use matrix="1 0 0 1 7.10882 -7.95361" name="mark/fdisk(sfx)" pos="102.39 415.605" size="normal" stroke="black" fill="0.863 0.839 0.545"/>
-<use matrix="1 0 0 1 8.57979 -19.7213" name="mark/fdisk(sfx)" pos="102.39 415.605" size="normal" stroke="black" fill="0.863 0.839 0.545"/>
-<use layer="Nutritional" matrix="1 0 0 1 -1.72257 17.4616" name="mark/fdisk(sfx)" pos="71.6529 380.585" size="normal" stroke="black" fill="0.969 0.443 0.914"/>
-<use layer="Renal" name="mark/fdisk(sfx)" pos="86.0481 378.607" size="normal" stroke="black" fill="0.584 0 0.584"/>
-<use layer="Respiratory" name="mark/fdisk(sfx)" pos="112.598 389.884" size="normal" stroke="black" fill="0.988 0.855 0.863"/>
-<use layer="Gastrointestinal" name="mark/fdisk(sfx)" pos="120.783 386.583" size="normal" stroke="black" fill="0.784 0.588 0.125"/>
-<use matrix="1 0 0 1 -9.10896 15.8666" name="mark/fdisk(sfx)" pos="120.783 386.583" size="normal" stroke="black" fill="0.784 0.588 0.125"/>
+<view layers="Picture Hematological Psychiatric Neurological Unclassified Metabolic Endocrine Cancer Multiple Renal Nutritional Respiratory Gastrointestinal" active="Gastrointestinal"/>
+<view layers="Picture Hematological" active="Gastrointestinal"/>
+<view layers="Picture Psychiatric" active="Psychiatric"/>
+<view layers="Picture Neurological" active="Gastrointestinal"/>
+<view layers="Picture Unclassified" active="Gastrointestinal"/>
+<view layers="Metabolic" active="Gastrointestinal"/>
+<view layers="Endocrine" active="Gastrointestinal"/>
+<view layers="Cancer" active="Gastrointestinal"/>
+<view layers="Multiple" active="Gastrointestinal"/>
+<view layers="Renal" active="Gastrointestinal"/>
+<view layers="Picture Nutritional" active="Gastrointestinal"/>
+<view layers="Picture Respiratory" active="Gastrointestinal"/>
+<view layers="Picture Gastrointestinal" active="Gastrointestinal"/>
+<image layer="Picture" matrix="0.0851495 0 0 0.0851495 52.1204 359.601" rect="0 0 1438 820" bitmap="1"/>
+<use layer="Hematological" matrix="1 0 0 1 -0.145959 0.52054" name="mark/fdisk(sfx)" pos="71.6529 380.585" size="normal" stroke="black" fill="CART 1"/>
+<use matrix="1 0 0 1 3.66884 -3.89939" name="mark/fdisk(sfx)" pos="71.6529 380.585" size="normal" stroke="black" fill="CART 1"/>
+<use matrix="1 0 0 1 8.75525 -6.98757" name="mark/fdisk(sfx)" pos="71.6529 380.585" size="normal" stroke="black" fill="CART 1"/>
+<use matrix="1 0 0 1 7.84696 -13.8906" name="mark/fdisk(sfx)" pos="71.6529 380.585" size="normal" stroke="black" fill="CART 1"/>
+<use matrix="1 0 0 1 17.1115 -10.5602" name="mark/fdisk(sfx)" pos="71.6529 380.585" size="normal" stroke="black" fill="CART 1"/>
+<use matrix="1 0 0 1 22.9245 -5.59486" name="mark/fdisk(sfx)" pos="71.6529 380.585" size="normal" stroke="black" fill="CART 1"/>
+<use layer="Psychiatric" matrix="1 0 0 1 -3.35525 23.1676" name="mark/fdisk(sfx)" pos="71.6529 380.585" size="normal" stroke="black" fill="CART 2"/>
+<use matrix="1 0 0 1 0.277898 20.2005" name="mark/fdisk(sfx)" pos="71.6529 380.585" size="normal" stroke="black" fill="CART 2"/>
+<use matrix="1 0 0 1 6.45425 14.5691" name="mark/fdisk(sfx)" pos="71.6529 380.585" size="normal" stroke="black" fill="CART 2"/>
+<use matrix="1 0 0 1 8.99746 28.6173" name="mark/fdisk(sfx)" pos="71.6529 380.585" size="normal" stroke="black" fill="CART 2"/>
+<use layer="Hematological" matrix="1 0 0 1 17.7336 9.1042" name="mark/fdisk(sfx)" pos="71.6529 380.585" size="normal" stroke="black" fill="CART 1"/>
+<use matrix="1 0 0 1 14.937 22.6676" name="mark/fdisk(sfx)" pos="71.6529 380.585" size="normal" stroke="black" fill="CART 1"/>
+<use matrix="1 0 0 1 19.2251 25.5574" name="mark/fdisk(sfx)" pos="71.6529 380.585" size="normal" stroke="black" fill="CART 1"/>
+<use layer="Neurological" matrix="1 0 0 1 26.8771 32.4363" name="mark/fdisk(sfx)" pos="71.6529 380.585" size="normal" stroke="black" fill="CART 3"/>
+<use matrix="1 0 0 1 27.0588 12.5751" name="mark/fdisk(sfx)" pos="71.6529 380.585" size="normal" stroke="black" fill="CART 3"/>
+<use matrix="1 0 0 1 50.3109 25.2911" name="mark/fdisk(sfx)" pos="71.6529 380.585" size="normal" stroke="black" fill="CART 3"/>
+<use layer="Unclassified" matrix="1 0 0 1 2.47445 9.7288" name="mark/fdisk(sfx)" pos="71.6529 380.585" size="normal" stroke="black" fill="CART 4"/>
+<use matrix="1 0 0 1 18.8236 17.9031" name="mark/fdisk(sfx)" pos="71.6529 380.585" size="normal" stroke="black" fill="CART 4"/>
+<use layer="Metabolic" name="mark/fdisk(sfx)" pos="101.618 378.264" size="normal" stroke="black" fill="CART 5"/>
+<use matrix="1 0 0 1 -8.11385 3.08793" name="mark/fdisk(sfx)" pos="101.618 378.264" size="normal" stroke="black" fill="CART 5"/>
+<use matrix="1 0 0 1 -12.5342 5.44947" name="mark/fdisk(sfx)" pos="101.618 378.264" size="normal" stroke="black" fill="CART 5"/>
+<use matrix="1 0 0 1 -17.6811 8.5982" name="mark/fdisk(sfx)" pos="101.618 378.264" size="normal" stroke="black" fill="CART 5"/>
+<use matrix="1 0 0 1 -36.513 33.4247" name="mark/fdisk(sfx)" pos="101.618 378.264" size="normal" stroke="black" fill="CART 5"/>
+<use layer="Endocrine" matrix="1 0 0 1 63.7087 25.1904" name="mark/fdisk(sfx)" pos="71.6529 380.585" size="normal" stroke="black" fill="CART 6"/>
+<use matrix="1 0 0 1 67.0143 27.9882" name="mark/fdisk(sfx)" pos="71.6529 380.585" size="normal" stroke="black" fill="CART 6"/>
+<use matrix="1 0 0 1 70.4227 22.176" name="mark/fdisk(sfx)" pos="71.6529 380.585" size="normal" stroke="black" fill="CART 6"/>
+<use matrix="1 0 0 1 79.7508 16.938" name="mark/fdisk(sfx)" pos="71.6529 380.585" size="normal" stroke="black" fill="CART 6"/>
+<use matrix="1 0 0 1 85.7064 2.87409" name="mark/fdisk(sfx)" pos="71.6529 380.585" size="normal" stroke="black" fill="CART 6"/>
+<use layer="Cancer" matrix="1 0 0 1 69.6165 40.0665" name="mark/fdisk(sfx)" pos="71.6529 380.585" size="normal" stroke="black" fill="CART 7"/>
+<use matrix="1 0 0 1 66.408 37.3417" name="mark/fdisk(sfx)" pos="71.6529 380.585" size="normal" stroke="black" fill="CART 7"/>
+<use matrix="1 0 0 1 74.3404 32.6792" name="mark/fdisk(sfx)" pos="71.6529 380.585" size="normal" stroke="black" fill="CART 7"/>
+<use matrix="1 0 0 1 81.6067 25.2312" name="mark/fdisk(sfx)" pos="71.6529 380.585" size="normal" stroke="black" fill="CART 7"/>
+<use matrix="1 0 0 1 89.2968 20.5687" name="mark/fdisk(sfx)" pos="71.6529 380.585" size="normal" stroke="black" fill="CART 7"/>
+<use matrix="1 0 0 1 76.8034 9.14607" name="mark/fdisk(sfx)" pos="71.6529 380.585" size="normal" stroke="black" fill="CART 7"/>
+<use matrix="1 0 0 1 64.7535 13.0214" name="mark/fdisk(sfx)" pos="71.6529 380.585" size="normal" stroke="black" fill="CART 7"/>
+<use matrix="1 0 0 1 53.1879 18.3501" name="mark/fdisk(sfx)" pos="71.6529 380.585" size="normal" stroke="black" fill="CART 7"/>
+<use matrix="1 0 0 1 35.2182 17.9447" name="mark/fdisk(sfx)" pos="71.6529 380.585" size="normal" stroke="black" fill="CART 7"/>
+<use layer="Multiple" name="mark/fdisk(sfx)" pos="102.39 415.605" size="normal" stroke="black" fill="CART 8"/>
+<use matrix="1 0 0 1 2.15776 -5.1193" name="mark/fdisk(sfx)" pos="102.39 415.605" size="normal" stroke="black" fill="CART 8"/>
+<use matrix="1 0 0 1 7.10882 -7.95361" name="mark/fdisk(sfx)" pos="102.39 415.605" size="normal" stroke="black" fill="CART 8"/>
+<use matrix="1 0 0 1 8.57979 -19.7213" name="mark/fdisk(sfx)" pos="102.39 415.605" size="normal" stroke="black" fill="CART 8"/>
+<use layer="Nutritional" matrix="1 0 0 1 -1.72257 17.4616" name="mark/fdisk(sfx)" pos="71.6529 380.585" size="normal" stroke="black" fill="CART 10"/>
+<use layer="Renal" name="mark/fdisk(sfx)" pos="86.0481 378.607" size="normal" stroke="black" fill="CART 9"/>
+<use layer="Respiratory" name="mark/fdisk(sfx)" pos="112.598 389.884" size="normal" stroke="black" fill="CART 11"/>
+<use layer="Gastrointestinal" name="mark/fdisk(sfx)" pos="120.783 386.583" size="normal" stroke="black" fill="CART 12"/>
+<use matrix="1 0 0 1 -9.10896 15.8666" name="mark/fdisk(sfx)" pos="120.783 386.583" size="normal" stroke="black" fill="CART 12"/>
 </page>
 </ipe>
