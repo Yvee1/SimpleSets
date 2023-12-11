@@ -11,7 +11,6 @@ enum class ExampleInput {
     OverlapExample3,
     HexaSwirl,
     Bonn,
-    BadGodesberg,
     Diseasome
 }
 
@@ -25,8 +24,183 @@ fun getFileName(e: ExampleInput): String = when(e) {
     ExampleInput.OverlapExample3 -> "overlap-example-3"
     ExampleInput.HexaSwirl -> "hexa-swirl"
     ExampleInput.Bonn -> "Bonn"
-    ExampleInput.BadGodesberg -> "Bad-Godesberg"
     ExampleInput.Diseasome -> "diseasome"
+}
+
+fun goodSettings(e: ExampleInput): Pair<Settings, Double> {
+    when(e) {
+        ExampleInput.Mills -> {
+            val gs = GeneralSettings(
+                pSize = 1.514,
+                bendInflection = true,
+                maxBendAngle = 180.0,
+                maxTurningAngle = 70.0,
+            )
+
+            val tgs = GrowSettings(
+                forbidTooClose = 0.5,
+                postponeIntersections = false,
+            )
+
+            val settings = Settings(gs, tgs)
+
+            return settings to 4.6
+        }
+
+        ExampleInput.NYC -> {
+            val gs = GeneralSettings(
+                pSize = 2.068,
+                bendInflection = true,
+                maxBendAngle = 180.0,
+                maxTurningAngle = 70.0,
+            )
+
+            val tgs = GrowSettings(
+                forbidTooClose = 0.1,
+                postponeIntersections = true,
+            )
+
+            val settings = Settings(gs, tgs)
+
+            return settings to 4.87
+        }
+
+        ExampleInput.Hotels -> {
+            val gs = GeneralSettings(
+                pSize = 1.514,
+                bendInflection = true,
+                maxBendAngle = 180.0,
+                maxTurningAngle = 70.0,
+            )
+
+            val tgs = GrowSettings(
+                forbidTooClose = 0.5,
+                postponeIntersections = false,
+            )
+
+            val settings = Settings(gs, tgs)
+
+            return settings to 4.5
+        }
+
+        ExampleInput.SimpleScatterPlot -> {
+            val gs = GeneralSettings(
+                pSize = 1.391,
+                bendInflection = false,
+                maxBendAngle = 180.0,
+                maxTurningAngle = 75.0,
+            )
+
+            val tgs = GrowSettings(
+                forbidTooClose = 0.4,
+                postponeIntersections = false,
+            )
+
+            val settings = Settings(gs, tgs)
+
+            return settings to 5.0
+        }
+
+        ExampleInput.OverlapExample -> {
+            val gs = GeneralSettings(
+                pSize = 5.142,
+            )
+
+            val tgs = GrowSettings(
+                forbidTooClose = 0.2,
+                postponeIntersections = false,
+            )
+
+            val settings = Settings(gs, tgs)
+
+            return settings to 5.0
+        }
+
+        ExampleInput.OverlapExample2 -> {
+            val gs = GeneralSettings(
+                pSize = 2.437,
+                maxBendAngle = 225.0,
+                maxTurningAngle = 90.0,
+            )
+
+            val tgs = GrowSettings(
+                forbidTooClose = 0.2,
+                postponeIntersections = false,
+            )
+
+            val settings = Settings(gs, tgs)
+
+            return settings to 4.0
+        }
+
+        ExampleInput.OverlapExample3 -> {
+            val gs = GeneralSettings(
+                pSize = 2.7,
+                maxBendAngle = 210.0,
+                maxTurningAngle = 75.0,
+            )
+
+            val tgs = GrowSettings(
+                forbidTooClose = 0.5,
+                postponeIntersections = false,
+            )
+
+            val settings = Settings(gs, tgs)
+
+            return settings to 4.0
+        }
+
+        ExampleInput.HexaSwirl -> {
+            val gs = GeneralSettings(
+                pSize = 1.76,
+                maxBendAngle = 180.0,
+                maxTurningAngle = 70.0,
+            )
+
+            val tgs = GrowSettings(
+                forbidTooClose = 0.3,
+                postponeIntersections = false,
+            )
+
+            val settings = Settings(gs, tgs)
+
+            return settings to 4.0
+        }
+
+        ExampleInput.Bonn -> {
+            val gs = GeneralSettings(
+                pSize = 0.653,
+                maxBendAngle = 180.0,
+                maxTurningAngle = 70.0,
+            )
+
+            val tgs = GrowSettings(
+                forbidTooClose = 0.4,
+                postponeIntersections = false,
+            )
+
+            val settings = Settings(gs, tgs)
+
+            return settings to 6.0
+        }
+
+        ExampleInput.Diseasome -> {
+            val gs = GeneralSettings(
+                pSize = 0.776,
+                maxBendAngle = 180.0,
+                maxTurningAngle = 65.0,
+            )
+
+            val tgs = GrowSettings(
+                forbidTooClose = 0.4,
+                postponeIntersections = false,
+            )
+
+            val settings = Settings(gs, tgs)
+
+            return settings to 4.5
+        }
+    }
 }
 
 fun nodesToPoints(nodes: List<Map<String, String>>): List<Point> {

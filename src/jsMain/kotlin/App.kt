@@ -88,9 +88,7 @@ val App = FC<Props> {
         pSize = pointSize
     )
 
-    val computeDrawingSettings = ComputeDrawingSettings(
-        intersectionResolution = IntersectionResolution.Overlap
-    )
+    val computeDrawingSettings = ComputeDrawingSettings()
 
     val (postponeIntersections, postponeIntersectionsSetter) = useState(false)
     val (forbidTooClose, forbidTooCloseSetter) = useState(0.5)
@@ -331,6 +329,15 @@ val App = FC<Props> {
                                 points = ipeToPoints(ipe).map { p ->
                                     p.copy(pos = p.pos.copy(y = svgSize.y - p.pos.y))
                                 }
+                                val (gSettings, gCover) = goodSettings(it)
+                                val (gs, tgs, _, _) = gSettings
+                                maxBendAngleSetter(gs.maxBendAngle)
+                                maxTurningAngleSetter(gs.maxTurningAngle)
+                                bendInflectionSetter(gs.bendInflection)
+                                pointSizeSetter(gs.pSize)
+                                forbidTooCloseSetter(tgs.forbidTooClose)
+                                postponeIntersectionsSetter(tgs.postponeIntersections)
+                                cover = gCover
                             }
                     }
                 }

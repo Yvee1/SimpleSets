@@ -5,7 +5,14 @@ import org.openrndr.color.ColorRGBa
 import org.openrndr.color.rgb
 import org.openrndr.extra.parameters.BooleanParameter
 import org.openrndr.extra.parameters.DoubleParameter
-import org.openrndr.extra.parameters.OptionParameter
+
+@Serializable
+data class Settings(
+    val gs: GeneralSettings = GeneralSettings(),
+    val tgs: GrowSettings = GrowSettings(),
+    val cds: ComputeDrawingSettings = ComputeDrawingSettings(),
+    val ds: DrawSettings = DrawSettings(),
+)
 
 @Serializable
 data class GeneralSettings(
@@ -42,28 +49,10 @@ data class GrowSettings(
     var forbidTooClose: Double = 0.1
 )
 
-enum class IntersectionResolution {
-    None,
-    Voronoi,
-    Overlap,
-}
-
 @Serializable
 data class ComputeDrawingSettings(
-    @OptionParameter("Overlap resolution", order = 4)
-    var intersectionResolution: IntersectionResolution = IntersectionResolution.Overlap,
-
     @DoubleParameter("Point clearance", 0.0, 1.0, order = 5)
     var pointClearance: Double = 0.625,
-)
-
-@Serializable
-data class ComputeBridgesSettings(
-    @DoubleParameter("Clearance", 2.0, 20.0, order = 7000)
-    var clearance: Double = 5.0,
-
-    @BooleanParameter("Smooth bridges", order = 9015)
-    var smoothBridges: Boolean = true,
 )
 
 val blue = rgb(0.651, 0.807, 0.89)

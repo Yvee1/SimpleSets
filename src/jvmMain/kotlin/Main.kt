@@ -135,6 +135,17 @@ fun main() = application {
             fun loadExample() {
                 clearData()
                 partition = Partition(getExampleInput(exampleInput).toMutableList())
+
+                val (gSettings, gCover) = goodSettings(exampleInput)
+                cs.cover = gCover
+                val (gGs, gTgs, _, _) = gSettings
+                gs.pSize = gGs.pSize
+                gs.bendInflection = gGs.bendInflection
+                gs.maxTurningAngle = gGs.maxTurningAngle
+                gs.maxBendAngle = gGs.maxBendAngle
+                tgs.forbidTooClose = gTgs.forbidTooClose
+                tgs.postponeIntersections = gTgs.postponeIntersections
+
                 ps.modifiedPartition()
             }
 
