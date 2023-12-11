@@ -19,9 +19,6 @@ external interface SelectExampleProps: Props {
 val SelectExample = FC<SelectExampleProps> { props ->
     var selectedExampleInput: ExampleInput by useState(ExampleInput.NYC)
     div {
-        PanelHeader {
-            title = "Examples"
-        }
         label {
             title = "Select example input"
             ReactHTML.select {

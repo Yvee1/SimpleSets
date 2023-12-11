@@ -22,12 +22,10 @@ import react.dom.events.PointerEvent
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.label
 import react.dom.html.ReactHTML.progress
+import react.dom.html.ReactHTML.textarea
 import react.dom.svg.ReactSVG.circle
 import react.dom.svg.ReactSVG.svg
-import sideWindow.Divider
-import sideWindow.DraggableDivider
-import sideWindow.SelectExample
-import sideWindow.SideWindow
+import sideWindow.*
 import sideWindow.settings.BankSettingsPanel
 import sideWindow.settings.ColorSettingsPanel
 import sideWindow.settings.GrowSettingsPanel
@@ -40,7 +38,6 @@ import web.cssom.Globals.Companion.initial
 import web.cssom.None.Companion.none
 import web.dom.Element
 import web.dom.document
-import web.geometry.DOMRect
 import web.html.HTMLAnchorElement
 import web.html.HTMLDivElement
 import web.url.URL
@@ -156,10 +153,6 @@ val App = FC<Props> {
         ))
     }
 
-    useEffect(points, pointSize) {
-        if (fittingToScreen && points.isNotEmpty()) fitToScreen()
-    }
-
     var computing: Boolean by useState(false)
 
     var lastPoints: List<Point> by useState(emptyList())
@@ -187,11 +180,32 @@ val App = FC<Props> {
     val windowSize = useWindowSize()
     val horizontal = windowSize.x > windowSize.y
 
+    var areaText: String by useState("")
+    useEffect(points) {
+        val newText = pointsToText(points)
+        if (parsePoints(newText) != parsePoints(areaText))
+            areaText = newText
+    }
+    useEffect(areaText) {
+        try {
+            val pts = parsePoints(areaText)
+            if (pts != points) {
+                points = pts
+            }
+        } catch (_: Exception) {
+
+        }
+    }
+
     var progress: Double by useState(0.0)
 
     useEffect(windowSize, sideWindowRatio) {
         val svgContainer = svgContainerRef.current ?: return@useEffect
         svgSize = IntVector2(svgContainer.clientWidth, svgContainer.clientHeight)
+    }
+
+    useEffect(points, pointSize, svgSize) {
+        if (fittingToScreen && points.isNotEmpty()) fitToScreen()
     }
 
     worker.onmessage = { m: MessageEvent ->
@@ -258,6 +272,9 @@ val App = FC<Props> {
                 isHorizontal = horizontal
                 size = (100 * sideWindowRatio).pct
 
+                PanelHeader {
+                    title = "General"
+                }
                 BendSettingsContext.Provider {
                     value = bendSettings
                     BankSettingsPanel {
@@ -266,27 +283,50 @@ val App = FC<Props> {
                         lineStrokeWeight = drawSettings.contourStrokeWeight(generalSettings)
                         expandRadius = generalSettings.expandRadius
                         color = colors[currentType].toHex()
+
+                        PointSettingsContext.Provider {
+                            value = pointSettings
+                            PointSettingsPanel {
+                                strokeWeight = drawSettings.pointStrokeWeight(generalSettings)
+                                fillColor = colors[currentType].toSvgString()
+                            }
+                        }
                     }
                 }
+
                 Divider()
-                PointSettingsContext.Provider {
-                    value = pointSettings
-                    PointSettingsPanel {
-                        strokeWeight = drawSettings.pointStrokeWeight(generalSettings)
-                        fillColor = colors[currentType].toSvgString()
-                    }
+                PanelHeader {
+                    title = "Grow"
                 }
-                Divider()
                 GrowSettingsContext.Provider {
                     value = grow
                     GrowSettingsPanel()
                 }
                 Divider()
+                PanelHeader {
+                    title = "Colors"
+                }
                 ColorsContext.Provider {
                     value = colorsObj
                     ColorSettingsPanel()
                 }
                 Divider()
+                PanelHeader {
+                    title = "Input and output"
+                }
+                textarea {
+                    value = areaText
+                    onChange = { areaText = it.target.value }
+                    css {
+                        padding = 10.px
+                        lineHeight = number(1.5);
+                        borderRadius = 1.px;
+                        border = Border(1.px, LineStyle.solid, Color("#ccc"))
+                        boxShadow = BoxShadow(1.px, 1.px, 1.px, Color("#999"))
+                        width = 250.px
+                        height = 150.px
+                    }
+                }
                 SelectExample {
                     onLoadExample = {
                         window
@@ -330,8 +370,8 @@ val App = FC<Props> {
 
                 tabIndex = 0
                 onKeyDown = {
-                    if (it.key in (1..7).map { it.toString() }) {
-                        currentType = it.key.toInt() - 1
+                    if (it.key in (0..6).map { it.toString() }) {
+                        currentType = it.key.toInt()
                     }
                 }
 
@@ -425,17 +465,17 @@ val App = FC<Props> {
 
                         +whiteSpace
 
-                        for (i in 1..7) {
+                        for (i in 0..6) {
                             IconButton {
                                 buttonProps = jso {
                                     title = "Add points of color $i with mouse"
                                     onClick = {
                                         tool =
-                                            if (tool == Tool.PlacePoints && currentType == i - 1) Tool.None else Tool.PlacePoints
-                                        currentType = i - 1
+                                            if (tool == Tool.PlacePoints && currentType == i) Tool.None else Tool.PlacePoints
+                                        currentType = i
                                     }
                                 }
-                                isPressed = currentType == i - 1 && tool == Tool.PlacePoints
+                                isPressed = currentType == i && tool == Tool.PlacePoints
                                 +"$i"
                             }
                         }
@@ -534,8 +574,6 @@ val App = FC<Props> {
 
                             if (tool == Tool.PlacePoints && ev.button == 0) {
                                 points += Point(viewMatrix * ev.offset, currentType)
-                                println(points)
-                                println(viewMatrix)
                             } else {
                                 evCache += ev
                             }

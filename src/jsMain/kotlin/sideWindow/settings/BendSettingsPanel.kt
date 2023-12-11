@@ -17,18 +17,17 @@ import org.openrndr.shape.intersections
 import patterns.Bank
 import patterns.Point
 import react.FC
-import react.Props
+import react.PropsWithChildren
 import react.dom.html.ReactHTML.div
 import react.dom.html.ReactHTML.span
 import react.dom.svg.ReactSVG.svg
 import react.useContext
-import sideWindow.PanelHeader
 import toSVG
 import web.cssom.*
 import kotlin.math.max
 import kotlin.math.min
 
-external interface BankSettingsPanelProps: Props {
+external interface BankSettingsPanelProps: PropsWithChildren {
     var ptSize: Double
     var ptStrokeWeight: Double
     var lineStrokeWeight: Double
@@ -42,9 +41,6 @@ val BankSettingsPanel = FC<BankSettingsPanelProps> { props ->
             css {
                 display = Display.flex
                 flexDirection = FlexDirection.column
-            }
-            PanelHeader {
-                title = "Banks"
             }
             div {
                 css {
@@ -88,6 +84,7 @@ val BankSettingsPanel = FC<BankSettingsPanelProps> { props ->
                             maxTurningAngle = it.currentTarget.valueAsNumber
                         }
                     }
+                    +props.children
                 }
                 div {
                     css {

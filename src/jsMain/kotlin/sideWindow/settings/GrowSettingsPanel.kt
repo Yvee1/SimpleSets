@@ -6,13 +6,9 @@ import contexts.GrowSettingsContext
 import react.FC
 import react.Props
 import react.useContext
-import sideWindow.PanelHeader
 
 val GrowSettingsPanel = FC<Props> {
     with(useContext(GrowSettingsContext)!!) {
-        PanelHeader {
-            title = "Grow"
-        }
         Slider {
             label = "Avoid"
             title = "Avoid"

@@ -2,11 +2,10 @@ package sideWindow.settings
 
 import components.Slider
 import contexts.PointSettingsContext
-import react.*
+import react.FC
+import react.Props
 import react.dom.html.ReactHTML.div
-import react.dom.svg.ReactSVG.svg
-import react.dom.svg.ReactSVG.circle
-import sideWindow.PanelHeader
+import react.useContext
 
 external interface PointSizeProps : Props {
     var min: Double
@@ -18,10 +17,6 @@ external interface PointSizeProps : Props {
 val PointSize = FC<PointSizeProps> { props ->
     with(useContext(PointSettingsContext)!!) {
         div {
-            PanelHeader {
-                title = "Points"
-            }
-
             Slider {
                 title = "Change point size"
                 step = "any".unsafeCast<Double>()
@@ -34,20 +29,20 @@ val PointSize = FC<PointSizeProps> { props ->
                     pointSize = it.currentTarget.valueAsNumber
                 }
             }
-
-            svg {
-                val svgSize = props.max * 2.0 + 6.0
-                width = svgSize
-                height = svgSize
-                fill = props.fillColor
-                stroke = "black"
-                strokeWidth = props.strokeWeight
-                circle {
-                    cx = svgSize / 2
-                    cy = svgSize / 2
-                    r = pointSize
-                }
-            }
+//
+//            svg {
+//                val svgSize = props.max * 2.0 + 6.0
+//                width = svgSize
+//                height = svgSize
+//                fill = props.fillColor
+//                stroke = "black"
+//                strokeWidth = props.strokeWeight
+//                circle {
+//                    cx = svgSize / 2
+//                    cy = svgSize / 2
+//                    r = pointSize
+//                }
+//            }
         }
     }
 }

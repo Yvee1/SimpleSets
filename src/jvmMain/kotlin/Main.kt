@@ -138,15 +138,25 @@ fun main() = application {
                 ps.modifiedPartition()
             }
 
-            @TextParameter("Input ipe file (no file extension)", order = 14)
+            @TextParameter("Input ipe file (with extension)", order = 14)
             var inputFileName = "nyc"
 
             @ActionParameter("Load input file", order = 15)
             fun loadInput() {
                 clearData()
                 try {
-                    val ipe = File("input-output/$inputFileName.ipe").readText()
-                    partition = Partition(ipeToPoints(ipe).toMutableList())
+                    val file = File("input-output/$inputFileName")
+                    val pts = when(file.extension) {
+                        "ipe" -> {
+                            ipeToPoints(file.readText())
+                        }
+
+                        else -> {
+                            parsePoints(file.readText())
+                        }
+                    }
+
+                    partition = Partition(pts.toMutableList())
                     ps.modifiedPartition()
                 } catch (e: IOException) {
                     println("Could not read input file")
@@ -154,13 +164,14 @@ fun main() = application {
                 }
             }
 
-            @TextParameter("Output file (no file extension)", order = 20)
+            @TextParameter("Output file (no extension)", order = 20)
             var outputFileName = "output"
 
             @ActionParameter("Save points", order = 23)
             fun savePoints() {
                 writeToIpe(partition.points, "input-output/$outputFileName-points.ipe")
-                gui.saveParameters(File("input-output/$outputFileName-parameters.json"))
+                val txt = pointsToText(partition.points)
+                File("input-output/$outputFileName-points.txt").writeText(txt)
             }
 
             @ActionParameter("Save output", order = 25)
@@ -206,7 +217,6 @@ fun main() = application {
         gui.add(ps, "Pipeline")
 
         extend(gui)
-        gui.visible = false
         gui.compartmentsCollapsedByDefault = false
 
         class Grid(val cellSize: Double, val center: Vector2){

@@ -1,5 +1,6 @@
 package sideWindow.settings
 
+import ColorRGB
 import contexts.ColorsContext
 import emotion.react.css
 import react.FC
@@ -8,7 +9,6 @@ import react.dom.html.ReactHTML
 import react.dom.html.ReactHTML.div
 import react.useContext
 import react.useState
-import sideWindow.PanelHeader
 import web.cssom.*
 import web.html.InputType
 import web.timers.Timeout
@@ -17,9 +17,6 @@ import web.timers.setTimeout
 import kotlin.time.Duration.Companion.milliseconds
 
 val ColorSettingsPanel = FC<Props> {
-    PanelHeader {
-        title = "Colors"
-    }
     div {
         css {
             display = Display.flex
