@@ -27,9 +27,19 @@ val ColorSettingsPanel = FC<Props> {
             flexWrap = FlexWrap.wrap
         }
 
-        for (i in 1..7) {
-            ColorPicker {
-                this.i = i
+        with(useContext(ColorsContext)!!) {
+            for (i in colors.indices) {
+                ColorPicker {
+                    this.i = i
+                }
+                if (i == colors.size / 2 - 1) {
+                    div {
+                        css {
+                            flexBasis = 100.pct
+                            height = 0.px
+                        }
+                    }
+                }
             }
         }
     }
@@ -67,13 +77,13 @@ val ColorPicker = FC<ColorPickersProps> { props ->
                 }
                 ReactHTML.input {
                     type = InputType.color
-                    value = colors[i - 1].toHex()
+                    value = colors[i].toHex()
                     onChange = { ev ->
                         apiTimeout?.let { clearTimeout(it) }
 
                         val v = ev.currentTarget.value
                         apiTimeout = setTimeout(100.milliseconds) {
-                            colors = colors.replace(i - 1) { ColorRGB.fromHex(v) }
+                            colors = colors.replace(i) { ColorRGB.fromHex(v) }
                         }
                     }
                 }
@@ -81,7 +91,7 @@ val ColorPicker = FC<ColorPickersProps> { props ->
 
             ReactHTML.button {
                 onClick = {
-                    colors = colors.replace(i - 1, defaultColors[i - 1])
+                    colors = colors.replace(i, defaultColors[i])
                 }
                 +"Reset"
             }

@@ -3,7 +3,6 @@
 import kotlinx.serialization.Serializable
 import org.openrndr.color.ColorRGBa
 import org.openrndr.color.rgb
-import org.openrndr.extra.color.spaces.toOKHSLa
 import org.openrndr.extra.parameters.BooleanParameter
 import org.openrndr.extra.parameters.DoubleParameter
 import org.openrndr.extra.parameters.OptionParameter
@@ -77,8 +76,13 @@ val orange = rgb(0.992, 0.749, 0.435)
 val purple = rgb(0.792, 0.698, 0.839)
 val yellow = rgb(251 / 255.0, 240 / 255.0, 116 / 255.0)
 val brown = rgb(234 / 255.0, 189 / 255.0, 162 / 255.0)
+val indigo = rgb(191 / 255.0, 197 / 255.0, 255 / 255.0)
+val pink = rgb(239 / 255.0, 186 / 255.0, 235 / 255.0)
+val sea = rgb(175 / 255.0, 228 / 255.0, 194 / 255.0)
+val cyan = rgb(188 / 255.0, 235 / 255.0, 237 / 255.0)
+val gray = rgb(206 / 255.0, 206 / 255.0, 206 / 255.0)
 
-val defaultColors = listOf(blue, red, green, orange, purple, yellow, brown)
+val cbColors = listOf(blue, red, green, orange, purple, yellow, brown, indigo, pink, sea, cyan, gray)
 
 val diseasome = listOf(ColorRGBa.WHITE,
     rgb("#99CC00"),
@@ -134,7 +138,7 @@ data class DrawSettings(
     @BooleanParameter("Shadows", order = 1)
     var shadows: Boolean = false,
 
-    var colors: List<ColorRGB> = defaultColors.map { it.toColorRGB() }
+    var colors: List<ColorRGB> = cbColors.map { it.toColorRGB() }
 ) {
     fun pointStrokeWeight(gs: GeneralSettings) = gs.pSize / 2.5
     fun contourStrokeWeight(gs: GeneralSettings) = gs.pSize / 3.5

@@ -6,6 +6,7 @@ import kotlinx.browser.window
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import org.openrndr.color.ColorRGBa
 import org.openrndr.math.IntVector2
 import org.openrndr.math.Matrix44
 import org.openrndr.math.Vector2
@@ -108,19 +109,11 @@ val App = FC<Props> {
         forbidTooClose = grow.forbidTooClose
     )
 
-    val blue = ColorRGB(0.651, 0.807, 0.89)// to ColorRGB(0.121, 0.47, 0.705)
-    val red = ColorRGB(0.984, 0.603, 0.6)// to ColorRGB(0.89, 0.102, 0.109)
-    val green = ColorRGB(0.698, 0.874, 0.541)// to ColorRGB(0.2, 0.627, 0.172)
-    val orange = ColorRGB(0.992, 0.749, 0.435)// to ColorRGB(1.0, 0.498, 0.0)
-    val purple = ColorRGB(0.792, 0.698, 0.839)// to ColorRGB(0.415, 0.239, 0.603)
-    val yellow = ColorRGB(251 / 255.0, 240 / 255.0, 116 / 255.0)
-    val brown = ColorRGB(234 / 255.0, 189 / 255.0, 162 / 255.0)
-    val defaultColors = listOf(blue, red, green, orange, purple, yellow, brown)
-
-    val (colors, colorsSetter) = useState(defaultColors)
+    val cbColorsRGB = cbColors.map { it.toColorRGB() }
+    val (colors, colorsSetter) = useState(cbColorsRGB)
     val colorsObj = object: Colors {
         override val defaultColors: List<ColorRGB>
-            get() = defaultColors
+            get() = cbColorsRGB
         override var colors: List<ColorRGB>
             get() = colors
             set(v) = colorsSetter(v)
@@ -169,6 +162,7 @@ val App = FC<Props> {
             || growSettings != lastGrowSettings
 
     var currentType: Int by useState(0)
+    val currentColor = colors.getOrElse(currentType) { colors[0] }
 
     var evCache: List<PointerEvent<HTMLDivElement>> by useState(emptyList())
     var prevDiff: Double? = null
@@ -282,13 +276,13 @@ val App = FC<Props> {
                         ptStrokeWeight = drawSettings.pointStrokeWeight(generalSettings)
                         lineStrokeWeight = drawSettings.contourStrokeWeight(generalSettings)
                         expandRadius = generalSettings.expandRadius
-                        color = colors[currentType].toHex()
+                        color = currentColor.toHex()
 
                         PointSettingsContext.Provider {
                             value = pointSettings
                             PointSettingsPanel {
                                 strokeWeight = drawSettings.pointStrokeWeight(generalSettings)
-                                fillColor = colors[currentType].toSvgString()
+                                fillColor = currentColor.toSvgString()
                             }
                         }
                     }
@@ -370,7 +364,7 @@ val App = FC<Props> {
 
                 tabIndex = 0
                 onKeyDown = {
-                    if (it.key in (0..6).map { it.toString() }) {
+                    if (it.key in (0..11).map { it.toString() }) {
                         currentType = it.key.toInt()
                     }
                 }
@@ -465,23 +459,6 @@ val App = FC<Props> {
 
                         +whiteSpace
 
-                        for (i in 0..6) {
-                            IconButton {
-                                buttonProps = jso {
-                                    title = "Add points of color $i with mouse"
-                                    onClick = {
-                                        tool =
-                                            if (tool == Tool.PlacePoints && currentType == i) Tool.None else Tool.PlacePoints
-                                        currentType = i
-                                    }
-                                }
-                                isPressed = currentType == i && tool == Tool.PlacePoints
-                                +"$i"
-                            }
-                        }
-
-                        +whiteSpace
-
                         IconButton {
                             buttonProps = jso {
                                 title = "Fit drawing to screen"
@@ -524,6 +501,23 @@ val App = FC<Props> {
                             }
                             DownloadSvg()
 //                            +"D"
+                        }
+
+                        +whiteSpace
+
+                        for (i in 0..11) {
+                            IconButton {
+                                buttonProps = jso {
+                                    title = "Add points of color $i with mouse"
+                                    onClick = {
+                                        tool =
+                                            if (tool == Tool.PlacePoints && currentType == i) Tool.None else Tool.PlacePoints
+                                        currentType = i
+                                    }
+                                }
+                                isPressed = currentType == i && tool == Tool.PlacePoints
+                                +"$i"
+                            }
                         }
 
                         div {
@@ -662,7 +656,7 @@ val App = FC<Props> {
                                     cx = p.pos.x
                                     cy = p.pos.y
                                     r = pointSize
-                                    fill = colors[p.type].toSvgString()
+                                    fill = colors.getOrElse(p.type) { ColorRGBa.WHITE.toColorRGB() }.toSvgString()
                                     stroke = "black"
                                     strokeWidth = drawSettings.pointStrokeWeight(generalSettings)
                                 }
