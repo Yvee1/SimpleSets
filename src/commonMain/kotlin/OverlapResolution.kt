@@ -578,8 +578,6 @@ fun morphCurve(c: ShapeContour, inclCircles: List<Circle>, exclCircles: List<Cir
 
     val (pieces, broken) = breakCurve(c, exclCircles, gs)
 
-    println(broken)
-
     val mends = broken.map { interC ->
         if (interC.segments.isEmpty()) ShapeContour.EMPTY else {
             // TODO: exclCircles should be filtered here! inclCircle maybe as well..

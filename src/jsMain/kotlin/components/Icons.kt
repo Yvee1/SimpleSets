@@ -22,42 +22,42 @@ fun createIcon(rawSvg: String) = FC<Props> {
 
 //val Clear = createIcon(require("clear.svg"))
 val Clear = createIcon("""
-    <?xml version="1.0" encoding="UTF-8" standalone="no"?>
-    <svg
-       viewBox="0 0 24 24"
-       version="1.1"
-       id="svg5"
-       width="24"
-       height="24"
-       xmlns="http://www.w3.org/2000/svg"
-       xmlns:svg="http://www.w3.org/2000/svg">
-      <defs
-         id="defs2" />
-      <path
-         style="fill:none;stroke:#000000;stroke-width:1.1;stroke-linejoin:miter;stroke-dasharray:none"
-         id="path24621"
-         d="m 6.6,6.6 v 10.8 a 3,3 0 0 0 3,3 h 5.8 a 3,3 0 0 0 3,-3 v -11" />
-      <path
-         style="fill:none;stroke:#000000;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none"
-         d="m 4.5,6.5 h 16"
-         id="path24623" />
-      <path
-         style="fill:none;stroke:#000000;stroke-width:1.1;stroke-linejoin:round;stroke-dasharray:none"
-         d="m 9.5,8.5 v 9"
-         id="path24627" />
-      <path
-         style="fill:none;stroke:#000000;stroke-width:1.1;stroke-linejoin:round;stroke-dasharray:none"
-         d="m 15.5,8.5 v 9"
-         id="path24629" />
-      <path
-         style="fill:none;stroke:#000000;stroke-width:1.1;stroke-linejoin:round;stroke-dasharray:none"
-         d="m 12.5,8.5 v 9"
-         id="path24629-3" />
-      <path
-         style="fill:none;stroke:#000000;stroke-width:1.1;stroke-linejoin:round;stroke-dasharray:none"
-         d="M 7.5,6.6 9.7928932,4.3071068 A 2.4142136,2.4142136 157.5 0 1 11.5,3.6 h 2 a 2.4142136,2.4142136 22.5 0 1 1.707107,0.7071068 L 17.5,6.6"
-         id="path24625-6" />
-    </svg>
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   viewBox="0 0 24 24"
+   version="1.1"
+   id="svg5"
+   width="24"
+   height="24"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs2" />
+  <path
+     style="fill:none;stroke:#000000;stroke-width:1.1;stroke-linejoin:miter;stroke-dasharray:none"
+     id="path24621"
+     d="m 6.6,6.6 v 10.8 a 3,3 0 0 0 3,3 h 5.8 a 3,3 0 0 0 3,-3 v -11" />
+  <path
+     style="fill:none;stroke:#000000;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none"
+     d="m 4.5,6.5 h 16"
+     id="path24623" />
+  <path
+     style="fill:none;stroke:#000000;stroke-width:1.1;stroke-linejoin:round;stroke-dasharray:none"
+     d="m 9.5,8.5 v 9"
+     id="path24627" />
+  <path
+     style="fill:none;stroke:#000000;stroke-width:1.1;stroke-linejoin:round;stroke-dasharray:none"
+     d="m 15.5,8.5 v 9"
+     id="path24629" />
+  <path
+     style="fill:none;stroke:#000000;stroke-width:1.1;stroke-linejoin:round;stroke-dasharray:none"
+     d="m 12.5,8.5 v 9"
+     id="path24629-3" />
+  <path
+     style="fill:none;stroke:#000000;stroke-width:1.1;stroke-linejoin:round;stroke-dasharray:none"
+     d="M 7.5,6.6 9.7928932,4.3071068 A 2.4142136,2.4142136 157.5 0 1 11.5,3.6 h 2 a 2.4142136,2.4142136 22.5 0 1 1.707107,0.7071068 L 17.5,6.6"
+     id="path24625-6" />
+</svg>
 """.trimIndent())
 
 //val Run = createIcon(require("run.svg"))
@@ -120,4 +120,8 @@ val DownloadSvg = createIcon("""
            id="path497" />
       </g>
     </svg>
+""".trimIndent())
+
+val Fit = createIcon("""
+<?xml version="2.0" encoding="UTF-8"?><svg id="svg5" xmlns="http://www.w3.org/2000/svg" viewBox="-4 -4 24 24" width="24" height="24"><defs><style>.cls-1{fill:none;stroke:#000;stroke-linecap:round;stroke-linejoin:round;stroke-width:1.2}</style></defs><polyline class="cls-1" points=".75 5.75 .75 .75 5.75 .75"/><polyline class="cls-1" points="5.75 15.75 .75 15.75 .75 10.75"/><polyline class="cls-1" points="10.75 .75 15.75 .75 15.75 5.75"/><polyline class="cls-1" points="15.75 10.75 15.75 15.75 10.75 15.75"/></svg
 """.trimIndent())

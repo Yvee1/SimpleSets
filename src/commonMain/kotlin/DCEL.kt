@@ -658,10 +658,6 @@ data class XGraph(val hs: List<Highlight>, val gs: GeneralSettings, val cds: Com
                 composition((f.fillDrawing ?: continue)(hs, ds))
             }
 
-//            for (f in faces) {
-//                composition((f.shadowDrawing ?: continue)(hs, gs, ds))
-//            }
-
             for (f in faces) {
                 composition((f.strokeDrawing ?: continue)(gs, ds))
             }

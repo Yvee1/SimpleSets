@@ -3,22 +3,24 @@ import highlights.toHighlight
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
-import org.openrndr.*
+import org.openrndr.KEY_BACKSPACE
+import org.openrndr.KEY_SPACEBAR
+import org.openrndr.application
 import org.openrndr.color.ColorRGBa
 import org.openrndr.draw.loadFont
 import org.openrndr.extra.color.presets.BLUE_STEEL
 import org.openrndr.extra.gui.GUI
 import org.openrndr.extra.gui.GUIAppearance
 import org.openrndr.extra.parameters.*
-import org.openrndr.math.*
+import org.openrndr.launch
+import org.openrndr.math.Matrix44
+import org.openrndr.math.Vector2
+import org.openrndr.math.transforms.transform
 import org.openrndr.shape.*
 import org.openrndr.svg.toSVG
-import patterns.*
+import patterns.bounds
 import java.io.File
 import java.io.IOException
-import java.time.ZoneId
-import java.time.ZonedDateTime
-import java.time.format.DateTimeFormatter
 import java.util.concurrent.TimeUnit
 import kotlin.math.round
 
@@ -85,7 +87,6 @@ fun main() = application {
             @ActionParameter("Compute drawing")
             fun computeDrawing() {
                 try {
-                    println("!")
                     highlights = partition.patterns.map { it.toHighlight(gs.expandRadius) }
                     xGraph = XGraph(highlights, gs, cds)// {
 //                            comp, fileName ->
@@ -170,32 +171,34 @@ fun main() = application {
                 "py svgtoipe.py input-output/$outputFileName.svg".runCommand(File("."))
             }
         }
-        
-        val uiSettings = object {
-            @BooleanParameter("Grid", order = 1)
-            var useGrid = false
 
-            @DoubleParameter("Grid size", 1.0, 100.0, order = 2)
-            var gridSize = 20.0
+        val camera = Camera2D()
+
+        val transformMatrix = transform {
+            translate(0.0, height.toDouble())
+            scale(1.0, -1.0)
         }
 
-        // Simple compute settings
-//        val scs = object {
-//            @DoubleParameter("Point size", 0.1, 10.0, order = 0)
-//            var pSize: Double = 2.5
-//
-//            @DoubleParameter("Cover radius", 2.5, 6.0, order = 8000)
-//            var coverRadius: Double = 3.5
-//
-//            @DoubleParameter("Smoothing", 0.001, 0.3, order = 10000)
-//            var smoothing: Double = 0.2
-//            @DoubleParameter("Avoid overlap", 0.0, 1.0, order = 8000)
-//            var avoidOverlap: Double = 0.25
-//        }
+        val uiSettings = object {
+            @ActionParameter("Fit to screen")
+            fun fitToScreen() {
+                val rect = partition.points.bounds
+                    .offsetEdges(ds.contourStrokeWeight(gs) + 2 * gs.expandRadius)
+                    .contour
+                    .transform(transformMatrix)
+                    .bounds
+                val matrix = Matrix44.fit(rect, drawer.bounds)// * transform { translate(0.0, drawer.bounds.height) }
+                camera.view = matrix.inversed
+            }
 
+            @ActionParameter("Reset viewport")
+            fun resetViewport() {
+                camera.view = Matrix44.IDENTITY
+            }
+        }
 
         gui.add(inputOutputSettings, "Input output settings")
-//        gui.add(uiSettings, "UI Settings")
+        gui.add(uiSettings, "UI Settings")
         gui.add(gs, "General settings")
         gui.add(tgs, "Grow settings")
         gui.add(cs, "Cover settings")
@@ -205,12 +208,6 @@ fun main() = application {
         extend(gui)
         gui.visible = false
         gui.compartmentsCollapsedByDefault = false
-
-//        ds.pSize = scs.pSize
-//        cds.alignExpandRadius(ds.pSize)
-//        cps.alignPartitionClearance(1.0, cds.expandRadius)
-//        cps.coverRadius = scs.coverRadius * cds.expandRadius
-//        cps.alignSingleDouble()
 
         class Grid(val cellSize: Double, val center: Vector2){
             fun snap(p: Vector2): Vector2 = (p - center).mapComponents { round(it / cellSize) * cellSize } + center
@@ -237,26 +234,14 @@ fun main() = application {
             }
         }
 
-        var view = drawer.view
-
-        var grid = Grid(uiSettings.gridSize, drawer.bounds.center)
         gui.onChange { varName, _ ->
             if (varName == "gridSize")
-                grid = Grid(uiSettings.gridSize, drawer.bounds.center)
 
             if (varName == "pSize") {
-//                ds.pSize = scs.pSize
-//                cds.alignExpandRadius(ds.pSize)
-//                cps.alignPartitionClearance(1.0, cds.expandRadius)
                 if (ps.computeDrawing) ps.computeDrawing()
             }
 
-//            if (varName == "bendDistance" || varName == "clusterRadius") {
-//                cps.alignSingleDouble()
-//            }
-
             if (varName == "cover" || varName == "pSize") {
-//                cps.coverRadius = scs.coverRadius * cds.expandRadius
                 val newPartition = filtration.takeWhile { it.first < cs.cover * gs.expandRadius }.lastOrNull()?.second
                 if (newPartition != null) {
                     partition = newPartition
@@ -269,19 +254,6 @@ fun main() = application {
             }
         }
 
-        fun flip(v: Vector2) = Vector2(v.x, drawer.bounds.height - v.y)
-
-        fun transformMouse(mp: Vector2): Vector2 {
-            val v = flip((view.inversed * Vector4(mp.x, mp.y, 0.0, 1.0)).xy)
-            return if (uiSettings.useGrid) grid.snap(v) else v
-        }
-
-        fun Pattern.nearby(p: Vector2): Boolean =
-            when(this) {
-                is SinglePoint -> point.pos.distanceTo(p) < 3 * gs.pSize
-                else -> p in contour || (contour.nearest(p).position - p).length < 3 * gs.pSize
-            }
-
         keyboard.keyDown.listen { keyEvent ->
             if (!keyEvent.propagationCancelled) {
                 if (keyEvent.key == KEY_SPACEBAR) {
@@ -291,10 +263,6 @@ fun main() = application {
                     clearData(clearPartition = false)
                     asyncCompute {
                         ps.computeFiltration()
-//                        ps.modifiedPartition()
-//                        ps.doAnnealing()
-//                        ps.computeDrawing()
-//                        ps.computeBridges()
                     }
                 }
 
@@ -311,58 +279,23 @@ fun main() = application {
                 }
             }
         }
+
         val font = loadFont("data/fonts/default.otf", 16.0)
-        extend(Camera2D())
+        extend(camera)
         extend {
-            view = drawer.view
             drawer.fontMap = font
             drawer.fill = ColorRGBa.BLACK
             drawer.clear(ColorRGBa.WHITE)
 
             composition = { showMouse -> drawComposition {
-                translate(0.0, height.toDouble())
-                scale(1.0, -1.0)
-
-                // Draw grid
-                strokeWeight = 0.5
-                stroke = ColorRGBa.GRAY.opacify(0.3)
-//                if (uiSettings.useGrid) grid.draw(this)
-
+                model *= transformMatrix
                 xGraph.draw(this, ds)
-//                for ((h, vCell) in highlights.zip(voronoiDiagram(partition.patterns))) {
-//                    fill = (ds.colorSettings.lightColors.getOrNull(h.type)?.toColorRGBa() ?: ColorRGBa.WHITE).whiten(ds.whiten)
-//                    stroke = ColorRGBa.BLACK
-//                    strokeWeight = ds.contourStrokeWeight(gs)
-////                    shape(intersection(h.contour.clockwise, vCell))
-//                    contour(vCell)
-//                }
                 coloredPoints(partition.points, gs, ds)
-
-//                isolated {
-//                    if (ds.showPoints) {
-//                        stroke = ColorRGBa.BLACK
-//
-//                        strokeWeight = ds.pointStrokeWeight(gs)
-//                        for ((i, pattern) in partition.patterns.withIndex()) {
-//                            for (p in pattern.points) {
-//                                fill = lightColors[p.type]
-//                                isolated {
-//                                    circle(p.pos, gs.pSize)
-//                                }
-//                            }
-//                        }
-//                    }
-//                }
-
-//                stroke = null
-//                fill = ColorRGBa.BLACK.opacify(0.1)
-//                circles(partition.points.map { it.pos }, cps.coverRadius)
             }}
             drawer.composition(composition(true))
         }
     }
 }
-
 
 fun Vector2.mapComponents(f: (Double) -> Double) = Vector2(f(x), f(y))
 

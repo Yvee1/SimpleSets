@@ -1,45 +1,49 @@
 import components.*
 import contexts.*
-import web.cssom.*
-import web.cssom.Auto.Companion.auto
-import web.cssom.Globals.Companion.initial
-import web.cssom.None.Companion.none
 import emotion.react.css
 import js.core.jso
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.encodeToString
+import kotlinx.browser.window
 import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import org.openrndr.math.IntVector2
 import org.openrndr.math.Matrix44
 import org.openrndr.math.Vector2
 import org.openrndr.math.transforms.transform
-import patterns.Point
-import react.*
-import react.dom.html.ReactHTML.div
-import react.dom.svg.ReactSVG.circle
-import react.dom.svg.ReactSVG.svg
+import org.openrndr.shape.Rectangle
 import org.w3c.dom.MessageEvent
 import org.w3c.dom.Worker
+import patterns.Point
+import patterns.bounds
+import react.*
 import react.dom.events.MouseEvent
 import react.dom.events.NativeMouseEvent
 import react.dom.events.PointerEvent
+import react.dom.html.ReactHTML.div
+import react.dom.html.ReactHTML.label
+import react.dom.html.ReactHTML.progress
+import react.dom.svg.ReactSVG.circle
+import react.dom.svg.ReactSVG.svg
 import sideWindow.Divider
 import sideWindow.DraggableDivider
 import sideWindow.SelectExample
 import sideWindow.SideWindow
 import sideWindow.settings.BankSettingsPanel
 import sideWindow.settings.ColorSettingsPanel
+import sideWindow.settings.GrowSettingsPanel
 import sideWindow.settings.PointSettingsPanel
 import web.buffer.Blob
 import web.buffer.BlobPart
+import web.cssom.*
+import web.cssom.Auto.Companion.auto
+import web.cssom.Globals.Companion.initial
+import web.cssom.None.Companion.none
 import web.dom.Element
 import web.dom.document
-import web.html.*
+import web.geometry.DOMRect
+import web.html.HTMLAnchorElement
+import web.html.HTMLDivElement
 import web.url.URL
-import kotlinx.browser.window
-import react.dom.html.ReactHTML.label
-import react.dom.html.ReactHTML.progress
-import sideWindow.settings.GrowSettingsPanel
 
 enum class Tool {
     None,
@@ -139,6 +143,22 @@ val App = FC<Props> {
 
     var tool: Tool by useState(Tool.PlacePoints)
     var points: List<Point> by useState(emptyList())
+
+    val pointBounds = run {
+        points.bounds.offsetEdges(drawSettings.contourStrokeWeight(generalSettings) + 2 * generalSettings.expandRadius)
+    }
+
+    var fittingToScreen: Boolean by useState(false)
+
+    fun fitToScreen() {
+        viewMatrix = Matrix44.fit(pointBounds, Rectangle(0.0, 0.0,
+            svgSize.x.toDouble(), svgSize.y.toDouble()
+        ))
+    }
+
+    useEffect(points, pointSize) {
+        if (fittingToScreen && points.isNotEmpty()) fitToScreen()
+    }
 
     var computing: Boolean by useState(false)
 
@@ -273,6 +293,7 @@ val App = FC<Props> {
                             .fetch("example-input/${getFileName(it)}.ipe")
                             .then { it.text() }
                             .then { ipe ->
+                                fittingToScreen = true
                                 points = ipeToPoints(ipe).map { p ->
                                     p.copy(pos = p.pos.copy(y = svgSize.y - p.pos.y))
                                 }
@@ -423,6 +444,24 @@ val App = FC<Props> {
 
                         IconButton {
                             buttonProps = jso {
+                                title = "Fit drawing to screen"
+                                onClick = {
+                                    if (!fittingToScreen) {
+                                        fittingToScreen = true
+                                        fitToScreen()
+                                    } else {
+                                        fittingToScreen = false
+                                    }
+                                }
+                            }
+                            isPressed = fittingToScreen
+                            Fit()
+                        }
+
+                        +whiteSpace
+
+                        IconButton {
+                            buttonProps = jso {
                                 title = "Download output as an SVG file"
                                 onClick = {
                                     // Adapted from: https://stackoverflow.com/a/38019175
@@ -495,6 +534,8 @@ val App = FC<Props> {
 
                             if (tool == Tool.PlacePoints && ev.button == 0) {
                                 points += Point(viewMatrix * ev.offset, currentType)
+                                println(points)
+                                println(viewMatrix)
                             } else {
                                 evCache += ev
                             }
@@ -532,11 +573,10 @@ val App = FC<Props> {
                             }
 
                             if (evCache.size == 1 && prevEv != null) {
-//                                if (tool == Tool.None) {
-                                    viewMatrix *= transform {
-                                        translate(-(ev.clientX - prevEv.clientX), -(ev.clientY - prevEv.clientY))
-                                    }
-//                                }
+                                viewMatrix *= transform {
+                                    translate(-(ev.clientX - prevEv.clientX), -(ev.clientY - prevEv.clientY))
+                                }
+                                fittingToScreen = false
                             }
 
                             if (prevEv != null) {
@@ -552,6 +592,7 @@ val App = FC<Props> {
                                 scale(1 + ev.deltaY / 1000)
                                 translate(-pos)
                             }
+                            fittingToScreen = false
                         }
 
                         div {
@@ -631,6 +672,7 @@ val App = FC<Props> {
                             }
                             onClick = {
                                 viewMatrix = Matrix44.IDENTITY
+                                fittingToScreen = false
                             }
                             +"Reset"
                         }
