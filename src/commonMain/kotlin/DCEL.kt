@@ -44,24 +44,22 @@ data class XHalfEdge(val source: XVertex, val target: XVertex, val contour: Shap
 
     lateinit var face: XFace
 
-//    var morphedContours = mutableMapOf<Int, ShapeContour>()
-
     val next by lazy {
-        target.outgoing.first {
+        target.outgoing.map {
             val y = target.x.position
             val z = y + it.contour.direction(0.0)
             val x = y - contour.direction(1.0)
-            orientation(x, y, z) == Orientation.LEFT
-        }
+            it to orientationD(x, y, z)
+        }.maxBy { it.second }.first
     }
 
     val prev by lazy {
-        source.incoming.first {
+        source.incoming.map {
             val y = source.x.position
             val x = y - it.contour.direction(1.0)
             val z = y + contour.direction(0.0)
-            orientation(x, y, z) == Orientation.LEFT // TODO: Check
-        }
+            it to orientationD(x, y, z)
+        }.maxBy { it.second }.first
     }
 }
 
@@ -443,13 +441,21 @@ data class XGraph(val hs: List<Highlight>, val gs: GeneralSettings, val cds: Com
             var faceContour = heStart.contour
 
             var iters = 0
-            while (current.next != heStart && iters < 1000) {
+            while (current.next != heStart && iters < 100) {
                 iters++
                 current = current.next
                 visited.add(current)
                 faceContour += current.contour
             }
-            if (iters >= 1000) {
+            if (iters >= 100) {
+                val comp = drawComposition {
+                    for (e in visited) {
+                        fill = null
+                        stroke = ColorRGBa.BLACK.opacify(0.01)
+                        contour(e.contour)
+                    }
+                }
+                debug(comp, "debug-loop-edges")
                 error("Problem with computing faces (a face seems to exist of more than 1000 half edges)")
             }
 

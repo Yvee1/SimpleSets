@@ -23,10 +23,13 @@ enum class Orientation {
     }
 }
 
+fun orientationD(p: Vector2, q: Vector2, r: Vector2) =
+    Matrix33(1.0, p.x, p.y,
+        1.0, q.x, q.y,
+        1.0, r.x, r.y).determinant
+
 fun orientation(p: Vector2, q: Vector2, r: Vector2): Orientation {
-    val d = Matrix33(1.0, p.x, p.y,
-                     1.0, q.x, q.y,
-                     1.0, r.x, r.y).determinant
+    val d = orientationD(p, q, r)
 
     return if (abs(d) <= PRECISION) {
         Orientation.STRAIGHT

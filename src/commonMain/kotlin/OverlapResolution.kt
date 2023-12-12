@@ -119,7 +119,7 @@ val noDebug: Debug = { _, _, -> }
 
 fun separatingCurve(interC: ShapeContour, gCircles: List<Circle>, bCircles: List<Circle>, gs: GeneralSettings,
                     cds: ComputeDrawingSettings, debug: Debug = noDebug): ShapeContour {
-    if (!bCircles.any { it.contour.overlaps(interC) }) return interC
+//    if (!bCircles.any { it.contour.overlaps(interC) }) return interC
     if (bCircles.isEmpty()) return interC
     val gClosest = interC.nearest(gCircles[0].center)
     val gClosestDir = interC.direction(gClosest.contourT)
