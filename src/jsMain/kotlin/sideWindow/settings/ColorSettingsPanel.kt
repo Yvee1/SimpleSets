@@ -99,12 +99,17 @@ val ColorPicker = FC<ColorPickersProps> { props ->
     }
 }
 
-private fun <E> List<E>.replace(i: Int, function: (E) -> E): List<E> =
+fun <E> List<E>.replace(i: Int, function: (E) -> E): List<E> =
     withIndex().map {
         if (it.index == i) function(it.value) else it.value
     }
 
-private fun <E> List<E>.replace(i: Int, new: E): List<E> =
+fun <E> List<E>.replace(i: Int, new: E): List<E> =
     withIndex().map {
         if (it.index == i) new else it.value
     }
+
+fun <E> List<E>.remove(i: Int): List<E> =
+    withIndex().filter {
+        it.index != i
+    }.map { it.value }

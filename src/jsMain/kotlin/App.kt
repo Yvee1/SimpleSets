@@ -16,6 +16,8 @@ import org.w3c.dom.MessageEvent
 import org.w3c.dom.Worker
 import patterns.Point
 import patterns.bounds
+import patterns.roundToDecimals
+import patterns.v
 import react.*
 import react.dom.events.MouseEvent
 import react.dom.events.NativeMouseEvent
@@ -27,10 +29,7 @@ import react.dom.html.ReactHTML.textarea
 import react.dom.svg.ReactSVG.circle
 import react.dom.svg.ReactSVG.svg
 import sideWindow.*
-import sideWindow.settings.BankSettingsPanel
-import sideWindow.settings.ColorSettingsPanel
-import sideWindow.settings.GrowSettingsPanel
-import sideWindow.settings.PointSettingsPanel
+import sideWindow.settings.*
 import web.buffer.Blob
 import web.buffer.BlobPart
 import web.cssom.*
@@ -41,11 +40,14 @@ import web.dom.Element
 import web.dom.document
 import web.html.HTMLAnchorElement
 import web.html.HTMLDivElement
+import web.html.InputType
 import web.url.URL
 
 enum class Tool {
     None,
-    PlacePoints
+    PlacePoints,
+    MovePoints,
+    RemovePoints,
 }
 
 val worker = Worker("worker.js")
@@ -163,6 +165,7 @@ val App = FC<Props> {
     val currentColor = colors.getOrElse(currentType) { colors[0] }
 
     var evCache: List<PointerEvent<HTMLDivElement>> by useState(emptyList())
+    var downEvent: PointerEvent<HTMLDivElement>? by useState(null)
     var prevDiff: Double? = null
 
     val (sideWindowRatio, setSideWindowRatio) = useState(0.382)
@@ -172,15 +175,20 @@ val App = FC<Props> {
     val windowSize = useWindowSize()
     val horizontal = windowSize.x > windowSize.y
 
+    var movingPoint: Int? by useState(null)
+
     var areaText: String by useState("")
-    useEffect(points) {
-        val newText = pointsToText(points)
-        if (parsePoints(newText) != parsePoints(areaText))
+
+    fun matchText(newPoints: List<Point>) {
+        val newText = pointsToText(newPoints)
+        if (parsePoints(newText) != parsePoints(areaText)) {
             areaText = newText
+        }
     }
-    useEffect(areaText) {
+
+    fun matchPoints(newText: String) {
         try {
-            val pts = parsePoints(areaText)
+            val pts = parsePoints(newText)
             if (pts != points) {
                 points = pts
             }
@@ -308,7 +316,10 @@ val App = FC<Props> {
                 }
                 textarea {
                     value = areaText
-                    onChange = { areaText = it.target.value }
+                    onChange = {
+                        areaText = it.target.value
+                        matchPoints(it.target.value)
+                    }
                     css {
                         padding = 10.px
                         lineHeight = number(1.5);
@@ -326,9 +337,11 @@ val App = FC<Props> {
                             .then { it.text() }
                             .then { ipe ->
                                 fittingToScreen = true
-                                points = ipeToPoints(ipe).map { p ->
+                                val newPoints = ipeToPoints(ipe).map { p ->
                                     p.copy(pos = p.pos.copy(y = svgSize.y - p.pos.y))
                                 }
+                                points = newPoints
+                                matchText(newPoints)
                                 val (gSettings, gCover) = goodSettings(it)
                                 val (gs, tgs, _, _) = gSettings
                                 maxBendAngleSetter(gs.maxBendAngle)
@@ -370,11 +383,6 @@ val App = FC<Props> {
                 }
 
                 tabIndex = 0
-                onKeyDown = {
-                    if (it.key in (0..11).map { it.toString() }) {
-                        currentType = it.key.toInt()
-                    }
-                }
 
                 if (computing) {
                     div {
@@ -422,12 +430,62 @@ val App = FC<Props> {
 
                         +whiteSpace
 
+                        IntInput {
+                            startValue = currentType
+                            inputProps = jso {
+                                type = InputType.number
+                                min = 0
+                                max = 11
+                                css {
+                                    width = 48.px
+                                }
+                            }
+                            onParse = {
+                                currentType = it
+                            }
+                        }
+
+                        IconButton {
+                            buttonProps = jso {
+                                title = "Place points with mouse"
+                                onClick = {
+                                    tool = if (tool == Tool.PlacePoints) Tool.None else Tool.PlacePoints
+                                }
+                            }
+                            isPressed = tool == Tool.PlacePoints
+                            +"+"
+                        }
+
+                        IconButton {
+                            buttonProps = jso {
+                                title = "Remove points with mouse"
+                                onClick = {
+                                    tool = if (tool == Tool.RemovePoints) Tool.None else Tool.RemovePoints
+                                }
+                            }
+                            isPressed = tool == Tool.RemovePoints
+                            +"×"
+                        }
+
+                        IconButton {
+                            buttonProps = jso {
+                                title = "Move points with mouse"
+                                onClick = {
+                                    tool = if (tool == Tool.MovePoints) Tool.None else Tool.MovePoints
+                                }
+                            }
+                            isPressed = tool == Tool.MovePoints
+                            +"→"
+                        }
+
 //                        Grid {
 //                            showGrid = useGrid
 //                            onClick = {
 //                                useGrid = !useGrid
 //                            }
 //                        }
+
+                        +whiteSpace
 
                         IconButton {
                             buttonProps = jso {
@@ -437,6 +495,7 @@ val App = FC<Props> {
                                 {
                                     svg = emptySvg
                                     points = emptyList()
+                                    matchText(emptyList())
                                 }
                             }
                             Clear()
@@ -461,6 +520,8 @@ val App = FC<Props> {
                                     }
                                 }
                             }
+                            highlight = changedProblem
+
                             Run()
                         }
 
@@ -510,23 +571,6 @@ val App = FC<Props> {
 //                            +"D"
                         }
 
-                        +whiteSpace
-
-                        for (i in 0..11) {
-                            IconButton {
-                                buttonProps = jso {
-                                    title = "Add points of color $i with mouse"
-                                    onClick = {
-                                        tool =
-                                            if (tool == Tool.PlacePoints && currentType == i) Tool.None else Tool.PlacePoints
-                                        currentType = i
-                                    }
-                                }
-                                isPressed = currentType == i && tool == Tool.PlacePoints
-                                +"$i"
-                            }
-                        }
-
                         div {
                             css {
                                 flex = auto
@@ -549,8 +593,14 @@ val App = FC<Props> {
                         if (tool == Tool.PlacePoints) {
                             cursor = Cursor.pointer
                         }
-                        if (evCache.isNotEmpty() && (tool == Tool.None || evCache[0].button != 0)) {
+                        if (evCache.isNotEmpty() &&
+                            (tool == Tool.None ||
+                            downEvent?.button != 0)
+                            ) {
                             cursor = Cursor.move
+                        }
+                        if (tool == Tool.MovePoints && downEvent?.button == 0 && movingPoint != null) {
+                            cursor = Cursor.grabbing
                         }
                     }
                     div {
@@ -574,9 +624,12 @@ val App = FC<Props> {
                             ev.currentTarget.setPointerCapture(ev.pointerId)
 
                             if (tool == Tool.PlacePoints && ev.button == 0) {
-                                points += Point(viewMatrix * ev.offset, currentType)
+                                val newPoints = points + Point(viewMatrix * ev.offset, currentType)
+                                points = newPoints
+                                matchText(newPoints)
                             } else {
                                 evCache += ev
+                                downEvent = ev
                             }
                         }
 
@@ -585,6 +638,9 @@ val App = FC<Props> {
                             ev.stopPropagation()
                             evCache = evCache.filterNot {
                                 it.pointerId == ev.pointerId
+                            }
+                            if (movingPoint != null) {
+                                movingPoint = null
                             }
                         }
 
@@ -612,10 +668,16 @@ val App = FC<Props> {
                             }
 
                             if (evCache.size == 1 && prevEv != null) {
-                                viewMatrix *= transform {
-                                    translate(-(ev.clientX - prevEv.clientX), -(ev.clientY - prevEv.clientY))
+                                if (tool == Tool.None || downEvent?.button != 0) {
+                                    viewMatrix *= transform {
+                                        translate(-(ev.clientX - prevEv.clientX), -(ev.clientY - prevEv.clientY))
+                                    }
+                                    fittingToScreen = false
+                                } else if (tool == Tool.MovePoints && movingPoint != null){
+                                    val newPoints = points.replace(movingPoint!!) { it.copy(pos = (viewMatrix * ev.offset).roundToDecimals(3)) }
+                                    points = newPoints
+                                    matchText(newPoints)
                                 }
-                                fittingToScreen = false
                             }
 
                             if (prevEv != null) {
@@ -641,7 +703,7 @@ val App = FC<Props> {
                                 position = Position.absolute
                                 zIndex = integer(2)
                                 borderBottomRightRadius = cardBr
-                                if (changedProblem)
+                                if (changedProblem || tool == Tool.MovePoints || tool == Tool.RemovePoints)
                                     background = rgb(255, 255, 255, 0.9)
                             }
                         }
@@ -651,14 +713,14 @@ val App = FC<Props> {
                                 height = 100.pct
                                 width = 100.pct
                                 position = Position.absolute
-                                display = if (changedProblem) Display.block else none
+                                display = if (changedProblem || tool == Tool.MovePoints || tool == Tool.RemovePoints) Display.block else none
                                 zIndex = integer(3)
                                 borderBottomRightRadius = cardBr
                             }
 
                             viewBox = viewBoxTransform
 
-                            for (p in points) {
+                            for ((i, p) in points.withIndex()) {
                                 circle {
                                     cx = p.pos.x
                                     cy = p.pos.y
@@ -666,6 +728,19 @@ val App = FC<Props> {
                                     fill = colors.getOrElse(p.type) { ColorRGBa.WHITE.toColorRGB() }.toSvgString()
                                     stroke = "black"
                                     strokeWidth = drawSettings.pointStrokeWeight(generalSettings)
+                                    onPointerDown = { e ->
+                                        if (tool == Tool.MovePoints)
+                                            movingPoint = i
+                                        if (tool == Tool.RemovePoints) {
+                                            val newPoints = points.remove(i)
+                                            points = newPoints
+                                            matchText(newPoints)
+                                        }
+                                    }
+                                    if (tool == Tool.RemovePoints)
+                                        cursor = Cursor.pointer.toString()
+                                    if (tool == Tool.MovePoints)
+                                        cursor = Cursor.grab.toString()
                                 }
                             }
                         }
@@ -753,6 +828,8 @@ val App = FC<Props> {
         }
     }
 }
+
+private fun Vector2.roundToDecimals(decimals: Int): Vector2 = x.roundToDecimals(decimals) v y.roundToDecimals(decimals)
 
 val <T: Element, E : NativeMouseEvent> MouseEvent<T, E>.offset: Vector2
     get() = Vector2(nativeEvent.offsetX, nativeEvent.offsetY)

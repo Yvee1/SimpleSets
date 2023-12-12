@@ -17,7 +17,7 @@ external interface SelectExampleProps: Props {
 }
 
 val SelectExample = FC<SelectExampleProps> { props ->
-    var selectedExampleInput: ExampleInput by useState(ExampleInput.NYC)
+    var selectedExampleInput: ExampleInput by useState(ExampleInput.Mills)
     div {
         label {
             title = "Select example input"

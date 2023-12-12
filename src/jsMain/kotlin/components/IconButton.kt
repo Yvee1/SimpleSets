@@ -13,6 +13,7 @@ import web.html.HTMLButtonElement
 external interface IconButtonProps : PropsWithChildren {
     var isPressed: Boolean
     var buttonProps: ButtonHTMLAttributes<HTMLButtonElement>
+    var highlight: Boolean
 }
 
 val IconButton = FC<IconButtonProps> { props ->
@@ -50,6 +51,11 @@ val IconButton = FC<IconButtonProps> { props ->
                     backgroundSize = 100.pct
                     transition = Transition(PropertyName.background, duration=0.s, delay=0.s)
                 }
+            }
+
+            if (props.highlight) {
+                border = Border(1.px, LineStyle.solid, rgb(0, 96, 223))
+                borderRadius = 2.px
             }
         }
 

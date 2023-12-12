@@ -55,7 +55,7 @@ external interface PointSettingsPanelProps: Props {
 val PointSettingsPanel = FC<PointSettingsPanelProps> { props ->
     PointSize {
         +props
-        min = 1.0
+        min = 0.1
         max = 10.0
     }
 }

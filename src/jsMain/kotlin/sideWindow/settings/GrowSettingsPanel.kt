@@ -24,7 +24,7 @@ val GrowSettingsPanel = FC<Props> {
         Checkbox {
             title = "Delay merges that introduce intersections"
             checked = postponeIntersections
-            label = "Intersection delay"
+            label = "Intersection delay (slow!)"
             onChange = {
                 postponeIntersections = !postponeIntersections
             }
