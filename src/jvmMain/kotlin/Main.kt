@@ -115,7 +115,7 @@ fun main() = application {
             fun computeFiltration() {
                 asyncCompute {
                     val start = System.currentTimeMillis()
-                    filtration = topoGrow(partition.points, gs, tgs, 8 * cs.cover)
+                    filtration = topoGrow(partition.points, gs, tgs, 8 * gs.expandRadius)
                     val end = System.currentTimeMillis()
                     println("topoGrow took: ${end - start}ms")
                     val newPartition = filtration.takeWhile { it.first < cs.cover * gs.expandRadius }.lastOrNull()?.second
