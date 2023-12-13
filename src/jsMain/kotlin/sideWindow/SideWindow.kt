@@ -5,11 +5,13 @@ import react.FC
 import react.PropsWithChildren
 import react.dom.html.ReactHTML
 import react.dom.html.ReactHTML.div
+import react.dom.html.ReactHTML.span
 import web.cssom.*
 
 external interface SideWindowProps: PropsWithChildren {
     var isHorizontal: Boolean
     var size: Length
+    var onClickInfo: () -> Unit
 }
 
 val SideWindow = FC<SideWindowProps> { props ->
@@ -44,7 +46,20 @@ val SideWindow = FC<SideWindowProps> { props ->
                 css {
                     marginTop = 0.px
                 }
-                +"SimpleSets"
+                span {
+                    +"SimpleSets"
+                }
+                span {
+                    css {
+                        marginLeft = 5.px
+                        color = NamedColor.gray
+                        cursor = Cursor.pointer
+                    }
+                    onClick = {
+                        props.onClickInfo()
+                    }
+                    +" ⓘ"
+                }
             }
             div {
                 css {

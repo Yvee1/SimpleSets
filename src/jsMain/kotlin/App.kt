@@ -208,6 +208,8 @@ val App = FC<Props> {
         if (fittingToScreen && points.isNotEmpty()) fitToScreen()
     }
 
+    var showInfo: Boolean by useState(false)
+
     worker.onmessage = { m: MessageEvent ->
         val answer: Answer = Json.decodeFromString(m.data as String)
         when (answer) {
@@ -271,6 +273,10 @@ val App = FC<Props> {
             SideWindow {
                 isHorizontal = horizontal
                 size = (100 * sideWindowRatio).pct
+
+                onClickInfo = {
+                    showInfo = true
+                }
 
                 PanelHeader {
                     title = "General"
@@ -825,6 +831,12 @@ val App = FC<Props> {
                     }
                 }
             }
+        }
+    }
+
+    if (showInfo) {
+        InfoScreen {
+            closeScreen = { showInfo = false }
         }
     }
 }
