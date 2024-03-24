@@ -89,6 +89,31 @@ val diseasome = listOf(ColorRGBa.WHITE,
     rgb("#CC9900"),
 ).map { it.whiten(0.35) }
 
+val newDiseasome = listOf(
+    rgb("#B9E1EE"),
+    rgb("#9AC019"),
+    rgb("#CD6814"),
+    rgb("#E53389"),
+    rgb("#C1BC56"),
+    rgb("#923B8B"),
+    rgb("#FBD2AA"),
+    rgb("#999999"),
+    rgb("#FECD0F"),
+    rgb("#CB9A03"),
+    rgb("#F3983B"),
+    rgb("#4B8EC7"),
+    rgb("#2E9A67"),
+    rgb("#E95937"),
+    rgb("#F8EE82"),
+    rgb("#E74646"),
+    rgb("#CBBC9D"),
+    rgb("#6699CD"),
+    rgb("#6FC4C6"),
+    rgb("#F1979A"),
+    rgb("#8F5A9C"),
+    rgb("#BB3087"),
+)
+
 @Serializable
 data class DrawSettings(
     @DoubleParameter("Whiten", 0.0, 1.0, order = 1000)
@@ -127,7 +152,8 @@ data class DrawSettings(
     @BooleanParameter("Shadows", order = 1)
     var shadows: Boolean = false,
 
-    var colors: List<ColorRGB> = cbColors.map { it.toColorRGB() }
+//    var colors: List<ColorRGB> = cbColors.map { it.toColorRGB() }
+    var colors: List<ColorRGB> = newDiseasome.map { it.toColorRGB() }
 ) {
     fun pointStrokeWeight(gs: GeneralSettings) = gs.pSize / 2.5
     fun contourStrokeWeight(gs: GeneralSettings) = gs.pSize / 3.5

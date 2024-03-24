@@ -54,14 +54,15 @@ fun coverRadius(vecs: List<Vector2>): Double =
     else if (vecs.size == 3) {
         coverRadiusTriangle(vecs[0], vecs[1], vecs[2])
     } else {
-        coverRadiusVoronoi(vecs)
+        val delaunay = vecs.delaunayTriangulation()
+        delaunay.hull()
+        coverRadiusVoronoi(vecs, delaunay.hull())
     }
 
-fun coverRadiusVoronoi(vecs: List<Vector2>): Double {
+fun coverRadiusVoronoi(vecs: List<Vector2>, shape: ShapeContour): Double {
     val delaunay = vecs.delaunayTriangulation()
-    val ch = delaunay.hull()
-    val voronoi = delaunay.voronoiDiagram(ch.bounds)
-    val cells = voronoi.cellPolygons().map { it.shape.intersection(ch.reversed.shape).contours.firstOrNull() ?: ShapeContour.EMPTY }
+    val voronoi = delaunay.voronoiDiagram(shape.bounds)
+    val cells = voronoi.cellPolygons().map { it.shape.intersection(shape.reversed.shape).contours.firstOrNull() ?: ShapeContour.EMPTY }
     var r = 0.0
     for (i in cells.indices) {
         if (cells[i] == ShapeContour.EMPTY) continue
