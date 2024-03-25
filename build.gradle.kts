@@ -21,6 +21,7 @@ val orxFeatures = setOf<String>(
     "orx-shapes",
     "orx-triangulation",
     "orx-parameters",
+    "orx-marching-squares",
 )
 
 // ------------------------------------------------------------------------------------------------------------------ //

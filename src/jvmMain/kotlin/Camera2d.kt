@@ -32,7 +32,7 @@ class Camera2D : Extension {
         mouse.dragged.listen {
             if (!it.propagationCancelled) {
                 when (it.button) {
-                    MouseButton.CENTER -> {
+                    MouseButton.CENTER, MouseButton.RIGHT -> {
                         it.cancelPropagation()
                         view = buildTransform {
                             translate(it.dragDisplacement)
@@ -45,7 +45,7 @@ class Camera2D : Extension {
         }
         mouse.scrolled.listen {
             if (!it.propagationCancelled) {
-                val scaleFactor = 1.0 - it.rotation.y * 0.03
+                val scaleFactor = 1.0 + it.rotation.y * 0.2
                 view = buildTransform {
                     translate(it.position)
                     scale(scaleFactor)

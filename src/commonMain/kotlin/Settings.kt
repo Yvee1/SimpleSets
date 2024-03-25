@@ -152,8 +152,8 @@ data class DrawSettings(
     @BooleanParameter("Shadows", order = 1)
     var shadows: Boolean = false,
 
-//    var colors: List<ColorRGB> = cbColors.map { it.toColorRGB() }
-    var colors: List<ColorRGB> = newDiseasome.map { it.toColorRGB() }
+    var colors: List<ColorRGB> = cbColors.map { it.toColorRGB() }
+//    var colors: List<ColorRGB> = newDiseasome.map { it.toColorRGB() }
 ) {
     fun pointStrokeWeight(gs: GeneralSettings) = gs.pSize / 2.5
     fun contourStrokeWeight(gs: GeneralSettings) = gs.pSize / 3.5
