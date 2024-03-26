@@ -11,15 +11,17 @@ import kotlin.math.max
 
 data class VihrovsSettings(
     @DoubleParameter("Resolution", 0.01, 10.0)
-    var resolution: Double = 10.0,
+    var resolution: Double = 2.5,
     @DoubleParameter("Vertex radius", 0.001, 50.0)
-    var vertexRadius: Double = 50.0,
+    var vertexRadius: Double = 40.0,
     @DoubleParameter("Influence radius", 0.001, 100.0)
-    var influenceRadius: Double = 100.0,
+    var influenceRadius: Double = 80.0,
 )
 
 fun vihrovs(points: List<Point>, settings: VihrovsSettings): List<ContourHighlight> {
     with(settings) {
+        println("Computing Vihrovs...")
+
         if (influenceRadius < vertexRadius) {
             println("Influence radius should be at least vertex radius")
             influenceRadius = 1.01 * vertexRadius
@@ -51,6 +53,8 @@ fun vihrovs(points: List<Point>, settings: VihrovsSettings): List<ContourHighlig
             findContours({ p -> potentialSafe(type, p) }, r, resolution)
                 .map { c -> ContourHighlight(c, points.filter { p -> p.pos in c }, 0.0, type = type) }
         }
+
+        println("Done")
 
         return highlights
     }

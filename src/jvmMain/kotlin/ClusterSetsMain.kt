@@ -12,10 +12,10 @@ fun main() = application {
     }
 
     program {
-//        val pts = getExampleInput(ExampleInput.NYC)
+//        val pts = getExampleInput(ExampleInput.Mills)
         val pts = parsePoints(File("input-output/diseasome.txt").readText())
         val s = ClusterSetsSettings()
-        val gs = GeneralSettings(pSize = 3.0)
+        val gs = GeneralSettings(pSize = 5.2)
         val ds = DrawSettings()
 
         val gui = GUI()
@@ -34,14 +34,21 @@ fun main() = application {
 //        }
 
         val comp = drawComposition {
+//            scale(1.0, -1.0)
             stroke = ColorRGBa.BLACK.opacify(0.5)
             strokeWeight = 0.5
-            lineSegments(skeleton)
+//            lineSegments(skeleton)
+
+            for (pt in pts) {
+                stroke = ds.colors[pt.type].toColorRGBa()
+                fill = stroke!!.opacify(ds.whiten)
+                strokeWeight = ds.contourStrokeWeight(gs) * 12.835
+                lineStrip(listOf(pt.pos, pt.pos))
+            }
+
             stroke = ColorRGBa.BLACK
             strokeWeight = 1.0
             lineSegments(final)
-            stroke = null
-            fill = ColorRGBa.GRAY.opacify(0.1)
             coloredPoints(pts, gs, ds)
         }
 
@@ -53,7 +60,6 @@ fun main() = application {
         extend {
             drawer.apply {
                 clear(ColorRGBa.WHITE)
-//                scale(1.0, -1.0)
                 composition(comp)
             }
         }

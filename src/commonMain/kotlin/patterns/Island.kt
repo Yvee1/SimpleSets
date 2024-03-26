@@ -46,7 +46,7 @@ data class Island(override val points: List<Point>, override val weight: Int = p
     override fun isEmpty() = points.isEmpty()
 }
 
-fun coverRadius(vecs: List<Vector2>): Double =
+fun coverRadius(vecs: List<Vector2>, shape: ShapeContour? = null): Double =
     if (vecs.size < 2) 0.0
     else if (vecs.size == 2) {
         vecs[0].distanceTo(vecs[1]) / 2
@@ -54,9 +54,12 @@ fun coverRadius(vecs: List<Vector2>): Double =
     else if (vecs.size == 3) {
         coverRadiusTriangle(vecs[0], vecs[1], vecs[2])
     } else {
-        val delaunay = vecs.delaunayTriangulation()
-        delaunay.hull()
-        coverRadiusVoronoi(vecs, delaunay.hull())
+        if (shape == null) {
+            val delaunay = vecs.delaunayTriangulation()
+            coverRadiusVoronoi(vecs, delaunay.hull())
+        } else {
+            coverRadiusVoronoi(vecs, shape)
+        }
     }
 
 fun coverRadiusVoronoi(vecs: List<Vector2>, shape: ShapeContour): Double {
