@@ -1,10 +1,12 @@
 import geometric.Orientation
+import geometric.convexHull
 import highlights.Highlight
 import highlights.toHighlight
 import org.openrndr.application
 import org.openrndr.color.ColorRGBa
 import org.openrndr.extra.parameters.DoubleParameter
 import org.openrndr.shape.Shape
+import org.openrndr.shape.ShapeContour
 import org.openrndr.shape.bounds
 import org.openrndr.shape.union
 import patterns.Point
@@ -132,4 +134,9 @@ fun maxCoverRadius(highlights: List<Highlight>): Double {
 }
 
 fun <T, R> List<T>.windowedCyclic(windowSize: Int, transform: (List<T>) -> R): List<R> =
-    windowed(windowSize, 1, false, transform) + (subList(size - windowSize, size) + subList(0, windowSize - 1)).windowed(windowSize, 1, false, transform)
+    windowed(windowSize, 1, false, transform) + (subList(size - windowSize + 1, size) + subList(0, windowSize - 1)).windowed(windowSize, 1, false, transform)
+
+fun perimeterRatio(highlight: Highlight): Double {
+    val ch = ShapeContour.fromPoints(convexHull(highlight.contour.equidistantPositions(1000)), closed = true)
+    return highlight.contour.length / ch.length
+}
