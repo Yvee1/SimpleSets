@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <!DOCTYPE ipe SYSTEM "ipe.dtd">
 <ipe version="70218" creator="Ipe 7.2.27">
-<info created="D:20230621190934" modified="D:20231015111609"/>
+<info created="D:20230621190934" modified="D:20240411145758"/>
 <ipestyle name="bettinacolors">
 <color name="Bettina blue" value="0 0.4 0.796"/>
 <color name="Bettina green" value="0.282 0.557 0"/>
@@ -430,6 +430,5 @@ h
 <use layer="beta" matrix="2.05621 0 0 2.05621 10.6038 -521.632" name="mark/fdisk(sfx)" pos="96 456" size="large" stroke="black" fill="CB light blue"/>
 <use matrix="2.05621 0 0 2.05621 26.6038 -521.632" name="mark/fdisk(sfx)" pos="96 456" size="large" stroke="black" fill="CB light red"/>
 <use matrix="2.05621 0 0 2.05621 10.6038 -505.632" name="mark/fdisk(sfx)" pos="96 456" size="large" stroke="black" fill="CB light orange"/>
-<use matrix="2.05621 0 0 2.05621 26.6038 -505.632" name="mark/fdisk(sfx)" pos="96 456" size="large" stroke="black" fill="CB light green"/>
 </page>
 </ipe>

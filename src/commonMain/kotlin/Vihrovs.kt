@@ -1,6 +1,6 @@
 @file:Suppress("RUNTIME_ANNOTATION_NOT_SUPPORTED")
 
-import highlights.ContourHighlight
+import dilated.ContourHighlight
 import org.openrndr.extra.marchingsquares.findContours
 import org.openrndr.extra.parameters.DoubleParameter
 import org.openrndr.math.Vector2
@@ -13,9 +13,9 @@ data class VihrovsSettings(
     @DoubleParameter("Resolution", 0.01, 10.0)
     var resolution: Double = 2.5,
     @DoubleParameter("Vertex radius", 0.001, 50.0)
-    var vertexRadius: Double = 40.0,
+    var vertexRadius: Double = 30.0,
     @DoubleParameter("Influence radius", 0.001, 100.0)
-    var influenceRadius: Double = 80.0,
+    var influenceRadius: Double = 60.0,
 )
 
 fun vihrovs(points: List<Point>, settings: VihrovsSettings): List<ContourHighlight> {
@@ -46,7 +46,7 @@ fun vihrovs(points: List<Point>, settings: VihrovsSettings): List<ContourHighlig
 
         val highlights = types.flatMap { type ->
             findContours({ p -> potential(type, p) }, r, resolution)
-                .map { c -> ContourHighlight(c, points.filter { p -> p.pos in c }, 0.0, type = type) }
+                .map { c -> ContourHighlight(c, points.filter { p -> p.pos in c }) }
         }
 
         println("Done")

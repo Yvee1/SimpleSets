@@ -1,29 +1,21 @@
-import highlights.Highlight
 import org.openrndr.color.ColorRGBa
 import org.openrndr.draw.Drawer
+import org.openrndr.shape.Circle
 import patterns.Pattern
 import patterns.Point
-import patterns.SinglePoint
-
-fun Drawer.highlightContour(h: Highlight, gs: GeneralSettings, ds: DrawSettings) {
-    fill = ds.colors[h.type].toColorRGBa().whiten(ds.whiten)
-    stroke = ColorRGBa.BLACK
-    strokeWeight = ds.contourStrokeWeight(gs)
-    contour(h.contour)
-}
 
 fun Drawer.coloredPoints(points: List<Point>, gs: GeneralSettings, ds: DrawSettings) {
     for (p in points) {
-        fill = ds.colors[p.type].toColorRGBa()
+        fill = ds.colors[p.type]
         stroke = ColorRGBa.BLACK
         strokeWeight = ds.pointStrokeWeight(gs)
-        circle(p.pos, gs.pSize)
+        contour(Circle(p.pos, gs.pSize).contour)
     }
 }
 
 fun Drawer.patternContour(p: Pattern, gs: GeneralSettings, ds: DrawSettings) {
-    if (p !is SinglePoint) {
-        fill = ds.colors[p.type].toColorRGBa().whiten(ds.whiten)
+    if (p.contour.segments.size > 1) {
+        fill = ds.colors[p.type].whiten(ds.whiten)
         stroke = ColorRGBa.BLACK
         strokeWeight = ds.contourStrokeWeight(gs)
         contour(p.contour)
@@ -35,31 +27,18 @@ fun Drawer.pattern(p: Pattern, gs: GeneralSettings, ds: DrawSettings) {
     coloredPoints(p.points, gs, ds)
 }
 
-fun Drawer.highlight(h: Highlight, gs: GeneralSettings, ds: DrawSettings) {
-    highlightContour(h, gs, ds)
-    coloredPoints(h.points, gs, ds)
-}
-
-fun CompositionDrawer.highlightContour(h: Highlight, gs: GeneralSettings, ds: DrawSettings) {
-//    fill = ds.colorSettings.lightColors[h.type].toColorRGBa().whiten(ds.whiten)
-    fill = (ds.colors.getOrNull(h.type)?.toColorRGBa() ?: ColorRGBa.WHITE).whiten(ds.whiten)
-    stroke = ColorRGBa.BLACK
-    strokeWeight = ds.contourStrokeWeight(gs)
-    contour(h.contour)
-}
-
 fun CompositionDrawer.coloredPoints(points: List<Point>, gs: GeneralSettings, ds: DrawSettings) {
     for (p in points) {
-        fill = ds.colors.getOrNull(p.type)?.toColorRGBa() ?: ColorRGBa.WHITE
+        fill = ds.colors.getOrNull(p.type) ?: ColorRGBa.WHITE
         stroke = ColorRGBa.BLACK
         strokeWeight = ds.pointStrokeWeight(gs)
-        circle(p.pos, gs.pSize)
+        contour(Circle(p.pos, gs.pSize).contour)
     }
 }
 
 fun CompositionDrawer.patternContour(p: Pattern, gs: GeneralSettings, ds: DrawSettings) {
-    if (p !is SinglePoint) {
-        fill = ds.colors.getOrNull(p.type)?.toColorRGBa() ?: ColorRGBa.WHITE
+    if (p.contour.segments.size > 1) {
+        fill = ds.colors[p.type].whiten(ds.whiten)
         stroke = ColorRGBa.BLACK
         strokeWeight = ds.contourStrokeWeight(gs)
         contour(p.contour)
@@ -69,11 +48,6 @@ fun CompositionDrawer.patternContour(p: Pattern, gs: GeneralSettings, ds: DrawSe
 fun CompositionDrawer.pattern(p: Pattern, gs: GeneralSettings, ds: DrawSettings) {
     patternContour(p, gs, ds)
     coloredPoints(p.points, gs, ds)
-}
-
-fun CompositionDrawer.highlight(h: Highlight, gs: GeneralSettings, ds: DrawSettings) {
-    highlightContour(h, gs, ds)
-    coloredPoints(h.points, gs, ds)
 }
 
 fun ColorRGBa.whiten(factor: Double) = mix(ColorRGBa.WHITE, factor)

@@ -4,6 +4,7 @@ import org.openrndr.draw.RenderTarget
 import org.openrndr.events.Event
 import org.openrndr.math.Matrix44
 import org.openrndr.math.Vector2
+import org.openrndr.math.clamp
 import org.openrndr.math.transforms.buildTransform
 
 /**
@@ -45,7 +46,7 @@ class Camera2D : Extension {
         }
         mouse.scrolled.listen {
             if (!it.propagationCancelled) {
-                val scaleFactor = 1.0 + it.rotation.y * 0.2
+                val scaleFactor = clamp(1.0 + it.rotation.y * 0.2, 0.1, 2.0)
                 view = buildTransform {
                     translate(it.position)
                     scale(scaleFactor)

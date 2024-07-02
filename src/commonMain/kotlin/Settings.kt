@@ -152,27 +152,9 @@ data class DrawSettings(
     @BooleanParameter("Shadows", order = 1)
     var shadows: Boolean = false,
 
-    var colors: List<ColorRGB> = cbColors.map { it.toColorRGB() }
-//    var colors: List<ColorRGB> = newDiseasome.map { it.toColorRGB() }
+    var colors: List<ColorRGBa> = cbColors
+//    var colors: List<ColorRGBa> = newDiseasome
 ) {
     fun pointStrokeWeight(gs: GeneralSettings) = gs.pSize / 2.5
     fun contourStrokeWeight(gs: GeneralSettings) = gs.pSize / 3.5
 }
-
-@Serializable
-data class ColorRGB(val r: Double, val g: Double, val b: Double) {
-    fun toColorRGBa() = rgb(r, g, b)
-    fun toSvgString() = "rgb(${(r*255).toInt()}, ${(g*255).toInt()}, ${(b*255).toInt()})"
-    fun toHex(): String = "#" +
-            (1 shl 24 or ((r * 255).toInt() shl 16) or ((g * 255).toInt() shl 8) or (b * 255).toInt())
-                .toString(16).drop(1)
-
-    companion object {
-        fun fromHex(hex: String): ColorRGB {
-            val rgba = rgb(hex)
-            return ColorRGB(rgba.r, rgba.g, rgba.b)
-        }
-    }
-}
-
-fun ColorRGBa.toColorRGB() = ColorRGB(r, g, b)

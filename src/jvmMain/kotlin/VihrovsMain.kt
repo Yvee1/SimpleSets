@@ -17,15 +17,20 @@ fun main() = application {
     }
 
     program {
-//        val pts = getExampleInput(ExampleInput.Mills)
+        val pts = getExampleInput(ExampleInput.Mills)
+//        val s = VihrovsSettings(1.0, 11.5, 23.0) // +
+        val s = VihrovsSettings(1.0, 8.625, 17.25) // -
 //        val pts = getExampleInput(ExampleInput.NYC)
+//        val s = VihrovsSettings(1.0, 17.0, 34.0) // +
+//        val s = VihrovsSettings(1.0, 12.75, 25.5) // -
 //        val pts = parsePoints(File("input-output/diseasome.txt").readText())
-        val pts = ipeToPoints(File("example-pts.ipe").readText())
+//        val s = VihrovsSettings(2.5, 40.0, 80.0) // +
+//        val s = VihrovsSettings(2.5, 30.0, 60.0) // -
+//        val pts = ipeToPoints(File("example-pts.ipe").readText())
 
 
-        val s = VihrovsSettings()
-//        val gs = GeneralSettings(pSize = 5.2)
-        val gs = GeneralSettings(pSize = goodSettings(ExampleInput.NYC).first.gs.pSize)
+//        val gs = GeneralSettings(pSize = 5.2) // diseasome
+        val gs = GeneralSettings(pSize = 2.068) // nyc & mills
         val ds = DrawSettings(whiten = 0.1)
         var hs = vihrovs(pts, s)
         var contours = hs.associateWith { h ->
@@ -35,10 +40,13 @@ fun main() = application {
         }
         var r = pts.bounds.offsetEdges(s.vertexRadius)
         var comp = drawComposition {
-            scale(-1.0, -1.0)
+            scale(1.0, -1.0)
             for (h in hs) {
-                if (h.contour.shape.area < 0.8 * r.area) {
-                    fill = ds.colors[h.type].toColorRGBa().whiten(ds.whiten)
+                if (h.contour.shape.area < 0.85 * r.area) {
+                    fill = if (h.points.isNotEmpty())
+                        ds.colors[h.type].whiten(0.7)
+                    else
+                        ColorRGBa.WHITE
                     stroke = ColorRGBa.BLACK
                     strokeWeight = ds.contourStrokeWeight(gs)
                     contour(contours[h]!!)
@@ -49,40 +57,43 @@ fun main() = application {
         comp.saveToFile(File("vihrovs.svg"))
         "py svgtoipe.py vihrovs.svg".runCommand(File("."))
 
-        val gui = GUI()
-        gui.add(s)
-        gui.add(gs, "General settings")
-        gui.add(ds, "Draw settings")
+//        val gui = GUI()
+//        gui.add(s)
+//        gui.add(gs, "General settings")
+//        gui.add(ds, "Draw settings")
+//
+//
+//        gui.onChange { _, _ ->
+//            r = pts.bounds.offsetEdges(s.vertexRadius)
+//            s.influenceRadius = 2 * s.vertexRadius
+//            hs = vihrovs(pts, s)
+//            contours = hs.associateWith { h ->
+//                hobbyCurve(
+//                        simplify(h.contour.segments.map { it.start } , 0.05)
+//                        , closed=true)
+//            }
+//
+//            comp = drawComposition {
+//                scale(1.0, -1.0)
+//                for (h in hs) {
+//                    if (h.contour.shape.area < 0.85 * r.area) {
+//                        fill = if (h.points.isNotEmpty())
+//                            ds.colors[h.type].whiten(0.7)
+//                        else
+//                            ColorRGBa.WHITE
+//                        stroke = ColorRGBa.BLACK
+//                        strokeWeight = ds.contourStrokeWeight(gs)
+//                        contour(contours[h]!!)
+//                    }
+//                }
+//                coloredPoints(pts, gs, ds)
+//            }
+//
+//            comp.saveToFile(File("vihrovs.svg"))
+//            "py svgtoipe.py vihrovs.svg".runCommand(File("."))
+//        }
 
-
-        gui.onChange { _, _ ->
-            r = pts.bounds.offsetEdges(s.vertexRadius)
-            s.influenceRadius = 2 * s.vertexRadius
-            hs = vihrovs(pts, s)
-            contours = hs.associateWith { h ->
-                hobbyCurve(
-                        simplify(h.contour.segments.map { it.start } , 0.05)
-                        , closed=true)
-            }
-
-            comp = drawComposition {
-                scale(1.0, -1.0)
-                for (h in hs) {
-                    if (h.contour.shape.area < 0.85 * r.area) {
-                        fill = ds.colors[h.type].toColorRGBa().whiten(0.7)
-                        stroke = ColorRGBa.BLACK
-                        strokeWeight = ds.contourStrokeWeight(gs)
-                        contour(contours[h]!!)
-                    }
-                }
-                coloredPoints(pts, gs, ds)
-            }
-
-            comp.saveToFile(File("vihrovs.svg"))
-            "py svgtoipe.py vihrovs.svg".runCommand(File("."))
-        }
-
-        extend(gui)
+//        extend(gui)
         extend(Camera2D())
         extend {
             drawer.apply {

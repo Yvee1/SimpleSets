@@ -6,12 +6,12 @@ enum class ExampleInput {
     NYC,
     Hotels,
     SimpleScatterPlot,
-    OverlapExample,
+    OverlapExample1,
     OverlapExample2,
-    OverlapExample3,
     HexaSwirl,
     Bonn,
-    Diseasome
+    Diseasome,
+    Intertwined
 }
 
 fun getFileName(e: ExampleInput): String = when(e) {
@@ -19,12 +19,17 @@ fun getFileName(e: ExampleInput): String = when(e) {
     ExampleInput.NYC -> "nyc"
     ExampleInput.Hotels -> "hotels"
     ExampleInput.SimpleScatterPlot -> "simple-scatter-plot"
-    ExampleInput.OverlapExample -> "overlap-example"
+    ExampleInput.OverlapExample1 -> "overlap-example"
     ExampleInput.OverlapExample2 -> "overlap-example-2"
-    ExampleInput.OverlapExample3 -> "overlap-example-3"
     ExampleInput.HexaSwirl -> "hexa-swirl"
     ExampleInput.Bonn -> "Bonn"
     ExampleInput.Diseasome -> "diseasome"
+    ExampleInput.Intertwined -> "intertwined"
+}
+
+fun getExtension(e: ExampleInput): String = when(e) {
+    ExampleInput.Diseasome -> "txt"
+    else -> "ipe"
 }
 
 fun goodSettings(e: ExampleInput): Pair<Settings, Double> {
@@ -101,7 +106,7 @@ fun goodSettings(e: ExampleInput): Pair<Settings, Double> {
             return settings to 5.0
         }
 
-        ExampleInput.OverlapExample -> {
+        ExampleInput.OverlapExample1 -> {
             val gs = GeneralSettings(
                 pSize = 5.142,
             )
@@ -118,30 +123,13 @@ fun goodSettings(e: ExampleInput): Pair<Settings, Double> {
 
         ExampleInput.OverlapExample2 -> {
             val gs = GeneralSettings(
-                pSize = 2.437,
+                pSize = 2.375,
                 maxBendAngle = 225.0,
                 maxTurningAngle = 90.0,
             )
 
             val tgs = GrowSettings(
                 forbidTooClose = 0.2,
-                postponeIntersections = false,
-            )
-
-            val settings = Settings(gs, tgs)
-
-            return settings to 4.0
-        }
-
-        ExampleInput.OverlapExample3 -> {
-            val gs = GeneralSettings(
-                pSize = 2.7,
-                maxBendAngle = 210.0,
-                maxTurningAngle = 75.0,
-            )
-
-            val tgs = GrowSettings(
-                forbidTooClose = 0.5,
                 postponeIntersections = false,
             )
 
@@ -186,9 +174,9 @@ fun goodSettings(e: ExampleInput): Pair<Settings, Double> {
 
         ExampleInput.Diseasome -> {
             val gs = GeneralSettings(
-                pSize = 0.776,
+                pSize = 5.204,
                 maxBendAngle = 180.0,
-                maxTurningAngle = 65.0,
+                maxTurningAngle = 70.0,
             )
 
             val tgs = GrowSettings(
@@ -196,9 +184,27 @@ fun goodSettings(e: ExampleInput): Pair<Settings, Double> {
                 postponeIntersections = false,
             )
 
-            val settings = Settings(gs, tgs)
+            val ds = DrawSettings(colors = newDiseasome)
 
-            return settings to 4.5
+            val settings = Settings(gs=gs, tgs=tgs, ds=ds)
+
+            return settings to 5.913
+        }
+
+        ExampleInput.Intertwined -> {
+            val gs = GeneralSettings(
+                pSize = 2.0,
+                maxBendAngle = 180.0,
+                maxTurningAngle = 70.0,
+            )
+
+            val tgs = GrowSettings(
+                postponeIntersections = false,
+            )
+
+            val settings = Settings(gs=gs, tgs=tgs)
+
+            return settings to 4.0
         }
     }
 }

@@ -1,39 +1,26 @@
 package patterns
 
 import GeneralSettings
-import PartitionInstance
 import geometric.Orientation
 import geometric.orientation
-import org.openrndr.math.Vector2
-import org.openrndr.math.asDegrees
 import org.openrndr.math.asRadians
 import org.openrndr.shape.LineSegment
 import org.openrndr.shape.ShapeContour
 import kotlin.math.max
 
-data class Bank(override val points: List<Point>, override val weight: Int = points.size): Pattern() {
-    override val boundaryPoints = points
-    override val type = boundaryPoints.firstOrNull()?.type ?: -1
+// A polyline formed by a sequence of input points.
+data class Bank(override val points: List<Point>): Pattern() {
     override val contour by lazy {
-        ShapeContour.fromPoints(boundaryPoints.map { it.pos }, false)
+        ShapeContour.fromPoints(points.map { it.pos }, false)
     }
-    override val segments: List<LineSegment>
-        get() = points.zipWithNext { a, b -> LineSegment(a.pos, b.pos) }
-    companion object {
-        val EMPTY = Bank(listOf(), 0)
-    }
-    override val vecs by lazy {
-        boundaryPoints.map { it.pos }
-    }
-    override operator fun contains(v: Vector2) = v in vecs
 
     val maxDistance by lazy {
-        boundaryPoints.zipWithNext { a, b -> a.pos.distanceTo(b.pos) }.maxOrNull() ?: 0.0
+        points.zipWithNext { a, b -> a.pos.distanceTo(b.pos) }.maxOrNull() ?: 0.0
     }
 
     override val coverRadius = maxDistance / 2
 
-    // A bank consists of bends, each with an orientation and an angle
+    // A bank consists of bends: subsequences that form polylines that bend in one direction.
     val bends: List<Bend> = buildList {
         var orientation: Orientation? = null
         var bendTotalAngle = 0.0
@@ -127,43 +114,9 @@ data class Bank(override val points: List<Point>, override val weight: Int = poi
         return extension(other.toBank(), gs)
     }
 
-    override fun original() = copy(points=boundaryPoints.map { it.originalPoint ?: it })
-    override fun isEmpty() = boundaryPoints.isEmpty()
-
     val start get() = points.first()
     val end get() = points.last()
 }
 
 data class Bend(val orientation: Orientation, val maxAngle: Double, val totalAngle: Double,
                 val startIndex: Int, val endIndex: Int)
-
-fun PartitionInstance.clusterIsMonotoneBend(island: Island): Boolean {
-    if (island.weight != island.points.size) return false
-    return (0 until island.points.size).any {
-        val pts = island.points.subList(it, island.points.size) + island.points.subList(0, it)
-        isMonotoneBend(pts)
-    }
-}
-
-/**
-    Returns whether [points] forms a monotone bend satisfying the restrictions in the [PartitionInstance].
-    It is not checked whether any points lie close to the bend.
- */
-fun PartitionInstance.isMonotoneBend(points: List<Point>): Boolean {
-    if (points.size <= 1) return true
-    if (!points.all { it.type == points.first().type }) return false
-    if (!points.zipWithNext().all { (p, q) -> p.pos.squaredDistanceTo(q.pos) <= bendDistance * bendDistance }) return false
-    if (points.size == 2) return true
-    val dir = orientation(points[0].pos, points[1].pos, points[2].pos)
-    val monotone = points.windowed(3) { (p, q, r) ->
-        orientation(p.pos, q.pos, r.pos) == dir
-    }.all { it }
-    if (!monotone) return false
-    val angles = points.windowed(3) { (p, q, r) ->
-        angleBetween(q.pos - p.pos, r.pos - q.pos).asDegrees
-    }
-    if (angles.max() > maxTurningAngle) return false
-    if (angles.sum() > maxBendAngle) return false
-
-    return true
-}

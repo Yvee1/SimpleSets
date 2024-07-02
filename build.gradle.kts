@@ -1,23 +1,17 @@
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import org.gradle.internal.os.OperatingSystem
 import org.gradle.nativeplatform.platform.internal.DefaultNativePlatform
-import org.jetbrains.kotlin.gradle.targets.js.yarn.YarnPlugin
-import org.jetbrains.kotlin.gradle.targets.js.yarn.YarnRootExtension
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-//import org.jetbrains.kotlin.gradle.tasks.
 
-group = "org.openrndr.template"
-version = "0.4.0"
+group = "com.stevenvdb"
+version = "1.0"
 
 val applicationMainClass = "MainKt"
 
 /**  ## additional ORX features to be added to this project */
-val orxFeatures = setOf<String>(
+val orxFeatures = setOf(
     "orx-color",
     "orx-compositor",
-    "orx-fx",
-    "orx-noise",
-    "orx-shade-styles",
     "orx-shapes",
     "orx-triangulation",
     "orx-parameters",
@@ -28,18 +22,18 @@ val orxFeatures = setOf<String>(
 
 @Suppress("DSL_SCOPE_VIOLATION")
 plugins {
-    kotlin("multiplatform") version "1.9.0"
-    kotlin("plugin.serialization") version "1.9.0"
+    kotlin("multiplatform") version libs.versions.kotlin.get()
+    kotlin("plugin.serialization") version "2.0.0"
     java
     alias(libs.plugins.shadow)
     alias(libs.plugins.runtime)
     alias(libs.plugins.gitarchive.tomarkdown).apply(false)
-    id("io.github.turansky.kfc.application") version "7.25.0"
+    id("io.github.turansky.kfc.webpack") version "8.1.0"
 }
 
 tasks {
     wrapper {
-        gradleVersion = "8.1"
+        gradleVersion = "8.8"
     }
 }
 
@@ -107,18 +101,23 @@ val os = if (project.hasProperty("targetPlatform")) {
     } else {
         platform
     }
-} else when (OperatingSystem.current()) {
-    OperatingSystem.WINDOWS -> "windows"
-    OperatingSystem.MAC_OS -> when (val h = DefaultNativePlatform("current").architecture.name) {
-        "aarch64", "arm-v8" -> "macos-arm64"
-        else -> "macos"
+} else {
+    val cos = OperatingSystem.current()
+    if (cos.isWindows) {
+        "windows"
+    } else if (cos.isMacOsX) {
+        when (val h = DefaultNativePlatform("current").architecture.name) {
+            "aarch64", "arm-v8" -> "macos-arm64"
+            else -> "macos"
+        }
+    } else if (cos.isLinux) {
+        when (val h = DefaultNativePlatform("current").architecture.name) {
+            "x86-64" -> "linux-x64"
+            "aarch64" -> "linux-arm64"
+            else -> throw IllegalArgumentException("architecture not supported: $h")
+        }
     }
-    OperatingSystem.LINUX -> when (val h = DefaultNativePlatform("current").architecture.name) {
-        "x86-64" -> "linux-x64"
-        "aarch64" -> "linux-arm64"
-        else -> throw IllegalArgumentException("architecture not supported: $h")
-    }
-    else -> throw IllegalArgumentException("os not supported")
+    else throw IllegalArgumentException("os not supported")
 }
 fun openrndr(module: String) = "org.openrndr:openrndr-$module:$openrndrVersion"
 fun orx(module: String) = "org.openrndr.extra:$module:$orxVersion"
@@ -161,8 +160,6 @@ kotlin {
                 }
 
                 implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.0")
-
-//                implementation("com.stevenvdb:kopenvoronoi:1.0-SNAPSHOT")
             }
         }
 
@@ -204,16 +201,12 @@ kotlin {
 
             dependencies {
                 // React, React DOM + Wrappers
-                implementation(enforcedPlatform(kotlinw("wrappers-bom:1.0.0-pre.545")))
+                implementation(project.dependencies.enforcedPlatform(kotlinw("wrappers-bom:1.0.0-pre.757")))
                 implementation(kotlinw("react"))
                 implementation(kotlinw("react-dom"))
 
                 // Kotlin React Emotion (CSS)
                 implementation(kotlinw("emotion"))
-
-                // MUI
-//                implementation(kotlinw("mui"))
-//                implementation(kotlinw("mui-icons"))
 
                 // OPENRNDR
                 implementation(openrndr("draw"))
@@ -307,12 +300,6 @@ runtime {
 tasks.register<org.openrndr.extra.gitarchiver.GitArchiveToMarkdown>("gitArchiveToMarkDown") {
     historySize.set(20)
 }
-
-//rootProject.plugins.withType<YarnPlugin> {
-//    rootProject.the<YarnRootExtension>().apply {
-//        resolution("@mui/material", "5.11.2")
-//    }
-//}
 
 // ------------------------------------------------------------------------------------------------------------------ //
 

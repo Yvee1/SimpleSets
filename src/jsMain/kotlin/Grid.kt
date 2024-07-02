@@ -1,5 +1,5 @@
 import components.IconButton
-import js.core.jso
+import js.objects.jso
 import react.FC
 import react.Props
 import react.dom.events.MouseEventHandler

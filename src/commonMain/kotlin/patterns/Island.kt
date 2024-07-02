@@ -11,36 +11,15 @@ import kotlin.math.acos
 import kotlin.math.cos
 import kotlin.math.sqrt
 
-data class Island(override val points: List<Point>, override val weight: Int = points.size): Pattern() {
-    override val type = points.firstOrNull()?.type ?: -1
-    override val boundaryPoints: List<Point> = convexHull(points)
+data class Island(override val points: List<Point>): Pattern() {
+    val hull: List<Point> = convexHull(points)
     override val contour by lazy {
-        ShapeContour.fromPoints(boundaryPoints.map { it.pos }, true)
+        ShapeContour.fromPoints(hull.map { it.pos }, true)
     }
-    override val vecs by lazy {
-        points.map { it.pos }
-    }
-    override val segments: List<LineSegment>
-        get() = (boundaryPoints + boundaryPoints.first()).zipWithNext { a, b -> LineSegment(a.pos, b.pos) }
-    override operator fun contains(v: Vector2) = v in contour
-    override val coverRadius by lazy { coverRadius(vecs) }
+    override val coverRadius by lazy { coverRadius(points.map { it.pos }) }
     override fun isValid(gs: GeneralSettings): Boolean {
         return true
     }
-
-    companion object {
-        val EMPTY = Island(listOf(), 0)
-    }
-
-    val voronoiCells by lazy {
-        val delaunay = vecs.delaunayTriangulation()
-        val ch = delaunay.hull()
-        val voronoi = delaunay.voronoiDiagram(ch.bounds)
-        voronoi.cellPolygons().map { it.shape.intersection(ch.reversed.shape).contours.firstOrNull() ?: ShapeContour.EMPTY }
-    }
-
-    override fun original() = copy(points=points.map { it.originalPoint ?: it })
-    override fun isEmpty() = points.isEmpty()
 }
 
 fun coverRadius(vecs: List<Vector2>, shape: Shape? = null): Double =

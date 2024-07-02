@@ -1,25 +1,14 @@
-package highlights
+package dilated
 
 import geometric.Arc
 import geometric.Orientation
 import patterns.Bank
-import patterns.Point
 import org.openrndr.math.Vector2
 import org.openrndr.math.YPolarity
 import org.openrndr.shape.*
 import geometric.orientation
 
-fun ccwCircularArc(circle: Circle, cp1: Vector2, cp2: Vector2) = contour {
-    val largeArcFlag = orientation(circle.center, cp1, cp2) != Orientation.RIGHT
-    moveTo(cp1)
-    arcTo(circle.radius, circle.radius, 90.0, largeArcFlag=largeArcFlag, sweepFlag=false, cp2)
-}
-
-class BankHighlight(override val points: List<Point>, expandRadius: Double): Highlight() {
-    override val allPoints = points
-    override val type = points.firstOrNull()?.type ?: -1
-    override val circles: List<Circle> by lazy { points.map { Circle(it.pos, expandRadius) } }
-
+class DilatedBank(original: Bank, expandRadius: Double): DilatedPoly<Bank>(original, expandRadius) {
     val pairedSegs: List<Pair<LineSegment, LineSegment>> by lazy {
         if (points.size == 1) return@lazy emptyList()
 
@@ -47,9 +36,9 @@ class BankHighlight(override val points: List<Point>, expandRadius: Double): Hig
         }
     }
 
-    override val segments: List<LineSegment> by lazy { pairedSegs.flatMap { it.toList() } }
+    val segments: List<LineSegment> by lazy { pairedSegs.flatMap { it.toList() } }
 
-    override val arcs: List<Arc> by lazy {
+    val arcs: List<Arc> by lazy {
         if (points.size == 1) return@lazy emptyList()
 
         val cf = circles.first()
@@ -96,8 +85,6 @@ class BankHighlight(override val points: List<Point>, expandRadius: Double): Hig
         }
         c.close().reversed
     }
-
-    override fun scale(s: Double) = BankHighlight(points, circles.first().radius * s)
 }
 
-fun Bank.toHighlight(expandRadius: Double) = BankHighlight(original().boundaryPoints, expandRadius)
+fun Bank.dilate(expandRadius: Double) = DilatedBank(this, expandRadius)

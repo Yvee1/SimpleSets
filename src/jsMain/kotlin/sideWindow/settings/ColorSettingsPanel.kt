@@ -1,14 +1,15 @@
 package sideWindow.settings
 
-import ColorRGB
 import contexts.ColorsContext
 import emotion.react.css
+import org.openrndr.color.ColorRGBa
 import react.FC
 import react.Props
 import react.dom.html.ReactHTML
 import react.dom.html.ReactHTML.div
 import react.useContext
 import react.useState
+import toHex
 import web.cssom.*
 import web.html.InputType
 import web.timers.Timeout
@@ -25,6 +26,7 @@ val ColorSettingsPanel = FC<Props> {
             columnGap = 8.px
             rowGap = 10.px
             flexWrap = FlexWrap.wrap
+            maxWidth = 500.px
         }
 
         with(useContext(ColorsContext)!!) {
@@ -32,14 +34,14 @@ val ColorSettingsPanel = FC<Props> {
                 ColorPicker {
                     this.i = i
                 }
-                if (i == colors.size / 2 - 1) {
-                    div {
-                        css {
-                            flexBasis = 100.pct
-                            height = 0.px
-                        }
-                    }
-                }
+//                if (i == colors.size / 2 - 1) {
+//                    div {
+//                        css {
+//                            flexBasis = 100.pct
+//                            height = 0.px
+//                        }
+//                    }
+//                }
             }
         }
     }
@@ -83,7 +85,7 @@ val ColorPicker = FC<ColorPickersProps> { props ->
 
                         val v = ev.currentTarget.value
                         apiTimeout = setTimeout(100.milliseconds) {
-                            colors = colors.replace(i) { ColorRGB.fromHex(v) }
+                            colors = colors.replace(i) { ColorRGBa.fromHex(v) }
                         }
                     }
                 }

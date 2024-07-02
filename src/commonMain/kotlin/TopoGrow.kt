@@ -1,6 +1,6 @@
 import geometric.distanceTo
 import geometric.overlaps
-import highlights.toHighlight
+import dilated.dilate
 import org.openrndr.shape.Circle
 import org.openrndr.shape.contains
 import org.openrndr.shape.intersection
@@ -20,10 +20,10 @@ fun intersectionDelay(points: List<Point>, p: Pattern, q: Pattern, newPattern: P
     for (pt in points) {
         if (pt !in newPattern.points && newPattern.contour.distanceTo(pt.pos) < gs.expandRadius * 2) {
             val ptShape = Circle(pt.pos, gs.expandRadius).shape
-            val npShape = newPattern.toHighlight(gs.expandRadius).contour.shape
+            val npShape = newPattern.dilate(gs.expandRadius).contour.shape
             val newTotalArea = npShape.intersection(ptShape).area
-            val pShape = p.toHighlight(gs.expandRadius).contour.shape
-            val qShape = q.toHighlight(gs.expandRadius).contour.shape
+            val pShape = p.dilate(gs.expandRadius).contour.shape
+            val qShape = q.dilate(gs.expandRadius).contour.shape
             val oldArea = pShape.union(qShape).intersection(ptShape).area
             intersectionArea += newTotalArea - oldArea
         }
@@ -229,7 +229,7 @@ fun topoGrow(points: List<Point>, gs: GeneralSettings, tgs: GrowSettings, maxTim
                     is Bank -> newPattern.extension(p, gs)
                     is Matching -> newPattern.extension(p, gs)
                     is SinglePoint -> newPattern.extension(p.point, gs)
-                    is Island -> error("Impossible")
+                    else -> error("Impossible")
                 }
 
                 if (result != null) {

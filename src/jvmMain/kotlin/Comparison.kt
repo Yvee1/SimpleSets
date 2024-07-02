@@ -1,26 +1,20 @@
-import geometric.Orientation
 import geometric.convexHull
-import highlights.Highlight
-import highlights.ShapeHighlight
-import highlights.toHighlight
-import org.openrndr.application
-import org.openrndr.color.ColorRGBa
-import org.openrndr.extra.parameters.DoubleParameter
+import dilated.DilatedPoly
+import dilated.ShapeHighlight
 import org.openrndr.shape.Shape
 import org.openrndr.shape.ShapeContour
-import org.openrndr.shape.bounds
 import org.openrndr.shape.union
+import patterns.Pattern
 import patterns.Point
 import patterns.coverRadius
 import kotlin.math.abs
-import kotlin.math.atan2
 import kotlin.math.max
 
-fun areaCovered(highlights: List<Highlight>): Double {
+fun areaCovered(dilatedPolies: List<Pattern>): Double {
     var total = Shape.EMPTY
     var iters = 0
 
-    for (h in highlights) {
+    for (h in dilatedPolies) {
         iters++
         total = if (h is ShapeHighlight) {
             h.shape.union(total)
@@ -32,11 +26,11 @@ fun areaCovered(highlights: List<Highlight>): Double {
     return total.area
 }
 
-fun areaCoveredCustom(highlights: List<Highlight>): Double {
+fun areaCoveredCustom(dilatedPolies: List<Pattern>): Double {
     var total = Shape.EMPTY
     var iters = 0
 
-    for (h in highlights) {
+    for (h in dilatedPolies) {
         if (iters == 61) {
             iters++
             continue
@@ -48,20 +42,20 @@ fun areaCoveredCustom(highlights: List<Highlight>): Double {
         }
         iters++
     }
-    total = total.union(highlights[61].contour.clockwise.shape)
+    total = total.union(dilatedPolies[61].contour.clockwise.shape)
     return total.area
 }
 
-fun densityDistortion(highlights: List<Highlight>, points: List<Point>): Pair<Double, Double> {
-    val totalCovered = areaCovered(highlights)
+fun densityDistortion(dilatedPolies: List<Pattern>, points: List<Point>): Pair<Double, Double> {
+    val totalCovered = areaCovered(dilatedPolies)
 
     var total = 0.0
     var maxim = 0.0
 
-    val grouped = highlights.groupBy { it.type }
+    val grouped = dilatedPolies.groupBy { it.type }
     for ((t, hs) in grouped) {
         val coveredArea = areaCovered(hs)
-        val tNumPoints = hs.sumOf { it.allPoints.size }
+        val tNumPoints = hs.sumOf { it.points.size }
         val delta = abs(coveredArea / totalCovered - tNumPoints.toDouble() / points.size)
         total += delta
         maxim = max(delta, maxim)
@@ -70,16 +64,16 @@ fun densityDistortion(highlights: List<Highlight>, points: List<Point>): Pair<Do
     return total / grouped.size * 100 to maxim * 100
 }
 
-fun densityDistortionCustom(highlights: List<Highlight>, points: List<Point>): Pair<Double, Double> {
-    val totalCovered = areaCoveredCustom(highlights)
+fun densityDistortionCustom(dilatedPolies: List<Pattern>, points: List<Point>): Pair<Double, Double> {
+    val totalCovered = areaCoveredCustom(dilatedPolies)
 
     var total = 0.0
     var maxim = 0.0
 
-    val grouped = highlights.groupBy { it.type }
+    val grouped = dilatedPolies.groupBy { it.type }
     for ((t, hs) in grouped) {
         val coveredArea = areaCovered(hs)
-        val tNumPoints = hs.sumOf { it.allPoints.size }
+        val tNumPoints = hs.sumOf { it.points.size }
         val delta = abs(coveredArea / totalCovered - tNumPoints.toDouble() / points.size)
         total += delta
         maxim = max(delta, maxim)
@@ -88,30 +82,30 @@ fun densityDistortionCustom(highlights: List<Highlight>, points: List<Point>): P
     return total / grouped.size * 100 to maxim * 100
 }
 
-fun maxCoverRadius(highlights: List<Highlight>): Double {
-    return highlights.maxOf { h ->
-        coverRadius(h.allPoints.map { it.pos }, shape = if (h is ShapeHighlight) h.shape else h.contour.shape)
+fun maxCoverRadius(dilatedPolies: List<Pattern>): Double {
+    return dilatedPolies.maxOf { h ->
+        coverRadius(h.points.map { it.pos }, shape = if (h is ShapeHighlight) h.shape else h.contour.shape)
     }
 }
 
-fun avgCoverRadius(highlights: List<Highlight>): Double {
-    return highlights.sumOf { h ->
-        coverRadius(h.allPoints.map { it.pos }, shape = if (h is ShapeHighlight) h.shape else h.contour.shape)
-    } / highlights.size
+fun avgCoverRadius(dilatedPolies: List<Pattern>): Double {
+    return dilatedPolies.sumOf { h ->
+        coverRadius(h.points.map { it.pos }, shape = if (h is ShapeHighlight) h.shape else h.contour.shape)
+    } / dilatedPolies.size
 }
 
 fun <T, R> List<T>.windowedCyclic(windowSize: Int, transform: (List<T>) -> R): List<R> =
     windowed(windowSize, 1, false, transform) + (subList(size - windowSize + 1, size) + subList(0, windowSize - 1)).windowed(windowSize, 1, false, transform)
 
-fun perimeterRatio(highlight: Highlight): Double {
-    val ch = ShapeContour.fromPoints(convexHull(highlight.contour.equidistantPositions(1000)), closed = true)
-    val s = if (highlight is ShapeHighlight) highlight.shape else highlight.contour.shape
+fun perimeterRatio(dilatedPoly: Pattern): Double {
+    val ch = ShapeContour.fromPoints(convexHull(dilatedPoly.contour.equidistantPositions(1000)), closed = true)
+    val s = if (dilatedPoly is ShapeHighlight) dilatedPoly.shape else dilatedPoly.contour.shape
     return s.contours.sumOf { it.length } / ch.length
 }
 
-fun areaRatio(highlight: Highlight): Double {
-    val ch = ShapeContour.fromPoints(convexHull(highlight.contour.equidistantPositions(1000)), closed = true)
-    return ch.shape.area / (if (highlight is ShapeHighlight) highlight.shape.area else highlight.contour.shape.area)
+fun areaRatio(dilatedPoly: Pattern): Double {
+    val ch = ShapeContour.fromPoints(convexHull(dilatedPoly.contour.equidistantPositions(1000)), closed = true)
+    return ch.shape.area / (if (dilatedPoly is ShapeHighlight) dilatedPoly.shape.area else dilatedPoly.contour.shape.area)
 }
 
 inline fun <T> List<T>.avgOf(selector: (T) -> Double): Double =

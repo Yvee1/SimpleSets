@@ -5,10 +5,12 @@ import org.locationtech.jts.geom.LinearRing
 import org.locationtech.jts.geom.MultiPolygon
 import org.locationtech.jts.geom.Polygon
 import org.locationtech.jts.shape.CubicBezierCurve
-import org.openrndr.application
-import org.openrndr.color.ColorRGBa
+import org.openrndr.math.Matrix44
 import org.openrndr.math.Vector2
+import org.openrndr.math.Vector3
+import org.openrndr.math.transforms.scale
 import org.openrndr.shape.*
+import urbanistic.clipper.*
 
 fun Vector2.toCoordinate() = Coordinate(x, y)
 
@@ -33,6 +35,18 @@ fun ShapeContour.toJtsPolygon(): Polygon {
     return gf.createPolygon(gf.createLinearRing(coords + coords.first()), emptyList<LinearRing>().toTypedArray())
 }
 
+fun Shape.toJtsPolygon(): Polygon {
+    val gf = GeometryFactory()
+    val rings = contours.map {
+        it.run {
+            val pts = segments.map { it.start } + segments.last().end
+            val coords = pts.map { it.toCoordinate() }.toTypedArray()
+            gf.createLinearRing(coords + coords.first())
+        }
+    }
+    return gf.createPolygon(rings[0], rings.drop(1).toTypedArray())
+}
+
 fun LinearRing.toShapeContour() = ShapeContour.fromPoints(coordinates.map { it.toVector2() }, closed = true)
 
 fun Geometry.toShape(): Shape =
@@ -42,37 +56,6 @@ fun Geometry.toShape(): Shape =
         else -> error("Unknown geometry")
     }
 
-fun ShapeContour.buffer(r: Double) = toJtsGeometry().buffer(r).toShape().contours.first()
-
-fun ShapeContour.polyNegativeBuffer(r: Double) = toJtsPolygon().buffer(r).toShape().contours.first()
-
-fun ShapeContour.smooth(r: Double) = toJtsGeometry().buffer(r).buffer(-r).toShape().contours.first()
-//
-//fun main() = application {
-//    program {
-//        val pts = listOf(Vector2(100.0, 200.0), Vector2(250.0, 350.0), Vector2(350.0, 350.0))
-//        val c = ShapeContour.fromPoints(pts, closed=false)
-//        val l = LineSegment(Vector2(250.0, 350.0), Vector2(250.0, 250.0)).contour
-//        val curve = contour {
-//            moveTo(250.0, 50.0)
-//            curveTo(270.0, 90.0, 310.0, 40.0, 400.0, 175.0)
-//        }
-//        val square = Rectangle(Vector2(300.0, 25.0), 50.0, 150.0).contour
-//        val g = c.toJtsGeometry().union(l.toJtsGeometry()).union(curve.toJtsGeometry()).union(square.toJtsGeometry())
-//        val b = g.buffer(30.0).buffer(-10.0)
-//        println(b)
-//
-//        extend {
-//            drawer.apply {
-//                clear(ColorRGBa.WHITE)
-//                stroke = ColorRGBa.BLACK
-//                fill = ColorRGBa.BLUE.opacify(0.3)
-//                contour(curve)
-//                contour(c)
-//                contour(l)
-//                contour(square)
-//                contours(b.toShape().contours)
-//            }
-//        }
-//    }
-//}
+actual fun Shape.buffer(radius: Double): Shape {
+    return Shape(contours.map { it.sampleLinear(distanceTolerance = 0.1).toJtsPolygon().buffer(radius, 16).toShape().contours[0] })
+}

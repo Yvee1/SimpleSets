@@ -19,17 +19,17 @@ jobs:
           #cache: 'gradle'
 
       - name: Build JS browser
-        run: ./gradlew jsBrowserDevelopmentWebpack
+        run: ./gradlew jsBrowserProductionWebpack
 
       - name: Build Webworker browser
-        run: ./gradlew webworkerBrowserDevelopmentWebpack
+        run: ./gradlew webworkerBrowserProductionWebpack
 
       - name: Arrange files
         run: |
           mkdir build/distributions
-          rsync -a build/dist/js/developmentExecutable/ build/distributions/
-          rsync -a build/dist/development/ build/distributions/
-          rsync -a build/dist/webworker/developmentExecutable/ build/distributions/
+          rsync -a build/kotlin-webpack/js/productionExecutable/ build/distributions/
+          rsync -a build/kotlin-webpack/webworker/productionExecutable/ build/distributions/
+          rsync -a build/processedResources/js/main/ build/distributions/
 
       # If main branch update, deploy to gh-pages
       - name: Deploy

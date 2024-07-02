@@ -1,29 +1,25 @@
 import geometric.distanceTo
-import highlights.ContourHighlight
-import highlights.Highlight
-import highlights.PointHighlight
-import org.locationtech.jts.geom.Geometry
+import dilated.ContourHighlight
+import dilated.DilatedPoint
 import org.openrndr.application
 import org.openrndr.color.ColorRGBa
-import org.openrndr.math.Vector2
 import org.openrndr.shape.ShapeContour
 import org.openrndr.shape.contains
 import org.openrndr.shape.contour
 import org.openrndr.svg.toSVG
+import patterns.Pattern
 import patterns.Point
+import patterns.SinglePoint
 import java.io.File
-import java.time.ZoneId
-import java.time.ZonedDateTime
-import java.time.format.DateTimeFormatter
 
 fun main() {
-    val vis = "BubbleSets"
+    // Set this to one of "ClusterSets", "BubbleSets", or "LineSets" to create the corresponding visualizations.
+    val vis = "ClusterSets"
     val ipe = File("nyc-$vis.ipe").readText()
 
     application {
         program {
-            val gs = GeneralSettings(pSize = 2.05)
-//            val gs = GeneralSettings(pSize = 1.25)
+            val gs = GeneralSettings(pSize = 1.25)
             val ds = DrawSettings()
             val cds = ComputeDrawingSettings()
             val (points, highlights) = ipeToContourHighlights(ipe, gs.expandRadius)
@@ -58,7 +54,7 @@ fun main() {
     }
 }
 
-fun ipeToContourHighlights(ipe: String, expandRadius: Double): Pair<List<Point>, List<Highlight>> {
+fun ipeToContourHighlights(ipe: String, expandRadius: Double): Pair<List<Point>, List<Pattern>> {
     val ipeXML = ipe.lines().filterNot { it.contains("""<!DOCTYPE ipe SYSTEM "ipe.dtd">""") }.joinToString("\n")
     val doc = loadXMLFromString(ipeXML)
     val nodeList = doc.getElementsByTagName("path").asList()
@@ -95,11 +91,11 @@ fun ipeToContourHighlights(ipe: String, expandRadius: Double): Pair<List<Point>,
             for (c in cs) {
                 val pts = points.filter { it.pos in c || c.distanceTo(it.pos) < 1E-3 }
                 isolatedPoints.removeAll(pts)
-                add(ContourHighlight(c.buffer(expandRadius), pts, expandRadius))
+                add(ContourHighlight(c.buffer(expandRadius).contours[0], pts))
             }
         }
         for (p in isolatedPoints) {
-            add(PointHighlight(p, expandRadius))
+            add(DilatedPoint(SinglePoint(p), expandRadius))
         }
     }
 }

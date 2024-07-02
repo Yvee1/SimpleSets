@@ -1,7 +1,7 @@
 import components.*
 import contexts.*
 import emotion.react.css
-import js.core.jso
+import js.objects.jso
 import kotlinx.browser.window
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
@@ -30,8 +30,8 @@ import react.dom.svg.ReactSVG.circle
 import react.dom.svg.ReactSVG.svg
 import sideWindow.*
 import sideWindow.settings.*
-import web.buffer.Blob
-import web.buffer.BlobPart
+import web.blob.Blob
+import web.blob.BlobPart
 import web.cssom.*
 import web.cssom.Auto.Companion.auto
 import web.cssom.Globals.Companion.initial
@@ -41,6 +41,7 @@ import web.dom.document
 import web.html.HTMLAnchorElement
 import web.html.HTMLDivElement
 import web.html.InputType
+import web.uievents.MouseButton
 import web.url.URL
 
 enum class Tool {
@@ -109,12 +110,12 @@ val App = FC<Props> {
         forbidTooClose = grow.forbidTooClose
     )
 
-    val cbColorsRGB = cbColors.map { it.toColorRGB() }
+    val cbColorsRGB = cbColors
     val (colors, colorsSetter) = useState(cbColorsRGB)
     val colorsObj = object: Colors {
-        override val defaultColors: List<ColorRGB>
+        override val defaultColors: List<ColorRGBa>
             get() = cbColorsRGB
-        override var colors: List<ColorRGB>
+        override var colors: List<ColorRGBa>
             get() = colors
             set(v) = colorsSetter(v)
 
@@ -279,7 +280,58 @@ val App = FC<Props> {
                 }
 
                 PanelHeader {
-                    title = "General"
+                    title = "Input and output"
+                }
+                SelectExample {
+                    onLoadExample = {
+                        val ext = getExtension(it)
+                        window
+                            .fetch("example-input/${getFileName(it)}.${ext}")
+                            .then { it.text() }
+                            .then { text ->
+                                fittingToScreen = true
+                                val parsedPoints = when(ext) {
+                                    "ipe" -> ipeToPoints(text)
+                                    "txt" -> parsePoints(text)
+                                    else -> error("Unknown extension: $ext")
+                                }
+                                val newPoints = parsedPoints.map { p ->
+                                    p.copy(pos = p.pos.copy(y = svgSize.y - p.pos.y))
+                                }
+                                points = newPoints
+                                matchText(newPoints)
+                                val (gSettings, gCover) = goodSettings(it)
+                                val (gs, tgs, _, ds) = gSettings
+                                maxBendAngleSetter(gs.maxBendAngle)
+                                maxTurningAngleSetter(gs.maxTurningAngle)
+                                bendInflectionSetter(gs.bendInflection)
+                                pointSizeSetter(gs.pSize)
+                                forbidTooCloseSetter(tgs.forbidTooClose)
+                                postponeIntersectionsSetter(tgs.postponeIntersections)
+                                colorsSetter(ds.colors)
+                                cover = gCover
+                            }
+                    }
+                }
+                textarea {
+                    value = areaText
+                    onChange = {
+                        areaText = it.target.value
+                        matchPoints(it.target.value)
+                    }
+                    css {
+                        padding = 10.px
+                        lineHeight = number(1.5);
+                        borderRadius = 1.px;
+                        border = Border(1.px, LineStyle.solid, Color("#ccc"))
+                        boxShadow = BoxShadow(1.px, 1.px, 1.px, Color("#999"))
+                        width = 250.px
+                        height = 100.px
+                    }
+                }
+                Divider()
+                PanelHeader {
+                    title = "General settings"
                 }
                 BendSettingsContext.Provider {
                     value = bendSettings
@@ -302,7 +354,7 @@ val App = FC<Props> {
 
                 Divider()
                 PanelHeader {
-                    title = "Grow"
+                    title = "Grow settings"
                 }
                 GrowSettingsContext.Provider {
                     value = grow
@@ -315,50 +367,6 @@ val App = FC<Props> {
                 ColorsContext.Provider {
                     value = colorsObj
                     ColorSettingsPanel()
-                }
-                Divider()
-                PanelHeader {
-                    title = "Input and output"
-                }
-                textarea {
-                    value = areaText
-                    onChange = {
-                        areaText = it.target.value
-                        matchPoints(it.target.value)
-                    }
-                    css {
-                        padding = 10.px
-                        lineHeight = number(1.5);
-                        borderRadius = 1.px;
-                        border = Border(1.px, LineStyle.solid, Color("#ccc"))
-                        boxShadow = BoxShadow(1.px, 1.px, 1.px, Color("#999"))
-                        width = 250.px
-                        height = 150.px
-                    }
-                }
-                SelectExample {
-                    onLoadExample = {
-                        window
-                            .fetch("example-input/${getFileName(it)}.ipe")
-                            .then { it.text() }
-                            .then { ipe ->
-                                fittingToScreen = true
-                                val newPoints = ipeToPoints(ipe).map { p ->
-                                    p.copy(pos = p.pos.copy(y = svgSize.y - p.pos.y))
-                                }
-                                points = newPoints
-                                matchText(newPoints)
-                                val (gSettings, gCover) = goodSettings(it)
-                                val (gs, tgs, _, _) = gSettings
-                                maxBendAngleSetter(gs.maxBendAngle)
-                                maxTurningAngleSetter(gs.maxTurningAngle)
-                                bendInflectionSetter(gs.bendInflection)
-                                pointSizeSetter(gs.pSize)
-                                forbidTooCloseSetter(tgs.forbidTooClose)
-                                postponeIntersectionsSetter(tgs.postponeIntersections)
-                                cover = gCover
-                            }
-                    }
                 }
             }
 
@@ -374,7 +382,7 @@ val App = FC<Props> {
                     display = Display.flex
                     flexDirection = FlexDirection.column
                     boxSizing = BoxSizing.borderBox
-                    fontFamily = FontFamily.sansSerif
+//                    fontFamily = FontFamily.sansSerif
                     fontSize = (13 + 1.0 / 3.0).px
                     flex = auto
                     margin = 10.px
@@ -601,11 +609,11 @@ val App = FC<Props> {
                         }
                         if (evCache.isNotEmpty() &&
                             (tool == Tool.None ||
-                            downEvent?.button != 0)
+                            downEvent?.button != MouseButton.MAIN)
                             ) {
                             cursor = Cursor.move
                         }
-                        if (tool == Tool.MovePoints && downEvent?.button == 0 && movingPoint != null) {
+                        if (tool == Tool.MovePoints && downEvent?.button == MouseButton.MAIN && movingPoint != null) {
                             cursor = Cursor.grabbing
                         }
                     }
@@ -629,7 +637,7 @@ val App = FC<Props> {
                             ev.stopPropagation()
                             ev.currentTarget.setPointerCapture(ev.pointerId)
 
-                            if (tool == Tool.PlacePoints && ev.button == 0) {
+                            if (tool == Tool.PlacePoints && ev.button == MouseButton.MAIN) {
                                 val newPoints = points + Point(viewMatrix * ev.offset, currentType)
                                 points = newPoints
                                 matchText(newPoints)
@@ -674,7 +682,7 @@ val App = FC<Props> {
                             }
 
                             if (evCache.size == 1 && prevEv != null) {
-                                if (tool == Tool.None || downEvent?.button != 0) {
+                                if (tool == Tool.None || downEvent?.button != MouseButton.MAIN) {
                                     viewMatrix *= transform {
                                         translate(-(ev.clientX - prevEv.clientX), -(ev.clientY - prevEv.clientY))
                                     }
@@ -731,7 +739,7 @@ val App = FC<Props> {
                                     cx = p.pos.x
                                     cy = p.pos.y
                                     r = pointSize
-                                    fill = colors.getOrElse(p.type) { ColorRGBa.WHITE.toColorRGB() }.toSvgString()
+                                    fill = colors.getOrElse(p.type) { ColorRGBa.WHITE }.toSvgString()
                                     stroke = "black"
                                     strokeWidth = drawSettings.pointStrokeWeight(generalSettings)
                                     onPointerDown = { e ->

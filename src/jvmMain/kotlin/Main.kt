@@ -1,5 +1,4 @@
-import highlights.Highlight
-import highlights.toHighlight
+import dilated.dilate
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
@@ -16,8 +15,10 @@ import org.openrndr.launch
 import org.openrndr.math.Matrix44
 import org.openrndr.math.Vector2
 import org.openrndr.math.transforms.transform
-import org.openrndr.shape.*
+import org.openrndr.shape.Composition
+import org.openrndr.shape.LineSegment
 import org.openrndr.svg.toSVG
+import patterns.Pattern
 import patterns.bounds
 import java.io.File
 import java.io.IOException
@@ -36,7 +37,7 @@ fun main() = application {
     program {
         var partition: Partition = Partition.EMPTY
         var filtration: List<Pair<Double, Partition>> = emptyList()
-        var highlights = listOf<Highlight>()
+        var dilatedPolies = listOf<Pattern>()
         var composition: (Boolean) -> Composition = { _ -> drawComposition { } }
         var calculating = false
 
@@ -63,21 +64,46 @@ fun main() = application {
         val cds = ComputeDrawingSettings()
         val tgs = GrowSettings()
 
-        var xGraph = XGraph(emptyList(), gs, cds)
+        var xGraph = XGraph(emptyList(), gs, cds, morph = ::erodeDilate)
 
         fun clearData(clearPartition: Boolean = true){
             if (clearPartition) {
                 partition = Partition.EMPTY
                 filtration = emptyList()
             }
-            highlights = emptyList()
-            xGraph = XGraph(emptyList(), gs, cds)
+            dilatedPolies = emptyList()
+            xGraph = XGraph(emptyList(), gs, cds, morph = ::erodeDilate)
             composition = { _ -> drawComposition { } }
         }
 
         val cs = object {
             @DoubleParameter("Cover", 1.0, 8.0)
             var cover: Double = 3.0
+        }
+
+        val camera = Camera2D()
+
+        val transformMatrix = transform {
+            translate(0.0, height.toDouble())
+            scale(1.0, -1.0)
+        }
+
+        val uiSettings = object {
+            @ActionParameter("Fit to screen")
+            fun fitToScreen() {
+                val rect = partition.points.bounds
+                    .offsetEdges(ds.contourStrokeWeight(gs) + 2 * gs.expandRadius)
+                    .contour
+                    .transform(transformMatrix)
+                    .bounds
+                val matrix = Matrix44.fit(rect, drawer.bounds)// * transform { translate(0.0, drawer.bounds.height) }
+                camera.view = matrix.inversed
+            }
+
+            @ActionParameter("Reset viewport")
+            fun resetViewport() {
+                camera.view = Matrix44.IDENTITY
+            }
         }
 
         val ps = object {
@@ -87,17 +113,17 @@ fun main() = application {
             @ActionParameter("Compute drawing")
             fun computeDrawing() {
                 try {
-                    highlights = partition.patterns.map { it.toHighlight(gs.expandRadius) }
-                    xGraph = XGraph(highlights, gs, cds)// {
-//                            comp, fileName ->
+                    dilatedPolies = partition.patterns.map { it.dilate(gs.expandRadius) }
+                    xGraph = XGraph(dilatedPolies, gs, cds, morph=::erodeDilate, debug={
+                            comp, fileName ->
 //                        val timeStamp = ZonedDateTime
 //                            .now( ZoneId.systemDefault() )
 //                            .format( DateTimeFormatter.ofPattern( "uuuu.MM.dd.HH.mm.ss" ) )
-//                        val f = File("${fileName}.svg")
-//
-//                        f.writeText(comp.toSVG())
-//                        "py svgtoipe.py ${fileName}.svg".runCommand(File("."))
-//                    }
+                        val f = File("${fileName}.svg")
+
+                        f.writeText(comp.toSVG())
+                        "py svgtoipe.py ${fileName}.svg".runCommand(File("."))
+                    })
                 }
                 catch(e: Throwable) {
                     e.printStackTrace()
@@ -141,15 +167,18 @@ fun main() = application {
 
                 val (gSettings, gCover) = goodSettings(exampleInput)
                 cs.cover = gCover
-                val (gGs, gTgs, _, _) = gSettings
+                val (gGs, gTgs, _, gDs) = gSettings
                 gs.pSize = gGs.pSize
                 gs.bendInflection = gGs.bendInflection
                 gs.maxTurningAngle = gGs.maxTurningAngle
                 gs.maxBendAngle = gGs.maxBendAngle
                 tgs.forbidTooClose = gTgs.forbidTooClose
                 tgs.postponeIntersections = gTgs.postponeIntersections
+                ds.colors = gDs.colors
 
                 ps.modifiedPartition()
+
+                uiSettings.fitToScreen()
             }
 
             @TextParameter("Input ipe file (with extension)", order = 14)
@@ -197,31 +226,6 @@ fun main() = application {
             }
         }
 
-        val camera = Camera2D()
-
-        val transformMatrix = transform {
-            translate(0.0, height.toDouble())
-            scale(1.0, -1.0)
-        }
-
-        val uiSettings = object {
-            @ActionParameter("Fit to screen")
-            fun fitToScreen() {
-                val rect = partition.points.bounds
-                    .offsetEdges(ds.contourStrokeWeight(gs) + 2 * gs.expandRadius)
-                    .contour
-                    .transform(transformMatrix)
-                    .bounds
-                val matrix = Matrix44.fit(rect, drawer.bounds)// * transform { translate(0.0, drawer.bounds.height) }
-                camera.view = matrix.inversed
-            }
-
-            @ActionParameter("Reset viewport")
-            fun resetViewport() {
-                camera.view = Matrix44.IDENTITY
-            }
-        }
-
         gui.add(inputOutputSettings, "Input output settings")
         gui.add(uiSettings, "UI Settings")
         gui.add(gs, "General settings")
@@ -259,8 +263,6 @@ fun main() = application {
         }
 
         gui.onChange { varName, _ ->
-            if (varName == "gridSize")
-
             if (varName == "pSize") {
                 if (ps.computeDrawing) ps.computeDrawing()
             }

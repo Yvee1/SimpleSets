@@ -41,7 +41,7 @@ fun main() = application {
 //            lineSegments(skeleton)
 
             for (pt in pts) {
-                stroke = ds.colors[pt.type].toColorRGBa()
+                stroke = ds.colors[pt.type]
                 fill = stroke!!.opacify(ds.whiten)
                 strokeWeight = ds.contourStrokeWeight(gs) * 12.835
                 lineStrip(listOf(pt.pos, pt.pos))

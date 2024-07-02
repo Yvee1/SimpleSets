@@ -5,8 +5,8 @@ import components.Slider
 import contexts.BendSettingsContext
 import drawComposition
 import emotion.react.css
-import highlights.toHighlight
-import js.core.jso
+import dilated.dilate
+import js.objects.jso
 import org.openrndr.color.ColorRGBa
 import org.openrndr.color.rgb
 import org.openrndr.math.Vector2
@@ -157,7 +157,7 @@ fun bendPreview(maxTurningAngle: Double, maxTotalAngle: Double,
         fill = rgb(color).opacify(0.3)
         if (!pts.zipWithNext().all { (a, b) -> a.distanceTo(b) < expandRadius }
             && pts.first().distanceTo(pts.last()) > 2 * expandRadius) {
-            val c = Bank(pts.map { Point(it, 0) }, pts.size).toHighlight(expandRadius).contour
+            val c = Bank(pts.map { Point(it, 0) }).dilate(expandRadius).contour
             contour(c)
         }
         strokeWeight = pointStrokeWeight
